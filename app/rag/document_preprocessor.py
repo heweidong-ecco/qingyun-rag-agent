@@ -118,7 +118,7 @@ class DocumentPreprocessor:
         #    这条行为**有回归用例锁着**（`test_audit_fixes.py::test_markdown_image_rule_is_not_dead`）——
         #       有人删它，用例会红。
         #    要**修** `default` 域（把图片规则提到 URL 规则之前）会**改变文本预处理输出**
-        #       影响已有语料 ⇒ 属**行为变更**，**待需求方裁**（见 `docs/待办登记…` §三·3.7）。
+        #       影响已有语料 ⇒ 属**行为变更**，**待作者裁**（见 `docs/待办登记…` §三·3.7）。
         text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'\1', text)  # Markdown图片语法
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)  # 去除控制字符
         return text
@@ -150,7 +150,7 @@ class DocumentPreprocessor:
         - 英文字母（Ａ-Ｚ → A-Z）
         - 数字（０-９ → 0-9）
         - 基本符号（！＂＃＄％＆＇＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～）
-        但保留中文专用标点（。，！？等）的全角形式。
+        但保留中文专用标点（。！？等）的全角形式。
         """
         result = []
         for char in text:

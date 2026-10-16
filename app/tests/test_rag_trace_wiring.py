@@ -77,7 +77,7 @@ def _stub_deps(monkeypatch, llm):
     monkeypatch.setattr(rag_mod, "record_from_response", lambda *a, **k: True)
     # 第二个 `get_db`：`search_similar` 走的是 **`db.py`** 的模块全局
     #    （乙段把检索搬进共享层）⇒ 只 patch `rag_mod` 那个**够不着它**。
-    #    那次的完整教训 ⇒ 本仓的复盘记录（⛔ 不随产品仓提供）
+    #    那次的完整教训
     monkeypatch.setattr(db_mod, "get_db", lambda: None)
 
 
@@ -128,7 +128,7 @@ def test_trace_is_keyed_by_user_and_thread(clean_traces, monkeypatch):
     _drive(monkeypatch, _FakeStreamLLM())
     # **先证"尺子有读数"** —— 少了这一行，下面两条断言在"**一条轨迹都没建**"时
     #    **照样会通过**（`get_trace` 对不存在的键也回 `None`）⇒ 那就是**空跑假通过**
-    #    （本仓 ：拿空集合断言会一路绿着放行）。本文件第一版**真的**是那样绿的。
+    #    （本仓：拿空集合断言会一路绿着放行）。本文件第一版**真的**是那样绿的。
     assert tv.get_trace(USER, THREAD) is not None, "夹具没建出轨迹 ⇒ 下面两条断言不算数"
     assert tv.get_trace("someone-else", THREAD) is None, (
         "别人读到了 ⇒ 身份或线程没传对（`tool_visualizer` 的键是 `session_key(user_name, thread_id)`）"

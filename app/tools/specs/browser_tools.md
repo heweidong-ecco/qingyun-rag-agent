@@ -21,7 +21,7 @@
 
 1. 🔴 **"代码在" ≠ "模型能用"** —— 本文件是**挂起的能力**（从工具表摘掉）。
    ⇒ 看到这三个函数**别以为它们在服务路径上**。要接回：先装 chromium，
-   **同时**改 `mcp_server.py` 那两行（`docs/待办总表.md` 记着这条待办）。
+   **同时**改 `mcp_server.py` 那两行（记着这条待办）。
 2. 🔴 **⛔ 不许把它改成 `async def`** —— 它**同时被 MCP server 的【同步】路径调用**。
    改了会报「`using Playwright Sync API inside the asyncio loop`」（**当初就是这么定的**）。
    📌 出处：`app/tests/test_agent_repairs.py` 里那条专门说明。
@@ -34,4 +34,4 @@
 
 - `app/tools/specs/mcp_server.md` —— 工具注册表（**这里才有"模型能看见什么"的真答案**）
 - `app/tools/specs/tool_health.md` —— 健康检查（挂起的工具也在这里被标 unhealthy）
-- `docs/待办总表.md` ——  那条待办
+-  ——  那条待办

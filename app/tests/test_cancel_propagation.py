@@ -32,7 +32,7 @@
 | Prometheus | `app/core/metrics.py` | **本轮新加的 `stream_cancelled_total`** |
 | PG（`token_usage_logs`） | `app/billing/token_tracker.py` | **流式生成阶段不记账** ⇒ 拿它当判据**看不到任何东西**（本任务踩过） |
 
-裁定与理由 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+裁定与理由
 """
 
 import asyncio
@@ -124,7 +124,7 @@ class _AsyncSpyStream:
         self.item_factory = item_factory
         self.first_delay = first_delay
         self.i = 0
-        # ：吐够 N 块之后**抛**（"生成到一半炸了"那条出口要用）——
+        #：吐够 N 块之后**抛**（"生成到一半炸了"那条出口要用）——
         #    `None` ⇒ 从不抛，与改前**逐字相同**（`_SpyGraph` 没有这个属性 ⇒ 取到 `None`）。
         self.explode_after = getattr(owner, "explode_after", None)
 
@@ -228,7 +228,7 @@ class _SpyGraph:
         self.closed = False
         self.aclose_called = False
         self.aclose_interrupted = aclose_interrupted
-        # ：吐够 N 块之后抛（"生成到一半炸了"）—— `_AsyncSpyStream` 从本对象上取它
+        #：吐够 N 块之后抛（"生成到一半炸了"）—— `_AsyncSpyStream` 从本对象上取它
         #    （同 `_SpyRagLLM` 的用法）。`None` ⇒ 从不抛，与改前**逐字相同**。
         self.explode_after = explode_after
         self.aget_state_calls = []
@@ -282,7 +282,7 @@ def _call_rag_stream(monkeypatch, llm, history=None, get_history=None, **kw):
     **桩打在【叶子】`cache.redis_client`，不是 `rag_mod.append_chat_history`。**
         把留痕搬进了 `cache.persist_turn`，它调的是 **`cache` 自己的模块全局** ——
        patch `rag_mod` 上那个名字**够不着它**，写入会**直接打到真 redis**。
-       同一个病本仓刚栽过（`get_db` 有两个模块全局）⇒ 本仓的复盘记录（⛔ 不随产品仓提供）。
+       同一个病本仓刚栽过（`get_db` 有两个模块全局）。
     """
     store = history if history is not None else FakeRedis()
     monkeypatch.setattr(cache_mod, "redis_client", store)
@@ -304,7 +304,7 @@ def _call_rag_stream(monkeypatch, llm, history=None, get_history=None, **kw):
     #    ⇒ 12 条用例照样全绿。CI 没有 postgres ⇒ `Connection refused` ⇒ 12 条全红。
     #    ⇒ **判据不能是「本机跑绿」**，得跑 CI 等价物：
     #       `POSTGRES_PORT=59999 venv/bin/python -m pytest app/ -q -m "not integration and not needs_db"`
-    #    复现与根因 ⇒ 本仓的复盘记录（⛔ 不随产品仓提供）
+    #    复现与根因
     monkeypatch.setattr(db_mod, "get_db", lambda: _FakeConn())
     kw.setdefault("thread_id", THREAD)
     kw.setdefault("user_name", "tester")
@@ -324,7 +324,7 @@ def _call_agent_stream(monkeypatch, graph, redis=None, **kw):
     monkeypatch.setattr(agent_mod, "circuit", lambda *a, **k: (True, ""))
     monkeypatch.setattr(agent_mod, "register", lambda *a, **k: None)
     monkeypatch.setattr(agent_mod, "resolve", lambda *a, **k: None)
-    # ：端点会往 `chat_history` 写留痕 ⇒ 短路存储（否则打到真 redis）。
+    #：端点会往 `chat_history` 写留痕 ⇒ 短路存储（否则打到真 redis）。
     monkeypatch.setattr(cache_mod, "redis_client", redis if redis is not None else FakeRedis())
     kw.setdefault("thread_id", THREAD)
     kw.setdefault("user_name", "tester")
@@ -425,9 +425,9 @@ def test_rag_normal_completion_is_not_counted_as_cancel(monkeypatch):
     assert _metric(RAG_ENDPOINT) == before, "正常收尾被记成了取消"
 
 
-# ============ RAG 端 ·  ：中断时那半截答案怎么办 ============
+# ============ RAG 端：中断时那半截答案怎么办 ============
 #
-# 核出来的事实（本仓的决策记录（⛔ 不随产品仓提供））：取消时 `collected_parts` 是**直接丢**的，
+# 核出来的事实：取消时 `collected_parts` 是**直接丢**的，
 # 而且不是"决定"，是"碰巧" —— `append_chat_history` 写在循环之后，取消在它之前 `raise`。
 # ⇒ 这里把「丢」改成「存」，并把**存的形态**钉死。
 
@@ -469,7 +469,7 @@ def test_rag_persists_partial_answer_when_cancelled(monkeypatch):
     assert entries[1]["content"] == seen + rag_mod.INTERRUPTED_SUFFIX, (
         f"存进历史的不是客户端看到的那半截（或缺中断标记）：{entries[1]['content']!r}"
     )
-    # ：光有"半截 + 标记"还不够 —— 读的人得能**机器可读**地分出这不是完整答案。
+    #：光有"半截 + 标记"还不够 —— 读的人得能**机器可读**地分出这不是完整答案。
     assert [e["status"] for e in entries] == ["cancelled", "cancelled"], (
         f"取消那条出口的 status 不对（判决表那一格）：{entries}"
     )
@@ -482,7 +482,7 @@ def test_rag_bookkeeping_survives_interrupted_aclose(monkeypatch):
     计数不涨、日志没有、半截不落盘。**而单测当时全绿**（假流的 `aclose` 不抛）。
 
     这不是"理论上可能"：容器与宿主机**同一份代码**、同一个问题、同一次真切断，
-       **早切（还没吐块）** 计数 1.0→2.0、**晚切（已经吐了字再断）** 2.0→2.0 ；
+       **早切（还没吐块）** 计数 1.0→2.0、**晚切（已经吐了字再断）** 2.0→2.0；
        插桩版本打印出 `DBG aclose 抛了: CancelledError`。
        卡在哪：早切时生成器**还没被推进过**，`aclose` 不必真收尾 ⇒ 不挂起 ⇒ 打不断。
 
@@ -595,7 +595,7 @@ def test_rag_full_answer_is_saved_without_interrupt_marker(monkeypatch):
     assert entries[1]["content"] == "字" * 3, f"正常收尾存的不是完整答案：{entries[1]['content']!r}"
     assert rag_mod.INTERRUPTED_SUFFIX not in entries[1]["content"], "完整答案被误标成了中断"
     assert [e["status"] for e in entries] == ["done", "done"], (
-        f"🔴 ：正常走完那条出口的 status 必须是 'done'（读的人靠它分辨）：{entries}"
+        f"🔴：正常走完那条出口的 status 必须是 'done'（读的人靠它分辨）：{entries}"
     )
 
 

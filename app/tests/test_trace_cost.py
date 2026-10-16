@@ -17,7 +17,7 @@
 
 「SQL 文本里有 `user_name = %s`」**是代理量**，不是「A 真的看不到 B 的」。
 **真判据在 `test_trace_cost_db.py`**（真库、真两个用户、阳性对照）。
-同族纪律 ⇒ 本仓的复盘记录（⛔ 不随产品仓提供）。
+同族纪律。
 
 判据（可打印）：`venv/bin/python -m pytest app/tests/test_trace_cost.py -q -p no:warnings`
 """

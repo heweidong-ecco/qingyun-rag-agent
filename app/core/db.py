@@ -181,7 +181,7 @@ def embedding_dim_in_db():
        原先的结论（写在 `rag/embedding_client.py` 的 docstring 里）是：
        「全仓**没有那个来源**（`vector(N)` 是行内字面量）⇒ **接线留到 B 段**」。
        ✅ **B 段到了，而答案是【问表自己】**：
-       · ⛔ **不抽常量**（需求方 2026-10-08 裁过"逐处改"，见 `施工单-20261008`  Step 3）；
+       · ⛔ **不抽常量**（作者 2026-10-08 裁过"逐处改"，见   Step 3）；
        · ✅ PG 的 `pg_attribute.atttypmod` 对 `vector(N)` **就是 N** ⇒ **表的定义本身**就是那个单一来源。
        ⇒ **从此不再有"第三处写死的维度"**。
 
@@ -228,7 +228,7 @@ def create_table():
                         key_hash TEXT NOT NULL UNIQUE,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         expires_at TIMESTAMP NOT NULL,
-                        -- 🔴  契约 D / ：`app/access/auth.py` 的查询按
+                        -- 🔴  契约 D /：`app/access/auth.py` 的查询按
                         --    `COALESCE(is_active, 1) = 1` 过滤 ⇒ **这一列必须真实存在**。
                         --    ⚠️ 故意**可空**（⛔ 别加 NOT NULL）：`COALESCE` 就是为了让
                         --    那批"加列之前写进去的老行（NULL）"照样能通过认证。
@@ -500,7 +500,7 @@ def search_similar(query_embedding: list, top_k: int = 3, *, user_id: str):
     _require_identity(user_id, "search_similar")
     with get_db() as conn:
         with conn.cursor() as cur:
-            enable_ann_iterative_scan(cur)      # 🔴 ：别让 ivfflat 静默回空
+            enable_ann_iterative_scan(cur)      # 🔴：别让 ivfflat 静默回空
             cur.execute("""
                 SELECT id,content, source, 1 - (embedding <=> %s::vector) AS similarity
                 FROM documents

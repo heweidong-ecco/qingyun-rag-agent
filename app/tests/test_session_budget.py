@@ -5,7 +5,6 @@
 
 **跑之前必须带库名隔离**：`POSTGRES_DB=rag_test`
    （本仓有前科：R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行 ——
-   本仓的复盘记录（⛔ 不随产品仓提供））。
    凡调用 `record_*` / `insert_*` / `create_*` 的验证，**必须带库名隔离**。
 
 **本文件不进 CI**（CI 无 postgres service，见 `app/pytest.ini`）

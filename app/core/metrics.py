@@ -26,7 +26,7 @@ REQUEST_IN_PROGRESS = Gauge(
 #    而"上游到底停没停"是**另一件事**；本仓的 token 记账走 `token_tracker` → PG，
 #    而那条链**在流式生成阶段一行都不写** ⇒ 没有这个计数器，取消**没有任何可观测对象**
 #    （实测：`grep -ci token app/core/metrics.py` = 0 · `grep -c prometheus app/billing/token_tracker.py` = 0）。
-# **Grafana 固定看板要手工加一格** —— provisioning 缺口仍在（ROADMAP 阻塞项 #2），
+# **Grafana 固定看板要手工加一格** —— provisioning 缺口仍在（阻塞项 #2），
 #    这个 counter 不会自动变成面板。先在 Explore 里查：`sum(rate(stream_cancelled_total[5m]))`
 STREAM_CANCELLED = Counter(
     "stream_cancelled_total",

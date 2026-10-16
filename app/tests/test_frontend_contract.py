@@ -332,7 +332,7 @@ def test_no_usage_frame_when_nothing_was_billed(monkeypatch, rag_env):
 
     本用例在  动工**之前就是绿的**（现状本来就不出帧）
        **"它现在绿"证明不了它在测那件事**。只有反证检验（把 `if payload is not None:`
-       改成无条件 yield）让它**变红**，才算数。见施工单 Step 6 ②。
+       改成无条件 yield）让它**变红**，才算数。见 Step 6 ②。
     """
     class _NoUsageLLM(_PromptCapturingLLM):
         async def astream(self, messages):

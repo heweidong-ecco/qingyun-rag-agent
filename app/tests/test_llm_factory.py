@@ -185,7 +185,7 @@ def test_missing_key_is_reported_by_name_not_by_openai():
     """缺 `LLM_API_KEY` 时 `make_llm` 必须**点名那个变量**，不是 OpenAI SDK 那句通用话。
 
     **时机没变**（仍在 import 期构造）—— 本批只改「**报什么**」。为什么不做真惰性
-    （那要动 3 张图的模块级 `llm` + `bind_tools`）⇒ 本仓的决策记录（⛔ 不随产品仓提供）。
+    （那要动 3 张图的模块级 `llm` + `bind_tools`）。
 
     判据：在**没有 `.env`、也没设该变量**的子进程里调一次，看报的错里有没有 `LLM_API_KEY`。
     """

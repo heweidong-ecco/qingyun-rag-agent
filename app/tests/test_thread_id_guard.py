@@ -6,7 +6,7 @@
    推导型扫的是**路由表本身** ⇒ 新端点自动被覆盖。
 本仓同族：（空清单静默假通过）—— 所以下面**必须**同时断言"扫到的条数不为 0"。
 
-## 两条实测出来的坑（起草时都写错了，见施工单  Step 9 的订正）
+## 两条实测出来的坑（起草时都写错了，见  Step 9 的订正）
 
 ① **不能直接遍历 `app.routes`**：FastAPI 0.141 起 `include_router` 的结果被包成
    `_IncludedRouter` ⇒ 直接遍历只能看到 **5 条**（实测），
@@ -32,7 +32,7 @@ _spec = importlib.util.spec_from_file_location("_check_route_auth_for_guard", _p
 check_route_auth = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(check_route_auth)
 
-# 故意【不】要求 min_length 的两条 —— 理由见施工单  Step 8 那张表。
+# 故意【不】要求 min_length 的两条 —— 理由见  Step 8 那张表。
 #    这里是**唯一**允许存在的例外；多一条 ⇒ 用例红 ⇒ 强迫下一个例外走一次有意识的裁定。
 ALLOWLIST = {
     ("/api/v1/agent/approve", "thread_id"),        # 必填；空串 ⇒ "查不到"，不是 500（另裁）
@@ -93,7 +93,7 @@ def test_empty_thread_id_is_rejected_before_the_stream_opens(client, auth_header
     """行为层面：`?thread_id=` ⇒ **422**，不是 500、也不是一个半截的流。
 
     反证检验：把 `api_v1_rag.py` 那处的 `min_length=1` 去掉 ⇒ 本条变红
-       （且红的样子是 500 / 半截流，见施工单  Step 10 的实测）。
+       （且红的样子是 500 / 半截流，见  Step 10 的实测）。
     这条**不替代**上面那条推导型的：它只钉住**一个**端点"真的挡得住"，
        而"还有没有端点没收口"是上面那条管的。
     """

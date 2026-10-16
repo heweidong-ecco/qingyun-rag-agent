@@ -14,7 +14,7 @@
 - **口令一律哈希**：`pbkdf2_sha256$轮数$盐$哈希`（**标准库 `hashlib.pbkdf2_hmac`**，
   20 万轮，每行独立 16 字节 salt）。
 - **建号 / 换口令 / 停用 / 列出** ⇒ `app/manage_users.py`（**在容器里跑的一条命令**，⛔ 不是端点）。
-  ⚠️ **建号默认 15 天到期**（`DEFAULT_EXPIRE_DAYS`）—— 需求方 2026-10-15 原话：
+  ⚠️ **建号默认 15 天到期**（`DEFAULT_EXPIRE_DAYS`）—— 作者 2026-10-15 原话：
   「**15 天没有联系，这个 HR 基本是放弃了**」。要永不过期得**显式** `--forever`。
 - 🔵 **「撤销立即生效」**（2026-10-15 同日补）：`deps.verify_jwt_token` + `/auth/refresh`
   都过 `login_account_blocked` ⇒ **已发出的令牌在撤销后最多 30 秒失效**
@@ -60,7 +60,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://<host>/api/v1/auth/login
 
 ## 关联
 
-- 🔴 本仓的决策记录（⛔ 不随产品仓提供） —— **这一条的完整来龙去脉**
+- 🔴  —— **这一条的完整来龙去脉**
 - `app/access/specs/auth.md` —— **它插在哪儿**（`authenticate_user` 的两条来源与优先顺序）
 - `app/access/specs/permission.md` —— **角色从哪来**（`api_keys.role` + `_hardcoded_role` 回退）
 - `app/routing/specs/deps.md`（若在）· `app/routing/deps.py::get_current_user_hybrid` ——

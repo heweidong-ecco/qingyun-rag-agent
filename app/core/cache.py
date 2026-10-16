@@ -36,7 +36,7 @@ def set_cached_embedding(text: str, embedding: list, model: str, expire_seconds:
     key = get_cache_key(text, model)
     redis_client.set(key, json.dumps(embedding), ex=expire_seconds)
 
-# ：一轮问答**没能正常走完**（取消 / 异常）时，存进历史的半截**必须带这个尾巴**。
+#：一轮问答**没能正常走完**（取消 / 异常）时，存进历史的半截**必须带这个尾巴**。
 #    与  用的是**同一个字符串**（原文在 `api_v1_rag.py`，2026-10-04 搬来这里 ⇒ 单一来源）。
 INTERRUPTED_SUFFIX = "…（本次回答被中断，以上为已生成部分）"
 

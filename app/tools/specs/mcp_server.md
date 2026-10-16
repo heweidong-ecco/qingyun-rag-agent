@@ -5,7 +5,7 @@
 | **状态** | 🟢 **可用 · 是四条执行路径的【唯一工具事实源】的产地** —— ⚠️ 但它自己**没有测试**（唯一入口是子进程） |
 | **对外提供** | `TOOLS`（**注册表**）· `TOOLS_DEFINITION` · `TOOL_HANDLERS` · `server`（MCP `Server` 实例）· `list_tools` / `call_tool`（**2.x 的构造器回调**，⛔ 不是装饰器函数）· `run_mcp_server()` |
 | **谁在用** | 🔴 **六处**，且**四条执行路径全派生自它的 `TOOLS`**：<br>`agent_graph.py`（`TOOLS`）· `agent_checkpointer.py`（`TOOLS`）· `agent_graph_advanced_learning.py`（`TOOLS` + `TOOL_HANDLERS`）· `plan_execute.py`（`TOOLS` + `TOOL_HANDLERS`）· `api_v1_rag.py`（`TOOLS`）· `api_v1_agent.py`（`TOOLS_DEFINITION`）<br>⚠️ `agent_graph_advanced.py` **不 import 它** —— 那条路**经 MCP client 动态取表**（这正是"改这里 = 改四条链"的原因） |
-| **测试** | 🔴 **无专属测试文件**。间接覆盖：`app/tests/test_tool_registry_single_source.py`（**子进程** import 它验注册表 —— `TOOLS` 是模块级建的，同进程改 env ⛔ 无效）· `app/tests/test_mcp_protocol_e2e.py`（🆕 ：**真子进程 + 真协议**调它）· `app/tests/test_agent_repairs.py`（`call_tool` 的 offload 守卫） |
+| **测试** | 🔴 **无专属测试文件**。间接覆盖：`app/tests/test_tool_registry_single_source.py`（**子进程** import 它验注册表 —— `TOOLS` 是模块级建的，同进程改 env ⛔ 无效）· `app/tests/test_mcp_protocol_e2e.py`（🆕：**真子进程 + 真协议**调它）· `app/tests/test_agent_repairs.py`（`call_tool` 的 offload 守卫） |
 
 ## ✅ 做了什么
 
@@ -23,7 +23,7 @@
 | 缺口 | 说明 |
 |---|---|
 | 🔴 **`TOOLS` 是【模块级】建的** | 任何**按 env 过滤**的做法都**只在 import 时执行一次** ⇒ 同一进程里改 env **静默无效**。⚠️ 要验注册表**必须走子进程**（`test_tool_registry_single_source.py` 正是这么做的）。<br>⚠️ 将来若再加一个按 env 过滤的开关，**先读这一行** |
-| ⚠️ **两个浏览器工具仍注释着** | `fetch_webpage` / `screenshot_webpage` —— 依赖未安装的 chromium（需求方裁「挂起 + 注释掉 + 标『可扩展能力』」） |
+| ⚠️ **两个浏览器工具仍注释着** | `fetch_webpage` / `screenshot_webpage` —— 依赖未安装的 chromium（作者裁「挂起 + 注释掉 + 标『可扩展能力』」） |
 | ⚠️ ~~**没有 MCP 会话复用**~~ | ✅ **2026-10-08已解决** —— 客户端侧改成**长驻会话**（actor），**实测 2s → 4–7ms**。<br>⚠️ **但那是 `agent_graph_advanced.py` 的事，本文件一行没动** —— 本文件仍是"被起一次就服务一个连接"的服务端 |
 | ⚠️ **服务端启动形态仍是"握手"** | 用了 `create_initialization_options()`（协议 `2026-07-28`「Make MCP stateless」**没删它**，见 `docs/reference/mcp-stateless-and-transport.md`） |
 
@@ -118,4 +118,4 @@ ValidationError: Invalid JSON … input_value='MCP Server 启动中... 已注册
 - 🔧 **缓存在哪加** ⇒ `app/tools/specs/tool_cache.md`（缓存包在**工具函数体**上，⛔ 不在本文件）
 - 📄 **"七处收口到一处"的裁定** ⇒  · **加工具要登记在五处** ⇒  §三
 - 📄 **2.x 迁移（含 §⚠️ 第 1 / 2 / 3 条的出处）** ⇒  · `docs/reference/mcp-stateless-and-transport.md`
-- 📄 **会话模型（"每次起子进程"的由来与代价）** ⇒  §2.1（**-B** 要动它）
+- 📄 **会话模型（"每次起子进程"的由来与代价）** ⇒  §2.1（要动它）

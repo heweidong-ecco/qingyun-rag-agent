@@ -27,7 +27,7 @@ if _API_ROOT not in sys.path:
 # 导入所有工具（从各自独立的模块）
 from tools.simple_tools import calculator, date_today, date_calc, json_extract, stats  # 新增导入
 from tools.search_tools import web_search
-# 2026-09-21 注释（N13 · 需求方裁「挂起 + 注释掉 + 标『# 可扩展能力』」）：
+# 2026-09-21 注释（N13 · 作者裁「挂起 + 注释掉 + 标『# 可扩展能力』」）：
 #    `browser_tools` 的三个工具依赖 Playwright 的 chromium，而**本仓任何部署方式都没装它**
 #    （`app/Dockerfile` / `docker-compose.yml` 都没有 `playwright install`）⇒ 调用必抛
 #      `BrowserType.launch: Executable doesn't exist at .../chromium_headless_shell-1234/...`
@@ -71,7 +71,7 @@ TOOLS = [
 # 🔴 2026-10-16：**删掉了原来那个「单容器部署」开关的分支** —— 它随那套部署一起下线了。
 #
 #   ⇒ `execute_python` 会**回落本地子进程**（= 宿主同权限）。
-#   需求方当时原话：「不要暴露在系统中执行，**是安全事故**」。
+#   作者当时原话：「不要暴露在系统中执行，**是安全事故**」。
 #   ⇒ 当年的做法是「**不注册它**」—— 「没有容器」和「跑在宿主上」之间，不选后者。
 #
 # ⚠️ **现在它是【死配置】**（2026-10-16 实测：`docker-compose.yml` · `.env.example`

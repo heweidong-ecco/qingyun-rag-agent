@@ -45,7 +45,7 @@ PAGE_ROUTES = {
     "/guide": "web/guide.html",
     "/reference": "web/reference.html",
     # 内页（不进那 7 格导航）—— 它在这里只为「302 + 目标在盘 + 不进 openapi」那三件；
-    #    **互链门（test_web_pages）里没有它**，因为需求方 2026-10-12 定它是**子页**。
+    #    **互链门（test_web_pages）里没有它**，因为作者 2026-10-12 定它是**子页**。
     "/stream": "web/stream.html",
     # 🆕 2026-10-15（§七·1）：登录页。与 `/stream` 同一种"格外的页"
     #    —— 它是**所有页面的前置**，⛔ 不是第 8 个内容页（所以同样不在那 7 格导航里）。

@@ -6,7 +6,7 @@
 
 ## 还钉一条**最容易漏的**：总上限
 
-/施工单 批6 **漏了 11 处图内总额闸**（`check_token_budget`，在 `agent_graph*.py` 等）。
+/ 批6 **漏了 11 处图内总额闸**（`check_token_budget`，在 `agent_graph*.py` 等）。
 不处理的话：中间件按池放行到 2×，**图内闸仍在 1× 处拦住** ⇒ **"翻倍"根本不会发生**，
 而页头显示的却是 2× ⇒ **两个数对不上**。
 ⇒ 本文件钉住：`get_user_token_budget`（那 11 处共用的那一个）**= 两池之和**。
@@ -124,7 +124,7 @@ def test_a_total_that_is_exhausted_does_not_block_a_pool_that_is_not(monkeypatch
 
 
 def test_paths_outside_the_table_are_not_gated(monkeypatch):
-    """需求方 2026-10-11 裁「**表外路径不进池**」⇒ 两池全空**也照常放行**。
+    """作者 2026-10-11 裁「**表外路径不进池**」⇒ 两池全空**也照常放行**。
 
     拿 `/api/v1/agent/token/budget` 当样本是**故意的** —— 它是一条**真路由**、
     又不是豁免路径（豁免那条路在第一行就返回了，测不到"按池判"这件事）。

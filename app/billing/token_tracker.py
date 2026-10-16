@@ -340,7 +340,7 @@ def get_daily_token_usage(user_name: str) -> float:
 # ==================== 今日 · 按用途拆（2026-10-11 · 前端整体调整 批 4） ====================
 #
 # 为什么要拆：页头原先**只有一个总数**（`get_daily_token_usage`）——
-#    「LLM 花了多少 / Embedding 花了多少」在需求方的要求里要**分开显示**，
+#    「LLM 花了多少 / Embedding 花了多少」在作者的要求里要**分开显示**，
 #    而两者的**计价口径与量级差着好几个数量级**，混在一起看不出所以然。
 #
 # **两张表都是【白名单】，不是"除 embedding 之外都算 LLM"。**
@@ -581,7 +581,7 @@ def get_recent_usage(limit: int = 20, user_name: str = None):
 #    在文件顶部 import 进来。两个名字保持不变 ⇒ 调用方无需改动。
 #
 #    顺带按 （决策一）去掉了 `"admin": float("inf")` ——
-#    需求方裁「admin 也要同样上限」⇒ 现在是**有限值**（= premium = 100000/天）。
+#    作者裁「admin 也要同样上限」⇒ 现在是**有限值**（= premium = 100000/天）。
 #    但"全局日级"是**另一个东西**（B10，在 ①b）—— per-user 检查永远看不到
 #    「大家加起来超了」，别拿这条替代它。
 
@@ -591,7 +591,7 @@ def get_user_token_budget(user_name: str) -> float:
     **2026-10-11（两个额度池）语义变过** —— 改前它 = `ROLE_DAILY_TOKEN[角色]`；
     现在 = **两个池【相加】**（`quota_pools.total_daily_limit(角色)`）。
 
-    **为什么非改不可**：日额度拆成两个池之后，**总上限是翻倍的**（需求方 2026-10-11 确认）。
+    **为什么非改不可**：日额度拆成两个池之后，**总上限是翻倍的**（作者 2026-10-11 确认）。
     而**本函数是"总额"那道闸的唯一来源** —— `check_token_budget_detail` 用它，
     全仓 **11 处图内闸**（`agent_graph*.py` / `agent_checkpointer.py` / `plan_execute.py`）共用它
     ⇒ 不改它，那些闸仍然在 **1× 角色额度**处把请求拦住 ⇒ **"翻倍"根本不会发生**，
@@ -599,7 +599,7 @@ def get_user_token_budget(user_name: str) -> float:
 
     因此凡是引用它的地方（`check_budget_warning` · `get_token_budget_info`
     `cost_dashboard` · `/debug/quota`），**显示的数也跟着翻倍** —— **这是有意的**。
-    逐条裁定 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+    逐条裁定
     """
     from access.permission import get_user_role
     from billing.quota_pools import total_daily_limit
@@ -649,7 +649,7 @@ def check_token_budget_detail(user_name: str, estimated_tokens: int = 0) -> tupl
 
     2026-09-16 抽出本函数：此前 `check_token_budget` / `check_budget_before_call` /
     `check_multilevel_budget`(第三级) **各写一份**同样的判定，且后两份把单位写成「元」
-    去和 **Token 预算**相减 ⇒ **恒放行**（见 本仓的决策记录（⛔ 不随产品仓提供））。
+    去和 **Token 预算**相减 ⇒ **恒放行**）。
     本函数是**量纲正确**的那一份（Token vs Token），其余一律委托到这里。
 
     **不含** `record_intercept` —— 拦截记录由调用方负责（各调用方要带上自己的 tool_name）。
@@ -835,9 +835,9 @@ TOOL_ESTIMATED_COST = {
     "web_search": 0.005,         # 搜索工具：通常需要一次 LLM 辅助总结
     "calculator": 0.0,           # 计算器：本地执行，无 API 调用
     "date_today": 0.0,           # 日期查询：本地执行
-    "date_calc": 0.0,            # ：本地纯函数，无 API 调用
-    "json_extract": 0.0,         # ：本地纯函数
-    "stats": 0.0,                # ：本地纯函数
+    "date_calc": 0.0,            #：本地纯函数，无 API 调用
+    "json_extract": 0.0,         #：本地纯函数
+    "stats": 0.0,                #：本地纯函数
     "fetch_webpage": 0.003,      # 网页抓取：可能触发 LLM 总结
     "screenshot_webpage": 0.003, # 截图：类似网页抓取
     "execute_python": 0.0,       # 代码执行：本地执行，无 API 调用
@@ -873,9 +873,9 @@ TOOL_ESTIMATED_TOKENS = {
     "web_search": 800,           # 搜索工具：通常需要一次 LLM 辅助总结
     "calculator": 0,             # 计算器：本地执行，无 API 调用
     "date_today": 0,             # 日期查询：本地执行
-    "date_calc": 0,              # ：本地纯函数，无 API 调用
-    "json_extract": 0,           # ：本地纯函数
-    "stats": 0,                  # ：本地纯函数
+    "date_calc": 0,              #：本地纯函数，无 API 调用
+    "json_extract": 0,           #：本地纯函数
+    "stats": 0,                  #：本地纯函数
     "fetch_webpage": 600,        # 网页抓取：可能触发 LLM 总结
     "screenshot_webpage": 600,   # 截图：类似网页抓取
     "execute_python": 0,         # 代码执行：本地执行，无 API 调用
@@ -889,7 +889,7 @@ PURPOSE_ESTIMATED_TOKENS = {
     "embedding": 100,
     # 2026-09-21 加（§十四 · ③-b）：`plan_execute` 这条路的三种 LLM 调用。
     #    此前 `plan_execute` **完全不查预算、不记账** —— 它会真跑 LLM，而账上一行不记
-    #    ⇒ **免费用户的每日配额管不到它**（`/agent/plan_execute`）。。
+    #    ⇒ **免费用户的每日配额管不到它**（`/agent/plan_execute`）。
     "plan_execute.plan": 500,           # 把目标分解成步骤清单
     "plan_execute.dynamic_input": 300,  # 每步：生成该工具那个字段的值
     "plan_execute.quality_check": 200,  # 每步：判定结果是否达标
@@ -918,7 +918,6 @@ def check_budget_before_call(
 
     参数单位是 **Token**（自 2026-09-16 起；旧名 `estimated_cost` 单位是「元」）。
     那个旧参数正是本函数此前**恒放行**的原因之一 —— 它把「元」和 **Token 预算**相减。
-    见 本仓的决策记录（⛔ 不随产品仓提供）。
     """
     # 1. 计算预估 Token（不再是「元」）
     if estimated_tokens is not None:
@@ -1225,7 +1224,7 @@ def thread_cost_breakdown(
 
 
 # ==================== B8 · 会话级 token 上限（①b） ====================
-# 口径与接线范围见 本仓的决策记录（⛔ 不随产品仓提供）。
+# 口径与接线范围。
 #
 # **本维度已经有一个上限了** —— 上面的 `MAX_THREAD_COST`（元/线程）。
 #    两者的**窗口不同**：那个**不带日期**（全程），本节的**按日**（裁定）——
@@ -1284,7 +1283,7 @@ def check_session_token_budget(user_name: str, thread_id: str,
     **不含** `record_intercept` —— 拦截记录由调用方负责（各调用方要带上自己的 tool_name），
     与 `check_token_budget_detail` 同一条约定。
 
-    触顶动作 = **直接拒绝**（要素②，需求方已裁）⇒ 调用方抛
+    触顶动作 = **直接拒绝**（要素②，作者已裁）⇒ 调用方抛
     `AppException(ErrorCode.QUOTA_EXCEEDED, why)`。
     """
     from billing.token_config import SESSION_TOKEN_LIMIT
@@ -1351,7 +1350,7 @@ def check_global_daily_budget(estimated_tokens: int = 0) -> tuple[bool, str]:
        fail-closed 的话，**一次 DB 抖动 = 所有人的请求全 429**。
     与 `app/routing/deps.py` 的鉴权（fail-closed）**方向相反是有意的**，别"顺手统一"。
 
-    触顶动作 = **直接拒绝**（要素②，需求方 2026-09-30 已裁）
+    触顶动作 = **直接拒绝**（要素②，作者 2026-09-30 已裁）
     ⇒ 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)`。
 
     **本函数目前【没有调用点】** —— 接线是 ``。
@@ -1369,7 +1368,7 @@ def check_global_daily_budget(estimated_tokens: int = 0) -> tuple[bool, str]:
 
 
 # ============================================================================
-# 🔴 全站【embedding】的滚动窗口（2026-10-14 ·  §二·8 · 需求方裁「甲」）
+# 🔴 全站【embedding】的滚动窗口（2026-10-14 ·  §二·8 · 作者裁「甲」）
 # ============================================================================
 def get_global_embedding_usage(hours: int = 0) -> float:
     """全站（**不带任何 `user_name` 过滤**）最近 N 小时的 **embedding** token 合计。

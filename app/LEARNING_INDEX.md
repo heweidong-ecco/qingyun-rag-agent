@@ -36,7 +36,7 @@ tags: [reranker, performance, batch-processing]
 > ls app/ | grep -i rerank          # ⇒ 只有 reranker.py（v1/v2/v3 那三个都不在）
 > grep -rn "def rerank" app/rag/reranker.py   # ⇒ rerank / rerank_async 都在这一个文件里
 > ```
-> 📌 **本条对应 `docs/待办总表.md` 的 **（原文：「**只需明确一句：这是知情的、不打算删**」）。
+> 📌 **本条对应  的 **（原文：「**只需明确一句：这是知情的、不打算删**」）。
 
 """
 ---

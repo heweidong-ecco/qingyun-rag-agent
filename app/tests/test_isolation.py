@@ -185,7 +185,7 @@ def test_db_search_layer_requires_identity():
 #
 # `source` 用专用前缀 ⇒ 事后可精确清理：
 #    `DELETE FROM documents WHERE source = 'isolation-probe-test';`
-#    需求方 2026-10-03 裁的「**数据不大就长期保留**」只针对**探针身份**（用户 / key），
+#    作者 2026-10-03 裁的「**数据不大就长期保留**」只针对**探针身份**（用户 / key），
 #       **不含**测试自己造的文档 —— 那些每次跑完就删（测试卫生，见  §遗留·7）。
 
 _PROBE_DIM = 1024  # `documents.embedding` = `vector(1024)`（2026-10-14 B 段实测的维度）
@@ -570,7 +570,7 @@ def test_stream_search_endpoint_does_not_leak_across_users(probe_api_keys, monke
 # 【已移除】`test_jwt_ask_endpoint_does_not_leak_across_users`
 # ===========================================================================
 # 2026-10-04 移除 —— 它守的端点 `/rag/jwt_ask` **本身已被删除**（
-#    需求方裁「N7 删」）。守着一个不存在的端点，用例只会变成 `404 != 200` 的噪音。
+#    作者裁「N7 删」）。守着一个不存在的端点，用例只会变成 `404 != 200` 的噪音。
 #
 # **它不是"因为失效才删的"** —— 它在 2026-10-03 乙段当时**是有效的**
 #    （判据是【条数】：`rag_test` 里 isolation_b 只有 1 篇，未加 `WHERE` 时它会拿回 20 篇）。
@@ -582,4 +582,4 @@ def test_stream_search_endpoint_does_not_leak_across_users(probe_api_keys, monke
 # **本文件的条数随之变化**：19 → **18**（离线 **9** · `needs_db` **10 → 9**）。
 # **别再把这两个数抄进别的文档** —— 现算：
 #    `venv/bin/python -m pytest app/tests/test_isolation.py --collect-only -q | tail -3`
-# 本仓的决策记录（⛔ 不随产品仓提供） · `app/tests/test_removed_endpoints.py`（反向守卫）
+#  · `app/tests/test_removed_endpoints.py`（反向守卫）

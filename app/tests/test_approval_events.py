@@ -201,7 +201,7 @@ def _history(monkeypatch, user_name, limit=50, offset=0, rows=None):
 
     def _fake_list(*, owner, limit, offset=0):
         seen["owner"] = owner
-        seen["limit"] = limit          # 施工单这份假货漏了它，而它自己的用例要断言它
+        seen["limit"] = limit          # 这份假货漏了它，而它自己的用例要断言它
         seen["offset"] = offset
         return list(rows) if rows else []
 

@@ -105,7 +105,7 @@ async def require_admin(
 #    ⇒ `X-API-Key` / `Authorization` 两条路**客户端根本送不上来**。
 #    浏览器唯一能带的只有 **URL 查询串**（会进访问日志/Cloudflare 边缘日志）与
 #    **子协议头**（`Sec-WebSocket-Protocol`，非常规、代理可能剥）。
-#    本轮裁定见 本仓的决策记录（⛔ 不随产品仓提供）：**首帧认证**。
+#    本轮裁定：**首帧认证**。
 #
 # **为什么中间件帮不上忙**：`app/main.py` 那两个中间件是 `BaseHTTPMiddleware`，
 #    它**只看 `scope["type"] == "http"`** ⇒ **永远看不到 WebSocket**。

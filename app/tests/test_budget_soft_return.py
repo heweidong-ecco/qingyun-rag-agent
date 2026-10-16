@@ -179,7 +179,7 @@ def _no_memory(monkeypatch, mod, *names):
     而取回来的记忆**当场被丢弃**（走不到 `messages`）。
     这条漏洞最初是**在 CI（dummy key）里现形**的 —— 本机 `.env` 有真 key 所以"绿"。
     ⇒ 现在写成**一调就炸**：别退回"反正没打网络"这个看不见的事实。
-    本仓的决策记录（⛔ 不随产品仓提供） §四·
+     §四·
     """
     def _bomb(*a, **k):
         raise AssertionError(
@@ -261,7 +261,7 @@ def test_advanced_agent_每个软返回出口都置标志(monkeypatch):
 
 # ==================== ③ 入口清零：上轮的值不许串轮 ====================
 #
-# ：`budget_intercept` 是普通 state 键（last-write-wins + 落 checkpoint）
+#：`budget_intercept` 是普通 state 键（last-write-wins + 落 checkpoint）
 #    ⇒ 不清零的话，**上一轮被拦**会让**下一轮不需要工具的正常提问也返回 429**
 #    —— 而"下一轮"恰恰是预算恢复之后最可能发生的那一次。
 

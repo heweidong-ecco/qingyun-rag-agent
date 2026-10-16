@@ -10,7 +10,7 @@ from rag.reranker import rerank_async
 from rag.embedding_client import get_embedding
 from core.db import search_similar_async, bm25_search_async
 from collections import defaultdict
-from core.llm_factory import make_llm   # ①b ：model / api_key / base_url / max_tokens 的唯一落点
+from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 # 2026-10-05 记账入口。放文件头是安全的：`token_tracker` 模块级**只** import
 #    标准库 + `token_config`（`db` / `langchain` 都是**函数内**惰性导入）
 #    —— 同一条理由见 `api_v1_rag.py:21-23` 那段注释。
@@ -182,7 +182,7 @@ class RAGPipeline:
                 answer, sources = generate_answer_with_citations(
                     candidates[:top_k], query, self.answer_llm,
                     user_name=user_id,   # 2026-10-05：身份必须到得了记账点
-                    thread_id=thread_id,  # 🔴 ：**会话也要** —— 否则账落 `"default"`、闸查调用者那个桶
+                    thread_id=thread_id,  # 🔴：**会话也要** —— 否则账落 `"default"`、闸查调用者那个桶
                 )
                 result["answer"] = answer
                 result["sources"] = sources

@@ -14,7 +14,7 @@ class UserRole(str, Enum):
 #    那是**一套独立的「每日请求次数」配额**，与 `token_config` 的 **token 日额度**（token）
 #    **互不知情** ——  实测两者口径**差 35 倍**（`plan_execute` 一次 ~3346 token
 #    ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）。
-#    ⇒ 需求方裁「**统一到 token 一套**」⇒ 次数那套**整张表连入口一起删**。
+#    ⇒ 作者裁「**统一到 token 一套**」⇒ 次数那套**整张表连入口一起删**。
 #    配额表在 `token_config` 的**两张池表**（`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN`）；
 #       判定在 `token_tracker`，全路径那层挂在 `main.QuotaMiddleware` 上（= `R1.3`）。
 #       **2026-10-11 更正**：本行原写「`token_config.ROLE_DAILY_TOKEN`」——
@@ -24,7 +24,7 @@ class UserRole(str, Enum):
 
 # 2026-10-03 · **隔离探针身份**（§七 裁决 1 · 决策 2）
 #
-# 需求方 2026-10-03 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——
+# 作者 2026-10-03 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——
 # 就是下面这三个。**它们是【测试身份】，不是业务角色。**
 #
 #   · `isolation_a` / `isolation_b` —— **同角色**那一档（都是 FREE）互不串
@@ -32,7 +32,7 @@ class UserRole(str, Enum):
 #   · `test_user`                  —— 历史沿用，与 `isolation_c` 同属 PREMIUM 探针
 #
 # 用途：验证多用户资源隔离，用例在 `app/tests/test_isolation.py`。
-# 身份记录（需求方要的"留档"）= **本注释** + 本仓的决策记录（⛔ 不随产品仓提供），
+# 身份记录（作者要的"留档"）= **本注释** +，
 # **不另开文件**（决策 2）。
 #
 # `isolation_a` / `isolation_b` **不在这里列** —— 它们走默认分支拿 FREE。

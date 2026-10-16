@@ -31,4 +31,3 @@
 
 - `app/tools/specs/simple_tools.md` —— 上层外壳（**docstring 是给 LLM 的**）
 - `app/tools/specs/safe_math.md` —— 唯一被允许的跨模块依赖
-- 本仓的决策记录（⛔ 不随产品仓提供）* · * · *

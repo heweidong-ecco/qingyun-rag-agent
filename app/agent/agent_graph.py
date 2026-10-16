@@ -7,13 +7,13 @@ import operator
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from core.llm_factory import make_llm   # ①b ：model / api_key / base_url / max_tokens 的唯一落点
+from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig   # B1：节点要靠它把回调接进模型调用
 # 2026-10-08：`datetime` / `calculate` / `web_search` / `langchain` 的 `tool`
 #    四个 import **删了** —— 它们**只**服务于本文件原先自带的那两个 `@tool`。
 #    那份已改成从 `mcp_server.TOOLS` 派生 ⇒ 留着就是 （第 ⑥ 道门会红）。
-#    顺带消掉一处 ：`:221` 有个循环/局部变量也叫 `tool`，原先与这个 import 撞名。
+#    顺带消掉一处：`:221` 有个循环/局部变量也叫 `tool`，原先与这个 import 撞名。
 # 2026-10-04：本图**原先既不拦也不记** —— 一个 LLM 调用点免费跑。
 #    `record_from_response` 是三张图共用的**唯一记账实现**，别在本文件里另抄一份取用量。
 from billing.token_tracker import check_token_budget, record_from_response, BUDGET_EXCEEDED_MSG
@@ -59,7 +59,7 @@ from tools.tool_visualizer import record_tool_start, record_tool_end
 #      ⇒ **在两张图上抠掉它，并没有真的挡住什么** —— 只买到"工具表在各图之间不一致"，
 #        而那正是 花一整批力气消除的东西（**一处事实源**）。
 #    **真正该管的地方是 `SENSITIVE_TOOLS`**（全局审批名单）——
-#       「要不要把 `execute_python` 加进去」**已单独立为待裁项**（`docs/待办总表.md`），不在本处解决。
+#       「要不要把 `execute_python` 加进去」**已单独立为待裁项**，不在本处解决。
 tools = [t["func"] for t in _MCP_TOOLS]
 
 #  —— 分派必须查这张表，不许再在 `tool_execute` 里抄一遍名字。
@@ -79,7 +79,7 @@ llm_with_tools = llm.bind_tools(tools)
 #  `"search_tool"`（那是**变量名**，不是工具名）**
 #    与 `{t.name for t in tools}` 的**交集恒空** ⇒ 审批永不触发，且**没有任何报错**。
 #    现在写**真工具名** `web_search`（= `tools` 里那个，见上面 `TOOLS_BY_NAME`）。
-# 裁定 ⇒ 本仓的施工单（⛔ 不随产品仓提供） B4 · 判据 ⇒ `app/tests/test_approval_trigger.py`
+# 裁定 ⇒  B4 · 判据 ⇒ `app/tests/test_approval_trigger.py`
 SENSITIVE_TOOLS: frozenset[str] = frozenset(
     n.strip() for n in os.getenv("SENSITIVE_TOOLS", "web_search").split(",") if n.strip()
 )
@@ -199,7 +199,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
     # ════════════════ 长期记忆注入（2026-10-13）════════════════
     # **本图原先一分记忆都不注入** ⇒ `/agent/langgraph_chat` 这条链压根没有"记忆"这一说，
     #    而「外部检索与工具Agent编排」那一页**要拿它当主链**、页面上写着"记忆"。
-    #    需求方 2026-10-13 定：**这条链补上（读）**。做法与另两条链**同一件事** ——
+    #    作者 2026-10-13 定：**这条链补上（读）**。做法与另两条链**同一件事** ——
     #    检索到的记忆拼在消息前面，交给模型。
     #
     # **只在【本任务的第一步】注入一次**，不是每一轮都注入：
@@ -240,7 +240,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
     #    （`langchain_core/language_models/chat_models.py:551`，2026-10-03 实测），
     #    **永远不会返回一个空迭代器** ⇒ `response` 循环后必非 None。
     #    守卫 ⇒ `app/tests/test_agent_sse.py::test_empty_stream_neither_writes_none_nor_returns_an_empty_answer`
-    # 新增 统计 Token 消耗（2026-10-04 · ：本图此前**一分钱不记**）
+    # 新增 统计 Token 消耗（2026-10-04：本图此前**一分钱不记**）
     # 聚合后 `response` 是 `AIMessageChunk`，`usage_metadata` 挂在**最后一块**上
     #    （provider 行为，见参照图 `agent_graph_advanced.py:341-343`）——
     #    上面那个 `for` 遍历了**所有**块（没跳过 content 为空的块），所以这里取得到。
@@ -344,10 +344,10 @@ def human_approval(state: AgentState):
     return {}
 
 # ==================== 流式白名单（B1 · 2026-10-04）====================
-# **  · ：可流节点名单放在【图模块里】，端点不许自己抄一份字面量。**
+# **：可流节点名单放在【图模块里】，端点不许自己抄一份字面量。**
 #    写在这里（不是 `build_agent_graph()` 函数体里）是因为**端点要按 `agent_graph.STREAMABLE_NODES` 取**
 #    —— 函数体里的是局部名，外面拿不到。
-#    病根同上一条 ：**一个名字两个来源 ⇒ 必然漂移，而漂移是静默的**
+#    病根同上一条：**一个名字两个来源 ⇒ 必然漂移，而漂移是静默的**
 #    （那次两个来源对不上，审批门**从来没触发过**，接口一切正常）。
 #    判据：`app/tests/test_agent_stream_chains.py::test_every_streamable_node_name_exists_in_its_graph`
 #    钉住「名单里的名字**真的在图里**」（对本图 `get_graph(xray=1)`，按 `split(":")[-1]` 比后缀）。

@@ -6,7 +6,6 @@ def _login(client, password=None):
     """统一的登录调用。
 
     口令从 `config` 读（= `.env` 的 `LOGIN_PASSWORD`），**不硬编码** ——
-    。
     """
     return client.post("/api/v1/auth/login", json={
         "user_name": LOGIN_USER_NAME,

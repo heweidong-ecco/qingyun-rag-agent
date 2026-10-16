@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 规划 + 逐步**真调用工具**；有超时、有总预算、有重规划、有降级<br>✅ **2026-10-05（批 1 ·）**：`⚠️①`（重规划漏传 `user_name`）与 `⚠️②`（成败判定读中文文案）**均已修** ⇒ **`⚠️` 表 6 行里还剩 ③④⑤⑥ 共 4 行**（⚠️ 都是**说明**不是缺陷）<br>⛔ **原「1 处真缺陷 + 5 处会误判」的账已销**（见 `🟡 做到哪`）<br>🔵 **2026-10-04（剩余 4 条链）：`_invoke_llm` / `plan_task` 各加一个 `on_token` 形参** —— 给 `/agent/plan_execute/stream` 用。<br>· ⚠️ **默认 `None` ⇒ 行为一字符不变**（`on_token is None` 时仍走 `llm.invoke`，`:155`）。<br>· ⚠️ **⛔ 它只让「规划段」能流** —— `execute_plan` / `generate_dynamic_input` / 质量检查**都还是非流式**（需求方 2026-10-04 裁「只流规划段」）⇒ **规划段之后是一长段静默**。<br>· 🔴 **流出的是【正在生成的 JSON 片段】**（提示词要求严格 JSON）⇒ ⛔ 前端别把流到的文本直接渲染成计划，只当"规划中"指示器。<br>· ⭐ **一条实现约束**：聚合循环**必须遍历【所有】块**（含 `content` 为空的）—— provider 把 `usage_metadata` 挂在**最后一块**上，跳过它**账就没了**（实测，探针 `探针-流式与记账.py`）。<br>· 📄 端点在 `app/routing/specs/api_v1_agent.md`  · 桥在 `_ThreadTokenBridge`<br>✅ 2026-10-01：三个 `_llm` 接上 `MAX_TOKENS_AGENT`<br>✅ 2026-10-02（`①b`）：三个 `_llm` **改走 `llm_factory.make_llm("chat", "agent")`**（现于 `:92` / `:279` / `:486`）—— `model`/`api_key`/`base_url`/`max_tokens` 不再写在本地。<br>⚠️ **超时/重试没丢**：`timeout` / `max_retries` 走 `make_llm` 的 `**extra` **逐点透传**，**值一字符未变**（30/20/15 + `LLM_MAX_RETRIES`）。<br>⚠️ `executor_llm` 的 `temperature=0.1` 是**本文件特有的**逐点调参，仍写在调用点上<br>⚠️ **行号口径**：本 spec 的行号为 **2026-10-04 之后**的实测值（`grep -n` 复核）；批 4 之后**执行段整体下移 ~28 行**，⛔ 别拿旧行号去找 |
+| **状态** | 🟡 **可用** —— 规划 + 逐步**真调用工具**；有超时、有总预算、有重规划、有降级<br>✅ **2026-10-05（批 1 ·）**：`⚠️①`（重规划漏传 `user_name`）与 `⚠️②`（成败判定读中文文案）**均已修** ⇒ **`⚠️` 表 6 行里还剩 ③④⑤⑥ 共 4 行**（⚠️ 都是**说明**不是缺陷）<br>⛔ **原「1 处真缺陷 + 5 处会误判」的账已销**（见 `🟡 做到哪`）<br>🔵 **2026-10-04（剩余 4 条链）：`_invoke_llm` / `plan_task` 各加一个 `on_token` 形参** —— 给 `/agent/plan_execute/stream` 用。<br>· ⚠️ **默认 `None` ⇒ 行为一字符不变**（`on_token is None` 时仍走 `llm.invoke`，`:155`）。<br>· ⚠️ **⛔ 它只让「规划段」能流** —— `execute_plan` / `generate_dynamic_input` / 质量检查**都还是非流式**（作者 2026-10-04 裁「只流规划段」）⇒ **规划段之后是一长段静默**。<br>· 🔴 **流出的是【正在生成的 JSON 片段】**（提示词要求严格 JSON）⇒ ⛔ 前端别把流到的文本直接渲染成计划，只当"规划中"指示器。<br>· ⭐ **一条实现约束**：聚合循环**必须遍历【所有】块**（含 `content` 为空的）—— provider 把 `usage_metadata` 挂在**最后一块**上，跳过它**账就没了**（实测，探针 `探针-流式与记账.py`）。<br>· 📄 端点在 `app/routing/specs/api_v1_agent.md`  · 桥在 `_ThreadTokenBridge`<br>✅ 2026-10-01：三个 `_llm` 接上 `MAX_TOKENS_AGENT`<br>✅ 2026-10-02（`①b`）：三个 `_llm` **改走 `llm_factory.make_llm("chat", "agent")`**（现于 `:92` / `:279` / `:486`）—— `model`/`api_key`/`base_url`/`max_tokens` 不再写在本地。<br>⚠️ **超时/重试没丢**：`timeout` / `max_retries` 走 `make_llm` 的 `**extra` **逐点透传**，**值一字符未变**（30/20/15 + `LLM_MAX_RETRIES`）。<br>⚠️ `executor_llm` 的 `temperature=0.1` 是**本文件特有的**逐点调参，仍写在调用点上<br>⚠️ **行号口径**：本 spec 的行号为 **2026-10-04 之后**的实测值（`grep -n` 复核）；批 4 之后**执行段整体下移 ~28 行**，⛔ 别拿旧行号去找 |
 | **对外提供** | `plan_task(goal, user_name=…, on_token=None)` · `execute_plan` · `execute_plan_with_replan` · `BudgetExceededError` · 🆕 **`StepResult(ok, text, error)`**（2026-10-05）· 四个模块级常量（`PLANNER_LLM_TIMEOUT` 等三个超时 + 🆕 **`MAX_REPLANS`**） |
 | **谁在用** | `api_v1_agent.py` 的 `POST /agent/plan_execute`（`:633` · **唯一生产入口**）· 🆕 `POST /agent/plan_execute/stream`（`:685`，经 `_ThreadTokenBridge`）· `app/tests/test_plan_execute_tools.py`（**26 条**，2026-10-05 由 22 增）· 🆕 `app/tests/test_agent_stream_chains.py` · 🆕 **`app/tests/test_plan_task_user_name_wiring.py`**（AST 守卫） |
 | **规模** | **696 行**（`wc -l`；⚠️ 2026-10-05 由 620 增到 696 —— 批 1 的 // 在**代码与注释**上都加了量）· ⚠️ **文件内注释极厚**（绝大部分"为什么"已写在里面） |
@@ -15,7 +15,6 @@
 - **⭐ 执行层是真调用**（2026-09-21 重写，§十四·N15）：从 `TOOL_HANDLERS` 取真 handler，
   入参字段名从 `args_schema` **派生**。⚠️ 真调 **四** 个工具：`calculator` / `date_today` / `web_search` / `execute_python`
 - **预算与记账**：`_invoke_llm()`（`:131`）是**统一入口** —— 查预算 → 调 → 记**真实** `usage_metadata`
-  · 🔵 **（2026-10-04）**：它多了一个 `on_token` 形参（`:132`）—— **给了就改走 `.stream()` 逐块回调**（`:155-168`）
 - **可算的最坏时长**：单次超时 `30/20/15`（`:69-71`）· `max_retries=LLM_MAX_RETRIES`（`:96`）· 总预算 `120s`（`:87`）
 - **降级**：同一工具连败 3 次 ⇒ 进 `failed_tools` ⇒ 后续走降级分支（**且保留真实失败原因**，`:340-342`）
 - **防 ```` ``` ```` 围栏**：`_strip_code_fence()`（`:428`）—— 否则 `execute_python` 直接语法错
@@ -49,15 +48,13 @@
 
 | 文档 | 说明 |
 |---|---|
-| `app/routing/specs/api_v1_agent.md` | **唯一生产入口** `POST /agent/plan_execute`（`:633`，含 `asyncio.to_thread` 与 `BudgetExceededError` 的接法）· 🆕 **流式版** `POST /agent/plan_execute/stream`（`:685`）—— 见该 spec 的 **** |
+| `app/routing/specs/api_v1_agent.md` | **唯一生产入口** `POST /agent/plan_execute`（`:633`，含 `asyncio.to_thread` 与 `BudgetExceededError` 的接法）· 🆕 **流式版** `POST /agent/plan_execute/stream`（`:685`）—— 见该 spec 的  |
 | `app/routing/specs/sse.md` | 🆕 **本链流的骨架** —— ⚠️ 但本链的用法有个**独有之处**：`extract=None`（桥吐出来的**就是文本**，⛔ 不是图的消息块） |
 | `app/billing/specs/token_tracker.md` | `check_budget_before_call` / `record_usage` 的本尊；✅ ** 的 3 处已在 2026-10-01 接完**（现于 `:92` / `:279` / `:486`），2026-10-02 起**又收进 `app/core/llm_factory.py`** |
 | `app/specs/main.md` | ⚠️ **中间件抛的异常接不住**（`:186` 那条警告）—— 本文件在**路由层**抛，安全 |
-| `后端补齐清单` **B7** | ✅ 三个 `ChatOpenAI` **已接 `MAX_TOKENS_AGENT`**（2026-10-01）· **2026-10-02 起收进 `llm_factory`** |
-| 本仓的施工单（⛔ 不随产品仓提供） | 🆕 ⚠️ ** 的依据**：链路改 `.stream()` 后 `usage_metadata` **还在不在**（🔴 会花钱）—— 结论：在，但**挂在最后一块**上 |
-| 本仓的复盘记录（⛔ 不随产品仓提供） | ⚠️ `:340-342` 那次修复的出处；**⚠️① 是同族的漏网** |
+| `后端补齐清单`  | ✅ 三个 `ChatOpenAI` **已接 `MAX_TOKENS_AGENT`**（2026-10-01）· **2026-10-02 起收进 `llm_factory`** |
 
-> ### ✅ 要不要做 —— **2026-09-30 需求方全部同意（三条都做）**
+> ### ✅ 要不要做 —— **2026-09-30 作者全部同意（三条都做）**
 >
 > | # | 事 | 裁定 | 怎么做（落点） |
 > |---|---|---|---|
@@ -69,9 +66,9 @@
 
 # 🔵 实施计划 · **批 1 · `plan_execute` 收口**（2026-10-05 立）
 
-> **来源**：上面那张裁定表的 **1 / 2 / 3**（= `docs/待办总表.md` 🅗 的 ** /  / **）。
-> 三条 2026-09-30 由 `/specs` 核账挖出，需求方当天裁「**三条都做**」—— 本计划是把那个裁定**做掉**。
-> **需求方已批**：2026-10-05「**同意你的建议。开始 批 1**」。
+> **来源**：上面那张裁定表的 **1 / 2 / 3**（=  🅗 的 ** /  / **）。
+> 三条 2026-09-30 由 `/specs` 核账挖出，作者当天裁「**三条都做**」—— 本计划是把那个裁定**做掉**。
+> **作者已批**：2026-10-05「**同意你的建议。开始 批 1**」。
 >
 > ## 🔴 顺序：**`2` → `1` → `3`**（⛔ 不是 1→2→3）
 >
@@ -101,7 +98,7 @@ Python 3.10 · `pytest` · `monkeypatch` · 全**离线**（⛔ 不连真 LLM、
 |---|---|---|
 | **C1** | **测试一律 ** —— ⛔ 不许拿裸 `pytest app/ -m "not integration and not needs_db" -q` 顶替 |  文件头；**同款命令 ≠ 同款环境**（`.env` / Redis 两轴） |
 | **C2** | 🔴 **⛔ 不改任何用户可见文案** ——  **只换判定依据**，`:587` 那句 `执行失败（已重试{N}次）：…` **必须逐字不动** | 本仓「一份内容只在一处」+  的定义就是**换依据不换话**； 有专门一条用例钉它 |
-| **C3** | **⛔ 不碰 本仓的工程配置（⛔ 不随产品仓提供）** —— 扫描类判据要把它排除 | 需求方 2026-10-01：「worktree 在做的事情，不要动它」 |
+| **C3** | **⛔ 不碰 ** —— 扫描类判据要把它排除 | 作者 2026-10-01：「worktree 在做的事情，不要动它」 |
 | **C4** | **本计划的 `:NNN` 行号是 2026-10-05 实测** —— 动手前用 `grep -n` **复核**，⛔ 别照着行号直接跳 | 本仓「拿动作成功当结果正确」族；`spec` 顶部那条「行号口径」已预警 |
 | **C5** | **推送分次 ≠ 提交分次** —— 三个 Task **各一个 commit**，⛔ 不攒成一个 | 本仓 `CLAUDE.md` 推送节奏；「一件事没处理完不 commit」 |
 | **C6** | 🔴 ** 有一个必须一起改的「旧测试替身」** —— 见  Step 1d | 不改它，**三条现有用例会以不可读的方式红**（`TypeError: argument of type 'StepResult' is not iterable`），而那是**假红** |
@@ -390,7 +387,7 @@ git commit -m "fix(plan_execute) 成败判定从中文子串换成结构化返�
 
 **Files:**
 - Modify: `app/agent/plan_execute.py:383` —— `plan_task(replan_context)` → `plan_task(replan_context, user_name)`
-- Create: `app/tests/test_plan_task_user_name_wiring.py` —— AST 守卫（⚠️ `test_*` 前缀 ⇒ **不触发**模块 spec 门，本仓的工程配置（⛔ 不随产品仓提供））
+- Create: `app/tests/test_plan_task_user_name_wiring.py` —— AST 守卫（⚠️ `test_*` 前缀 ⇒ **不触发**模块 spec 门）
 - Test: `app/tests/test_plan_execute_tools.py` —— 新增 1 条
 
 **Interfaces:**
@@ -415,7 +412,6 @@ git commit -m "fix(plan_execute) 成败判定从中文子串换成结构化返�
 > ### 🔴 为什么这条值得单开一道门（⛔ 不靠「记得搜一遍」）
 >
 > **同一个漏传在这个文件里是第二次**：2026-09-21 修过 `generate_dynamic_input` 那处
-> （本仓的复盘记录（⛔ 不随产品仓提供）），**当时就在注释里写了教训**
 > 「改完要按行号核，别只看替换成功了几处」——
 > **而重规划那处照样漏着**，一直到 2026-09-30 `/specs` 核账才被挖出来（就是本文件 ⚠️①）。
 >
@@ -485,7 +481,6 @@ Expected: **红**，且失败的是 `test_重规划把真实发起人传下去`�
 ## 为什么单开这道门（⛔ 不靠"记得搜一遍"）
 
 同一个漏传**在这个文件里是第二次**：2026-09-21 修过 `generate_dynamic_input` 那处
-（本仓的复盘记录（⛔ 不随产品仓提供）），当时**就在注释里写了教训**
 「改完要按行号核，别只看替换成功了几处」—— **而重规划那处照样漏着**，
 直到 2026-09-30 `/specs` 核账才挖出来（`app/agent/specs/plan_execute.md` ⚠️①）。
 
@@ -594,7 +589,7 @@ git commit -m "fix(plan_execute) 重规划补传 user_name，并加一道从 AST
 > 同一批的三个超时（`:69-71` `PLANNER_LLM_TIMEOUT` / `EXECUTOR_LLM_TIMEOUT` / `QUALITY_LLM_TIMEOUT`）
 > **都是硬编码常量，没有一个是 env**。 的诉求是「**与那一批做法一致**」——
 > 加 env 反而**制造新的不一致**，还会把「一次请求最多调几次 LLM」变成**部署期可变量**。
-> ⇒ **硬编码 `MAX_REPLANS = 5`**，与那三个放一起。需求方裁定（本文件裁定表第 3 行）同此口径。
+> ⇒ **硬编码 `MAX_REPLANS = 5`**，与那三个放一起。作者裁定（本文件裁定表第 3 行）同此口径。
 
 - [ ] **Step 1: 写会红的用例**
 
@@ -711,9 +706,9 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 
 - [ ] **Step 1: 全量复核** ——  绿，且**条数**与改动前对比 `+5`
 - [ ] **Step 2: spec 顶部状态栏** —— `:5` 那句「🔴 **但查出 1 处真缺陷 + 5 处"看代码会误判"**」要改（`⚠️①②` 两条已消）· `:7` 的用例数（`22 条`）要跟着数
-- [ ] **Step 3: `docs/待办总表.md`** —— 🅗 里  /  /  三条标 ✅
+- [ ] **Step 3: ** —— 🅗 里  /  /  三条标 ✅
 - [ ] **Step 4: `CHANGELOG.md`** —— 按仓里现有格式记三条（⚠️ **别照抄上份 commits 的「不用写 CHANGELOG」理由**）
-- [ ] **Step 5: ⛔ 先别开 PR** —— 按需求方 2026-10-05「#97 暂时不开，和后面的任务一起开」：
+- [ ] **Step 5: ⛔ 先别开 PR** —— 按作者 2026-10-05「#97 暂时不开，和后面的任务一起开」：
       这三条 commit **留在 `feat/gates-in-ci` 上**，等后面的批次做完一起走 `#97`。
       ⚠️ 但 **push 照常按段推**（推送分次 ≠ 提交分次）
 

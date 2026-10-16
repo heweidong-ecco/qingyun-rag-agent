@@ -31,4 +31,3 @@
 
 ## 关联
 
-（构建期裁依赖）· （不去撞 torch）· `ROADMAP` 功能现状表「Cross-Encoder 重排序 🟡」

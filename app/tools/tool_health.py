@@ -7,7 +7,7 @@
    **2026-10-08**：它是 2.x 的**构造器回调**（`Server(on_list_tools=…)`），
    不再是 `@server.list_tools` 装饰器 —— **函数名与所在文件都没变**，照旧去那里找。
 
-2026-09-20 删（§三·B9 · 需求方裁「删代码 + 把 docstring 改成实话」）：
+2026-09-20 删（§三·B9 · 作者裁「删代码 + 把 docstring 改成实话」）：
    本文件原先自称「工具健康检查**与自动降级**」，并带一份 `FALLBACK_MAP` + `get_fallback_tool`。
    实测那套是**双重死代码**：
      ① **全仓零调用**（`grep -rn 'get_fallback_tool|FALLBACK_MAP' app/` 除定义处 0 次）
@@ -41,7 +41,7 @@ TEST_ARGS_MAP = {
     #    （依赖未安装的 chromium，调用必失败）。**留着它们没用**。
     #    **2026-10-08 订正**：原注释写「`run_health_check` 是**按 `mcp_server.TOOLS` 遍历**的」
     #       —— **那句是假的**：它遍历的是**本表**（`run_health_check` 里的
-    #          `for tool_name in TEST_ARGS_MAP`）。**不写行号** —— 本仓 ：行号锚点系统性漂移。
+    #          `for tool_name in TEST_ARGS_MAP`）。**不写行号** —— 本仓：行号锚点系统性漂移。
     #       **结论没变**（多两项查不到），**理由是另一个** —— 注释也得是真的，否则下一个人按它做错事。
     #    装好 chromium 后，取消注释并**同时**取消 `mcp_server.py` 里对应的两行。
     # "fetch_webpage": {"url": "https://example.com"},

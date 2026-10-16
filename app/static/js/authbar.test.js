@@ -95,7 +95,7 @@ function makeSandbox(opts) {
 
 /* ══════════════ 1 · 没登录（约定 ②：**不能**跑页面自己的起法） ══════════════ */
 
-test('🔴 没登录 ⇒ 页头那颗按钮写「登录」（带 next=）· 下面那一行**整块藏起来** · **`onReady` 一次都不许调**', () => {
+test('🔴 没登录 ⇒ 页头那颗按钮写「登录」（带 next）· 下面那一行**整块藏起来** · **`onReady` 一次都不许调**', () => {
   const { B, els } = makeSandbox({ loggedIn: false, here: '/rag' });
   let ready = 0;
   const got = B.mount(() => { ready += 1; });
@@ -130,7 +130,7 @@ test('🔴 已登录 ⇒ 页头那颗按钮**换成「已登录」**· 下面那
   assert.strictEqual(els['auth-btn'].textContent, '已登录');
   assert.strictEqual(
     els['auth-strip'].hidden, false,
-    '登录了却藏着额度那一行 ⇒ 需求方要的"单独一行放额度"根本看不见'
+    '登录了却藏着额度那一行 ⇒ 作者要的"单独一行放额度"根本看不见'
   );
   assert.strictEqual(ready, 1);
 });

@@ -3,7 +3,6 @@
 ## 这份管什么
 
 规格 §2.12 的 4 条 `/debug/*` 是「**限流桶 / 配额 / 缓存**」唯一的可见证据（`frontend/页面与接口规格.md` §3.7）。
-（2026-10-04）给它们加了 `Depends(require_admin)` —— 理由是真切的：
 两条带 `{user_name}` 的**能查任意用户、可枚举用户名**。
 
 但那让**访客拿普通 key 点开 = 4 格全 403** ⇒ 按最高判据「**看不见 = 等于没做**」，那一页等于没做。
@@ -20,7 +19,7 @@
 | 5 | 防空跑：恰好扫到 4 条 | 路由批量改名 ⇒ 上面几条**遍历空集合 ⇒ 恒为真** |
 
 本文件**不连库、不连 Redis** —— 判据全部落在**鉴权层**（它在 handler 之前跑，
-所以 401 那支**不需要真依赖**）。理由同 ：别写成
+所以 401 那支**不需要真依赖**）。理由同：别写成
 `with TestClient(app) as client:`，那会触发 lifespan 的 startup（`init_pool` 真连 Postgres）。
 
 判据（可打印）：`venv/bin/python -m pytest app/tests/test_debug_endpoints_self_only.py -q -p no:warnings`

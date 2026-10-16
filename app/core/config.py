@@ -27,7 +27,7 @@ IS_DOCKER = os.getenv("DOCKER_ENV", "false").lower() == "true"
 #     ⇒ 默认就信它的话，谁都能填一个 IP 换一个全新的限流桶 —— **比不做按 IP 还糟**。
 # ⇒ 只有**确实在代理后面**的部署才把它设成 true。
 #
-# 🔴 **2026-10-15（需求方点的「留」）：它【留下了】，理由换了。**
+# 🔴 **2026-10-15（作者点的「留」）：它【留下了】，理由换了。**
 #    原先括号里写的是「如魔搭创空间」—— **那个平台已弃用**，而本仓当前的形态
 #    （`docker-compose` 起本机）**也没有代理**。
 #    ⚠️ **但这个开关【不是魔搭专属的】**：「要不要信代理头」是**任何**放在
@@ -67,9 +67,9 @@ LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD")
 # 不设 = 该账号不存在 —— fail-closed，不留任何默认口令。
 TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD")
 
-# ==================== 生成/对话 LLM —— 端点 = DeepSeek（2026-10-02 需求方裁定：不再用百炼） ====================
+# ==================== 生成/对话 LLM —— 端点 = DeepSeek（2026-10-02 作者裁定：不再用百炼） ====================
 # embedding 固定走 DASHSCOPE(**端点**不变);它的**模型名**已收拢到下面「Embedding」那一节。
-# 默认值已改 DeepSeek;`LLM_API_KEY` **不再回落 `DASHSCOPE_API_KEY`**(旧写法会把 embedding 的 key 拿去请求 DeepSeek 端点 —— 静默错配)。。
+# 默认值已改 DeepSeek;`LLM_API_KEY` **不再回落 `DASHSCOPE_API_KEY`**(旧写法会把 embedding 的 key 拿去请求 DeepSeek 端点 —— 静默错配)。
 LLM_API_KEY    = os.getenv("LLM_API_KEY")
 LLM_BASE_URL   = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_MODEL_FAST = os.getenv("LLM_MODEL_FAST", "deepseek-v4-flash")
@@ -77,7 +77,7 @@ LLM_MODEL_CHAT = os.getenv("LLM_MODEL_CHAT", "deepseek-v4-flash")
 
 # ==================== Embedding —— 端点 = 阿里云百炼 DashScope ====================
 # 2026-10-08：模型名从【写死在 `rag/embedding_client.get_embedding` 的形参默认值里】收拢到这里
-#    （第二处写死见 `agent/memory_store.py` 的 mem0 embedder）。变量名由需求方定为 `EMBEDDING_MODEL_MAIN`。
+#    （第二处写死见 `agent/memory_store.py` 的 mem0 embedder）。变量名由作者定为 `EMBEDDING_MODEL_MAIN`。
 # **改这里必须连【维度】一起改**（§2.1：模型名 + 维度 + 表定义 = 三件套）——
 #    只把模型名变可配 ⇒ 维度对不上；而**最危险的是"维度恰好相同"**：不报错，但
 #    老向量与新查询向量**不同源** ⇒ 检索结果全是垃圾。

@@ -189,7 +189,7 @@ def test_execute_python_impl_handles_no_output_and_errors():
 
 
 def test_sandbox_whitelist_allows_exception_classes():
-    """沙箱白名单里**有**异常类 —— 这是 **N17 放开之后**的行为（2026-09-20 需求方裁）。
+    """沙箱白名单里**有**异常类 —— 这是 **N17 放开之后**的行为（2026-09-20 作者裁）。
 
     **这条用例的前身是反过来的**：它当时断言"白名单里**没有**异常类"，
        并注明「哪天放开了，这条会红、提醒你去更新记录」。
@@ -219,7 +219,7 @@ def test_sandbox_whitelist_allows_exception_classes():
 
 
 def test_sandbox_allows_class_definition():
-    """沙箱**能定义类** —— 这是 **N18 放开 `__build_class__` 之后**的行为（2026-09-21 需求方裁）。
+    """沙箱**能定义类** —— 这是 **N18 放开 `__build_class__` 之后**的行为（2026-09-21 作者裁）。
 
     **为什么放开它不增加能力**（本用例把这条论证变成可执行的事实）：
        白名单里**本来就有 `type`** ⇒ 「动态建类」**早就可达**了。

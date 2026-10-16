@@ -23,7 +23,7 @@
    ⚠️ 所以 `here = os.path.dirname(os.path.abspath(__file__))` 是**传给子进程当 `sys.path`** 的
    ⇒ ⛔ **本文件搬家时必须一起核这一行**（2026-10-09  搬进 `app/tools/` 时它是**同目录**，
    所以恰好没坏 —— **那是巧合，不是设计**）。
-2. 🔴 **白名单里那两项是【需求方裁"放开"】的，⛔ 别当成漏洞删掉**：
+2. 🔴 **白名单里那两项是【作者裁"放开"】的，⛔ 别当成漏洞删掉**：
    - **异常类**（2026-09-20）：⛔ 不加的话 `try/except` 直接不可用，
      而**异常处理是最常见写法之一、且从代码上看不出来**。
    - **`__build_class__`**（2026-09-21）：让 `class` 语法成立。
@@ -39,4 +39,4 @@
 - `app/tools/specs/code_executor.md` —— 上层 `@tool` 外壳
 - `app/tools/specs/executor_server.md` —— 远端那条路径的服务端
 - `docker-compose.yml` 的 `executor` 服务 —— 硬化配置（`read_only` / `cap_drop: ALL` / `no-new-privileges`）
-- 本仓的决策记录（⛔ 不随产品仓提供）* —— 「执行器进独立容器」的裁定
+- * —— 「执行器进独立容器」的裁定

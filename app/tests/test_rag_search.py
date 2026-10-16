@@ -1,15 +1,15 @@
 """M6 · `/rag/search` 单模块测试闭环（2026-09-17）
 
-本仓第一个「改代码 → 跑测试 → 看结果」闭环的**先例**。见 `ROADMAP.md`「⑦ M6」与 本仓的决策记录（⛔ 不随产品仓提供）。
+本仓第一个「改代码 → 跑测试 → 看结果」闭环的**先例**。见 「⑦ M6」与。
 
 分四层，**按代价递增** —— 分层是为了让 CI 能跑得起：
 
 | 层 | 测什么 | 需要 | 进 CI |
 |---|---|---|---|
-| **L0** 纯逻辑 | `_rrf_fusion` 融合/排序/截断 · 四个 factory 的开关矩阵 | 只要 langchain | |
-| **L1** 契约 | 401 · `top_k` 422 · `mode` 是 query 参数 · 404 | **redis**（中间件） | |
-| **L2** 行为 | **mode→pipeline 分派** · RRF 真融合 · `top_k` 传递 · 响应形状 | redis + patch 6 个缝 | |
-| **L3** 集成 | 真 pgvector + 真 BM25 + 真 DashScope embedding | postgres + 外网 | `@pytest.mark.integration` |
+|  纯逻辑 | `_rrf_fusion` 融合/排序/截断 · 四个 factory 的开关矩阵 | 只要 langchain | |
+|  契约 | 401 · `top_k` 422 · `mode` 是 query 参数 · 404 | **redis**（中间件） | |
+|  行为 | **mode→pipeline 分派** · RRF 真融合 · `top_k` 传递 · 响应形状 | redis + patch 6 个缝 | |
+|  集成 | 真 pgvector + 真 BM25 + 真 DashScope embedding | postgres + 外网 | `@pytest.mark.integration` |
 
 **为什么 L1/L2 需要 redis**：`RateLimitMiddleware` 对**每个非公开路径**都打 Redis。
 

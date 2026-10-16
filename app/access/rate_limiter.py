@@ -60,7 +60,6 @@ if tokens >= 1 then
 end
 
 redis.call('HSET', KEYS[1], 'tokens', tokens, 'last_time', now)
--- 🔴 ：给桶设过期。它写在【每次请求都会跑】的地方 ⇒ 语义是「**空闲** TTL 秒才过期」，
 --    而空闲的桶**必然已经回满** ⇒ 不改变任何一次判定，只让键不再永久堆积。
 redis.call('EXPIRE', KEYS[1], ARGV[4])
 

@@ -27,12 +27,12 @@
 
 ⇒ 所以 `OFFLINE_SITES` 收缩成一条**不是"放宽断言"**，是**实现真的只剩一份**了。
 
-**2026-10-08 ·  ：`app/tools_with_cache.py` 整个模块删掉了。**
+**2026-10-08：`app/tools_with_cache.py` 整个模块删掉了。**
 
 它此前是【第 6 份 `calculator` 拷贝】，靠本文件那条**静态**闸守着
 （它被 `@cached_tool` 包着 ⇒ 调一次就要连 Redis，故一向只进静态那道、不进行为那道）。
 
-**需求方 2026-10-08 原话：「`tools_with_cache.py`，删除，这是定好的事了，这个是重复的，没用了」**
+**作者 2026-10-08 原话：「`tools_with_cache.py`，删除，这是定好的事了，这个是重复的，没用了」**
 —— ⇒ 它**不再是**"挂起"（原先的 ⏸ 理由是「缓存机制不是废物，是没接上」；
 现在 已经把缓存接在**工具函数体**上，它就成了纯重复）。
 
@@ -183,7 +183,7 @@ def _site_files():
 @pytest.mark.parametrize("label,path", _site_files(), ids=[p for p, _ in _site_files()])
 def test_no_eval_call_remains(label, path):
     """用 AST 而**不是 grep**：注释里也写着 `eval(expression)` 这几个字，
-    正则会把说明文字的命中当成违规（本仓栽过：见 本仓的复盘记录（⛔ 不随产品仓提供））。
+    正则会把说明文字的命中当成违规（本仓栽过：）。
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     offenders = eval_name_offenders(tree)

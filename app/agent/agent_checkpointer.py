@@ -55,7 +55,7 @@ class AgentState(TypedDict):
     #    （`POST /agent/memory_chat`），一律 `.get(..., "unknown")` 读。
     user_name: str
     thread_id: str
-    # ：**预算被拦的原因**，通往【端点层】的唯一通道 —— 端点据此回 **429**（非流式）/
+    #：**预算被拦的原因**，通往【端点层】的唯一通道 —— 端点据此回 **429**（非流式）/
     #    **error 帧**（流式）。与 `agent_graph.AgentState` / `agent_graph_advanced.AgentState`
     #    的同名键**是同一个契约**：存**原因**，拼文案统一由
     #    `api_v1_agent.agent_budget_intercept_message` 做（别在节点里拼）。
@@ -67,7 +67,7 @@ class AgentState(TypedDict):
 # ==================== 定义节点 ====================
 from billing.token_tracker import (          # noqa: E402  （原位保留，未挪动）
     check_token_budget, record_from_response, BUDGET_EXCEEDED_MSG,
-    # ：保住 `check_token_budget` 这个调用，**别改成 `check_token_budget_detail`**
+    #：保住 `check_token_budget` 这个调用，**别改成 `check_token_budget_detail`**
     #    （见 `agent_graph.py` 同一处）—— 4 个测试文件拿"模块属性 `check_token_budget`"
     #    当 monkeypatch 缝，换掉 ⇒ 补丁静默失效、转去连真库。
 )
@@ -100,7 +100,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
         #    ⇒ `should_continue` 判不出 `"approval"` / `"tools"` ⇒ **审批门静默失效**。
         # 并且**必须遍历【所有】块**，不许跳过 `content` 为空的块 ——
         #    provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上（实测，
-        #    本仓的施工单（⛔ 不随产品仓提供））⇒ 跳过它，下面那段记账就没了，
+        #）⇒ 跳过它，下面那段记账就没了，
         #    而接口一切正常。
         response = chunk if response is None else response + chunk
     # 统计 Token
@@ -120,7 +120,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
     #    记成"查询改写"是错的。真库 `token_usage_logs` 里 `query_rewrite` **0 条**
     #    （正是因为它从没跑过）⇒ **无历史数据要迁移**。
     # 修它 = **行为变更**：`/agent/memory_chat` 的配额从"形同虚设"变成"真的生效"。
-    #    裁定与理由 ⇒ 本仓的决策记录（⛔ 不随产品仓提供） §八。
+    #    裁定与理由 ⇒  §八。
     record_from_response(
         llm_with_tools, response, "agent_decision",
         user_name=user_name, thread_id=thread_id,

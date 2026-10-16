@@ -58,7 +58,7 @@ app = FastAPI(
 # ==================== 初始化日志====================
 # 加入 三通道”（控制台 + 普通文件 + 错误文件）的日志器。setup_logger
 logger = setup_logger()
-# 全局变量 ：使用 ContextVar 存储每个请求的 request_id，线程安全
+# 全局变量：使用 ContextVar 存储每个请求的 request_id，线程安全
 request_id_var: ContextVar[str] = ContextVar("request_id", default="no-id")
 
 
@@ -118,7 +118,7 @@ async def log_and_track_request(request: Request, call_next):
 MIDDLEWARE_EXEMPT_PATHS = frozenset({
     "/", "/docs", "/redoc", "/docs/oauth2-redirect", "/openapi.json",
     "/health", "/ready", "/metrics",
-    # 2026-10-09（施工单刀 1）：`/api/v1/info` **与 `/` 是同一份静态服务索引**
+    # 2026-10-09（刀 1）：`/api/v1/info` **与 `/` 是同一份静态服务索引**
     #    （`/` 改成页面后，那段 JSON 挪到了这里）。
     #    ⇒ 两者【同待遇】—— `/` 早就在本名单里（静态入口，不参与限流与配额），
     #      一个豁免、一个记成"债"，读的人只会问"为什么同一个东西两种待遇"。
@@ -278,14 +278,14 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
     （中间件本体要连库，行为测试会退化成"环境依赖型通过"）。
     2026-10-05（待办）才抽的 —— 原先它**写在 `dispatch` 里**，那段没法单独测。
 
-    **2026-10-09（需求方裁「A1」）：本函数【已与限流那条对齐】——**
+    **2026-10-09（作者裁「A1」）：本函数【已与限流那条对齐】——**
        原先它与限流**故意不同**（`None` 把"真匿名"和"判不了"混在一起，匿名因此**整层绕过配额**）。
        现在与 `resolve_rate_limit_identity` **同一口径**：
        * **`"anonymous"` = 判了，就是匿名** ⇒ **进配额**，`get_user_role("anonymous")`
          归到 **FREE 最低档**（`app/access/permission.py` 的「其余全部 FREE」）
        * **`None` = 判不了**（认证服务不可用）⇒ 中间件据此**跳过本次**用户级配额
 
-       **代价（需求方已知并接受）**：全体匿名**共用一个 FREE 日预算**
+       **代价（作者已知并接受）**：全体匿名**共用一个 FREE 日预算**
        ⇒ 一个爬虫打满 ⇒ 其余匿名请求当日 429。这不是"漏"，是**取向**：
        旧行为（匿名完全不受限）比它**更糟**；而**全站日级**上限仍在，不依赖身份。
        逐条见 `SECURITY.md` §3.1。
@@ -319,7 +319,7 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
 
     if user_name:
         return user_name
-    # 2026-10-09（需求方裁「A1」）：**真匿名 ⇒ 返回 `"anonymous"`（进配额，走 FREE 最低档）**；
+    # 2026-10-09（作者裁「A1」）：**真匿名 ⇒ 返回 `"anonymous"`（进配额，走 FREE 最低档）**；
     #    **只有"判不了"才返回 `None`**（那才该 fail-open）。
     return None if _unavailable else "anonymous"
 
@@ -429,7 +429,7 @@ app.add_middleware(RateLimitMiddleware)
 # 2026-10-03 改（决策一落地）—— 原先是「**每日请求次数**」配额
 #    （`permission.ROLE_QUOTA` + `quota_limiter`），与 token 那套**互不知情**：
 #     实测两者口径**差 35 倍**（`plan_execute` 一次 ~3346 token
-#    ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）⇒ 需求方裁「统一到 token 一套」()。
+#    ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）⇒ 作者裁「统一到 token 一套」()。
 #
 # 这里是**原位置换**，不是「把这一层删掉」：
 #    次数配额是当时**唯一**覆盖「所有非公开路径 + 按用户 + 按天」的一层
@@ -542,7 +542,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
         # 2026-10-11（两个额度池 ·）：**按【路径】选出这次要看哪一份额度**。
         #    表外路径（`POOL_NONE`：静态的 / 纯读的 / 探活的）**不做判定** ——
-        #      需求方 2026-10-11 裁「不进池」。代价：这类路径**只剩限流那一层**。
+        #      作者 2026-10-11 裁「不进池」。代价：这类路径**只剩限流那一层**。
         #    它们**仍返回配额头**（报「总计」），只是不参与拦截。
         pool = pool_for_path(request.url.path)
         budgets = get_pool_budget_info(user_name)
@@ -556,14 +556,14 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         body = None if pool == POOL_NONE else quota_reject_payload(info)
         retry_after = max(1, _next_day_reset_ts() - int(time.time()))
 
-        # 🔴 2026-10-14（§二·8 · 需求方裁「甲」）：**全站 embedding 的滚动窗口**。
+        # 🔴 2026-10-14（§二·8 · 作者裁「甲」）：**全站 embedding 的滚动窗口**。
         #    上面那一段管的是【这一个用户】的日额度；这一条管的是【全站加起来】——
         #    ⚠️ 两者不是一回事，⛔ 别读成"重复"（§3.2 那张表专门区分过）。
         # 🔴 **为什么落在这里**：① 它**按池覆盖所有 embedding 路径**（`quota_pools` 已经分好类）；
         #    ② 它**在 handler 之前** ⇒ 拒绝时**一个 token 都还没花**；
         #    ③ ⛔ **不能放进 `embedding_client.get_embedding()`** —— 那个函数在**启动时的
         #       缓存预热**里也会被调 ⇒ 额度用完后**应用会起不来**（而那正是最需要它活着的时候）。
-        # ⚠️ 口径照 ：**全站 · 两个滚动窗口 · 到顶 429 + `Retry-After`**。
+        # ⚠️ 口径照：**全站 · 两个滚动窗口 · 到顶 429 + `Retry-After`**。
         if pool == POOL_EMBEDDING and body is None:
             from billing.token_tracker import check_global_embedding_budget
             ok, why, wait = check_global_embedding_budget()
@@ -709,9 +709,9 @@ app.include_router(public_router)
 app.include_router(rag_router)
 app.include_router(agent_router)
 
-# 2026-10-09（施工单刀 1 · 规格 §〇.五 #6）：`/` 从【返回 JSON】改成【总览首页】。
+# 2026-10-09（刀 1 · 规格 §〇.五 #6）：`/` 从【返回 JSON】改成【总览首页】。
 #    那段服务索引 JSON **没有丢** —— 它**原样挪到了 `GET /api/v1/info`**（`app/routing/api_v1.py`）。
-#    裁定的原话就是「**挪走**，不是删」（那条要求来自需求方 2026-10-09 的选择项）。
+#    裁定的原话就是「**挪走**，不是删」（那条要求来自作者 2026-10-09 的选择项）。
 #    为什么非改不可：原先访客打开域名，第一眼是**一坨 JSON** —— 而最高判据说
 #       「**95% 的人不会去看代码**……**显示了，才知道你有做**」。
 #    302 而不是 301（同 `/chat` 那族的理由）：页面将来换位置时，
@@ -765,7 +765,7 @@ async def guide_page():
 @app.get("/stream", include_in_schema=False)
 async def stream_page():
     """**流式问答** —— 内部资料线的流式形态。它**不进那 7 格导航**：
-    需求方 2026-10-12 定它是**子页**，入口只有两个跳转键（检索问答页的接口块那一行 · 页头那颗按钮）。"""
+    作者 2026-10-12 定它是**子页**，入口只有两个跳转键（检索问答页的接口块那一行 · 页头那颗按钮）。"""
     return RedirectResponse(url="/static/web/stream.html", status_code=302)
 
 @app.get("/reference", include_in_schema=False)
@@ -1043,7 +1043,7 @@ class _VersionedStaticFiles(StaticFiles):
 
     ## 背景
 
-    2026-10-15 发布之后，需求方在**线上**撞到：「**登录之后按钮没变成「已登录」、额度那一行不见了**」。
+    2026-10-15 发布之后，作者在**线上**撞到：「**登录之后按钮没变成「已登录」、额度那一行不见了**」。
     查下来**不是发布错了** —— 服务器发的 34 个静态文件与本机**逐字节一致**；
     是**浏览器缓存了旧的 `authbar.js`、而 HTML 是新的**：旧 JS 找的是旧挂点
     （`#auth-in` / `#auth-out`），新版已改名（`#auth-btn` / `#auth-strip`）
@@ -1082,7 +1082,7 @@ app.mount("/static", _VersionedStaticFiles(directory=static_dir), name="static")
 #    后者 `fetch` 轨迹**不带认证头**（加了鉴权后打开必 401）⇒ 两个都是**存量的坏页**。
 
 # ==================== 挂载Gradio成本统计可视化面板 ====================
-# 2026-09-17 重构 ⑥ 切开点 4：加环境门控。需求方裁决取 **A 方案（默认值保持现状）**。
+# 2026-09-17 重构 ⑥ 切开点 4：加环境门控。作者裁决取 **A 方案（默认值保持现状）**。
 #
 # **收益口径必须说清（不要读成"不再拉"）**：
 #    这给的是「**可以**不拉 gradio + matplotlib」，**不是**「不再拉」。

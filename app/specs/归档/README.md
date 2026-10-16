@@ -12,7 +12,7 @@
 > 因为 `app/<组>/specs/` 的价值有两半：**「这个模块做到哪」**（会过期）
 > 与 **「⚠️ 看代码会误判的地方」**（往往是**花了实测才得到的**，删了就没了）。
 >
-> 📌 同族先例：本仓的施工单（⛔ 不随产品仓提供） —— 那边也是「加归档头 + 移走」，
+> 📌 同族先例： —— 那边也是「加归档头 + 移走」，
 > 且**搬之前先把活的待办捞出来**。**不做这一步就搬 = 把活的东西埋掉。**
 
 ---
@@ -21,7 +21,7 @@
 
 | 文件 | 原模块 | 归档日期 | 为什么删 | 那一层现在在哪 |
 |---|---|---|---|---|
-| [`quota_limiter.md`](./quota_limiter.md) | `app/quota_limiter.py` | 2026-10-03 | ：撤掉调用点后**零调用者** | `app/main.py` 的 `QuotaMiddleware`（**原位**换成 token 口径）· 取数在 `app/billing/token_tracker.py` |
+| [`quota_limiter.md`](./quota_limiter.md) | `app/quota_limiter.py` | 2026-10-03 |：撤掉调用点后**零调用者** | `app/main.py` 的 `QuotaMiddleware`（**原位**换成 token 口径）· 取数在 `app/billing/token_tracker.py` |
 
 ---
 
@@ -39,4 +39,3 @@
 | 文档 | 说明 |
 |---|---|
 | `app/specs/README.md` | 活模块的 spec 对账表 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 删这个模块的裁定 |

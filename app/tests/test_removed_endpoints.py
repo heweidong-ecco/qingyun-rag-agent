@@ -1,7 +1,7 @@
 """已删端点的【反向守卫】 —— 别把它们默默改回来。
 
 **为什么要有这条用例**：删掉一个端点之后，**没有任何东西会阻止它被重新加回来** ——
-`grep` 只说明「现在没有」，不说明「以后不会有」（本仓 本仓的复盘记录（⛔ 不随产品仓提供）
+`grep` 只说明「现在没有」，不说明「以后不会有」（本仓
 记的就是同族毛病：**拿一次观察当全称判断**）。这条用例把「它不该回来」变成一条**会红的检查**。
 
 | 端点 | 删除日 | 理由（全文见对应 DEC） |
@@ -60,8 +60,8 @@ def test_rag_ask_stays_removed():
     **本机看不出来**：本机 Postgres 真开着 ⇒ 连得上 ⇒ 照样绿。
     **本仓判据**：本用例只断**路由存不存在**，**不需要任何 startup** ⇒ 用**裸 `TestClient(app)`**
     （全仓不连库的用例都是这么写的；`with … as` 全仓**只有这一处**，就是它把自己坑了）。
-    本仓的复盘记录（⛔ 不随产品仓提供）
-    **裁决全文（含"为什么不标 `needs_db`"）⇒ 本仓的决策记录（⛔ 不随产品仓提供）**
+    
+    **裁决全文（含"为什么不标 `needs_db`"）⇒ **
     　　· 规矩落在 `docs/规范/开发规范.md §2.5·5`
     """
     client = TestClient(app)
@@ -86,7 +86,6 @@ def test_rag_jwt_ask_stays_removed():
     ⇒ 删掉它，**JWT 用户一个能力都没少**。
 
     **别把这里改成 `with TestClient(app) as client:`** —— 同上一份
-    本仓的决策记录（⛔ 不随产品仓提供）。
     """
     client = TestClient(app)
     resp = client.post("/api/v1/rag/jwt_ask", json={"question": "x", "top_k": 3})
@@ -110,7 +109,6 @@ def test_users_by_id_stays_removed():
     （`app/routing/specs/api_v1.md` ④ 记的就是这个）。
 
     **别把这里改成 `with TestClient(app) as client:`** —— 见
-    本仓的决策记录（⛔ 不随产品仓提供）。
     """
     client = TestClient(app)
     resp = client.get("/api/v1/users/1")

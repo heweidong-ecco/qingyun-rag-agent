@@ -32,7 +32,7 @@
 
 **删它的理由不是"不需要了"，是"它已经变成恒绿的假守卫"**：
 端点一删，那张豁免清单**空了** ⇒ `for` 体**一次都不跑** ⇒ 用例**永远绿**，
-**什么也没钉住**。留着它等于留一个**假通过**（本仓 ` 反复记过这一族）。
+**什么也没钉住**。留着它等于留一个**假通过**（本仓  反复记过这一族）。
 ⇒ 按  的裁决**删掉该用例**，保护**收敛到**
 `app/tests/test_removed_endpoints.py::test_rag_async_ask_stays_removed` /
 `::test_rag_parallel_ask_stays_removed`（判据 = **404**）。
@@ -117,5 +117,5 @@ def test_endpoint_calls_breaker(filename, func_name):
 #    `test_rag_async_ask_stays_removed` / `test_rag_parallel_ask_stays_removed`（判据 = **404**）。
 #
 # **代价（知道再选）**：将来若再加一条「不花钱」的端点，**不会有测试自动拉红**叫去接线。
-#    处理要求写在模块 docstring 与 本仓的决策记录（⛔ 不随产品仓提供） 里。
+#    处理要求写在模块 docstring 与  里。
 # ======================================================================================

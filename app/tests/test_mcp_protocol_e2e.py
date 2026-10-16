@@ -28,7 +28,7 @@ def test_served_tools_match_the_registry():
     为什么这条能抓迁移错误：`list_tools` 处理器若是**没接上**（或还留着 1.x 的装饰器形态），
     客户端会拿到**空清单或直接报错** —— 而「注册了 7 个」与「服务真出 7 个」是**两件事**。
 
-    反证（施工单  会做）：把 `on_list_tools=` 从 `Server(...)` 里拿掉 ⇒ **本用例红**。
+    反证（会做）：把 `on_list_tools=` 从 `Server(...)` 里拿掉 ⇒ **本用例红**。
     """
     import tools.mcp_server as mcp_server
 
@@ -62,7 +62,6 @@ def _server_child_pids() -> list:
        ⇒ **本地（macOS）找得到、CI（Linux）找不到**。
        **实测**（2026-10-08）：本机 860 全绿，**CI 报 `assert []`**
        —— 正是本仓记过的那一类「**本地绿当成了不依赖**」
-       （本仓的复盘记录（⛔ 不随产品仓提供））。
 
     同时排除**本进程**（`os.getpid`）—— 别把自己当成子进程杀了。
     """

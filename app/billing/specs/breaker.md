@@ -16,7 +16,7 @@
 | 部分 | 说明 |
 |---|---|
 | 阈值 | `1,000,000` tokens / 天（`token_config.GLOBAL_DAILY_TOKEN_LIMIT`） |
-| 触发动作 | **直接拒绝** —— 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)` ⇒ **429**（要素②，需求方 2026-09-30 裁） |
+| 触发动作 | **直接拒绝** —— 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)` ⇒ **429**（要素②，作者 2026-09-30 裁） |
 | 可见提示 | `why` 里带「已使用 X / 上限 Y，请明日再试」 |
 | 恢复 | **跨天自然重置**（见下 §⚠️ 第 1 条） |
 
@@ -27,7 +27,7 @@
 
 | 缺口 | 说明 |
 |---|---|
-| **`model:` 前缀没实现** |  要的模型级降级链（TTL /  可见标记 /  人工排序）**都还没做** —— 见 `docs/待办总表.md` §一·附 |
+| **`model:` 前缀没实现** |  要的模型级降级链（TTL /  可见标记 /  人工排序）**都还没做** —— 见  §一·附 |
 | ⚠️ **没有"半开 / 探测恢复"** | **这是有意的**，不是漏了 —— 理由见 §⚠️ 第 2 条 |
 | ⚠️ **`benchmark-embedding` 是近似计量** | 见 §⚠️ 第 5 条 |
 | **匿名那层仍是个洞（另一个问题）** | 配额那层对匿名请求**完全绕过**（`app/main.py:314` 的 `if not user_name:`）。⚠️ **旧写「`quota_limiter.py` 绕过」—— 那个模块 2026-10-03 已删，但这条行为原样保留**。 没有解决它，只是**不再让它连带烧钱**（`benchmark-embedding` 现在会问断路器） |
@@ -96,7 +96,4 @@
 | `app/billing/specs/token_tracker.md` | `check_global_daily_budget()` / `get_global_daily_token_usage()` 的出处 |
 | `app/billing/specs/token_config.md` | `GLOBAL_DAILY_TOKEN_LIMIT` 的值与改法 |
 | `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴 **2026-10-03**：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
-| 本仓的决策记录（⛔ 不随产品仓提供） | ⭐ **本模块的形状**：分派不判定 · 未知 key fail-open · 熔断 429 不给 `retry_after` · 接线范围 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 阈值 `1,000,000` 与 fail-open 的裁定 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | `admin` 去掉无限额 |
-| 本仓的施工单（⛔ 不随产品仓提供） §B11 | 四要素原文 + 我方建议 |
+|  §B11 | 四要素原文 + 我方建议 |

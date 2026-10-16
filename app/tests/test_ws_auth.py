@@ -21,7 +21,7 @@
 | ③ 端点 | 真 `app` 上**两条 WS 路由都真的挂了这道依赖**，且**认证前端点体一次都不跑** | （打桩验证器） | |
 
 **③ 是重点**：①② 全绿而端点没接线，**本仓有前科**
-（本仓的复盘记录（⛔ 不随产品仓提供）：「**门挂在别处，就等于没有门**」）。
+（：「**门挂在别处，就等于没有门**」）。
 
 **本仓没装 `pytest-asyncio`** ⇒ 协程一律用下面那个 `_run` 跑，
 别写 `@pytest.mark.asyncio`（它不会失败，它会让用例**看起来没跑**）。
@@ -362,7 +362,7 @@ def test_ws_agent_bills_llm_usage_under_the_authenticated_user(deps_mod, monkeyp
     class FakeExecutor:
         async def ainvoke(self, inputs, config=None):
             # 不吃真 LLM，只把端点交下来的回调喂一个**带 usage_metadata 的响应**
-            # （判据必须是 `usage_metadata` —— ：`.usage` 恒为假）
+            # （判据必须是 `usage_metadata` ——：`.usage` 恒为假）
             from langchain_core.messages import AIMessage
 
             msg = AIMessage(

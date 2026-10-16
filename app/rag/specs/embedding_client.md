@@ -42,5 +42,4 @@
 
 ## 关联
 
-本仓的决策记录（⛔ 不随产品仓提供）（本批）· `docs/待办总表.md` §三 （**已销账**）·
 `docs/契约/环境变量.md` §4（Embedding 与 LLM 不是同一家）· `app/core/llm_factory.py`（LLM 侧同族，只改了报错）

@@ -18,7 +18,7 @@
 ## 🟡 做到哪 / 缺什么
 
 - ⬜ **`/metrics` 无鉴权** —— `main.py:110` 的免鉴权白名单里有它（`/health` `/ready` `/metrics`）
-- 🔴 **有指标 ≠ 有面板** —— Grafana provisioning 缺口仍在（`ROADMAP` 阻塞项 #2）：
+- 🔴 **有指标 ≠ 有面板** —— Grafana provisioning 缺口仍在（阻塞项 #2）：
   **固定看板里没有这几格的任何一格**，新指标**不会自动出现**
 - ⬜ **中间件只记「成功走到 `call_next` 返回」的那些请求** —— 鉴权失败等在中间件里提前返回的路径**不记**（本轮未核）
 - ⬜ 无测试覆盖本文件
@@ -34,5 +34,4 @@
 
 ## 关联
 
-本仓的决策记录（⛔ 不随产品仓提供）
 `app/routing/specs/api_v1_rag.md` · `app/routing/specs/api_v1_agent.md` · `app/billing/specs/token_tracker.md`（**另一条链**，别混）

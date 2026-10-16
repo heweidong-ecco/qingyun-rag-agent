@@ -90,7 +90,7 @@ def set_cached_tool_result(tool_name: str, result, expire_seconds: int = 300, *a
 
 # ==================== 缓存装饰器 ====================
 
-# 2026-09-20 加（§三·C5 · 需求方裁「需要调整，不能无限递归」）：
+# 2026-09-20 加（§三·C5 · 作者裁「需要调整，不能无限递归」）：
 #    **抢不到锁时最多等多久**；超了就**降级为直接执行**（这次不写缓存）。
 #
 #    原实现在 `else` 分支里是 `time.sleep(0.1); return wrapper(*args, **kwargs)`
@@ -102,7 +102,7 @@ def set_cached_tool_result(tool_name: str, result, expire_seconds: int = 300, *a
 #       直接执行工具函数 —— 结果照常返回，只是这次不写缓存。
 _LOCK_WAIT_SECONDS = 2.0
 
-# 2026-10-08（需求方裁）：**Redis 不可用 ⇒ fail-open**。
+# 2026-10-08（作者裁）：**Redis 不可用 ⇒ fail-open**。
 #    **只捕 `redis.RedisError`**，**不是 `except Exception`** ——
 #    后者会把**代码 bug** 伪装成"Redis 不通"，真 bug 就永远查不出来。
 #    同形先例：`app/access/rate_limiter.py` 的  兜底

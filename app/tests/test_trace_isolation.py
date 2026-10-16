@@ -1,7 +1,7 @@
 """追踪轴（`tool_visualizer`）的**归属与键**（N4）。
 
 **改动前是什么样**：`_traces` 是 `Dict[str, AgentTrace]`，**只按裸 `thread_id` 做键**。
-   ⇒ 三处跨用户可见：
+   ⇒ 三处跨用户可：
    ① `GET /agent/traces` 调 `get_all_traces` —— **一处过滤都没有**，
       返回值里带 `user_query[:100]` ⇒ **任何登录用户拿到别人的提问原文**；
    ② `GET /agent/trace/{thread_id}` 调 `get_trace(thread_id)` —— **不查属主**；

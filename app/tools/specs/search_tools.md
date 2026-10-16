@@ -110,5 +110,3 @@ soup = BeautifulSoup(html, "lxml")
 | MCP Server 模块（`app/tools/mcp_server.py:11`） | 它把 `web_search` 装进 `TOOLS` ⇒ 进 LLM 的工具表。⛔ **它还没有 spec** ⇒ 本表不给路径 |
 | `app/tools/specs/tool_health.md` | 自检会**真调**它一次（20 秒超时那件事） |
 | `app/agent/specs/agent_graph.md` | 五个导入点中最主要的那个（Agent 的工具链） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 「搜索工具换成 Bing 版」的裁定（旧的 DuckDuckGo 本机不可达） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | `api_v1_rag.py:933` 那行的注释**同时引了它和 **。⚠️ 本 spec **只读了文件名、没读正文** ⇒ 它是不是本工具的裁定，**引用前自己核** |

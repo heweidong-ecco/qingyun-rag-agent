@@ -209,7 +209,7 @@ class _ChainGraph:
                  aclose_interrupted=False, aclose_raises=False, explode_after=None):
         # `cap` 不传时按 `items` 的长度**自然结束**；显式传 `cap=40` 才是"一直吐到断开"
         #    （取消用例要的正是后者 —— 上游必须还在吐，断开才有东西可断）。
-        # ：`explode_after=N` ⇒ 吐够 N 块之后抛 `RuntimeError`（"生成到一半炸了"）。
+        #：`explode_after=N` ⇒ 吐够 N 块之后抛 `RuntimeError`（"生成到一半炸了"）。
         #    `_AsyncSpyStream` 从 owner 上取这个属性（同 `_SpyGraph` / `_SpyRagLLM` 的用法）。
         self.cap = cap if cap is not None else (len(items) if items else 40)
         self.pulled = 0
@@ -752,7 +752,7 @@ def _plan_factory(monkeypatch, *, plan_task=None, execute_plan=None, redis=None,
     """装好替身，返回一个「在跑它的那个 loop 里建响应」的工厂。"""
     monkeypatch.setattr(m, "check_session_token_budget", lambda *a, **k: (True, ""))
     monkeypatch.setattr(m, "circuit", lambda *a, **k: (True, ""))
-    # ：链 D 也留痕（`on_complete` 走 `done`、`bridge.fail` 走 `error`）⇒ 短路存储。
+    #：链 D 也留痕（`on_complete` 走 `done`、`bridge.fail` 走 `error`）⇒ 短路存储。
     monkeypatch.setattr(cache_mod, "redis_client", redis if redis is not None else FakeRedis())
     if plan_task is not None:
         monkeypatch.setattr(m, "plan_task", plan_task)
@@ -780,7 +780,7 @@ def test_plan_execute_streams_the_planning_segment(monkeypatch):
     """链 D：**规划段的每个 token 一帧** —— 这是「只流规划段」那条裁定的落点。
 
     流出去的是**正在生成的 JSON 片段**（`plan_task` 的提示词要求严格 JSON），
-       **不是人读终稿**（需求方 2026-10-04 裁定"甲"）。本用例不断言 JSON 完整，
+       **不是人读终稿**（作者 2026-10-04 裁定"甲"）。本用例不断言 JSON 完整，
        只断言**逐块到达**且**顺序拼得回去**。
     """
     def fake_plan(goal, user_name="unknown", on_token=None):
@@ -979,7 +979,7 @@ def test_plan_execute_stream_frames_match_the_other_three_chains(monkeypatch):
     """**不另发明一种「JSON 流」格式** —— 帧格式与 A/B/C 三条**同一套**。
 
     ⇒ 判据：每一帧都是 `data: ` 前缀；内容帧是 `{"content": …}`；末帧是 `data: [DONE]`。
-      （需求方 2026-10-04 的裁定正是"照原样流 JSON"，指的是**内容**是 JSON 片段，
+      （作者 2026-10-04 的裁定正是"照原样流 JSON"，指的是**内容**是 JSON 片段，
        **不是**帧格式要变成 JSON 流事件。）
     """
     def fake_plan(goal, user_name="unknown", on_token=None):

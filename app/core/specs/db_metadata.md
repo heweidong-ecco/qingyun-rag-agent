@@ -80,4 +80,3 @@ grep -rn 'CREATE TABLE\|create_table' app/core/db.py | head
 | `app/core/specs/db.md` | ⭐ **真正建表/连接/检索的那个模块** —— 找表结构以它为准 |
 | `docs/契约/数据模型.md` · `app/schema.sql` | 表结构的**契约文档**与**导出快照** |
 | `app/alembic/env.py` | 全仓唯一使用者 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | `is_active` 归 DDL 保证 ⇒ §⚠️ 第 2 条的来由 |

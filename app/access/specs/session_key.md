@@ -57,7 +57,7 @@ grep -c 'session_key(user_name, thread_id)' app/routing/api_v1_agent.py   # ⇒ 
 
 ## 关联
 
-本仓的决策记录（⛔ 不随产品仓提供） **决策 1 · 丙段**（拼法裁定）
+ **决策 1 · 丙段**（拼法裁定）
 · `app/agent/specs/pending_approvals.md`（**键的另一半** —— 队列也按它记账）
 · `app/routing/specs/api_v1_agent.md`（7 处接线的现场）
 · `app/core/specs/db.md` / `app/rag/specs/bm25_index.md`（**甲段**的承重层 —— 那条轴管**文档**，这条管**会话记忆**）

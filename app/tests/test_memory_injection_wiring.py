@@ -6,7 +6,7 @@
 （改前判据：`grep -c inject_memories_to_prompt app/agent/agent_graph.py` ⇒ **0**），
 而「外部检索与工具Agent编排」那一页**要拿它当主链**、页面上写着「记忆」。
 
-需求方 2026-10-13 定：**这条链补上（读）** ⇒ 补在 `agent_graph.agent_decide` 开头那一段。
+作者 2026-10-13 定：**这条链补上（读）** ⇒ 补在 `agent_graph.agent_decide` 开头那一段。
 
 ## 这一份为什么不是"跑绿就算"
 

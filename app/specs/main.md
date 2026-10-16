@@ -62,7 +62,7 @@
      ⇒ 现在那条守卫**扫 `app/static/` 下每一个 `.html`**（§三·A）。
   ⚠️ **为什么需要这一类守卫**： 的 `approvals.html` 里 **4 条 URL 全少 `/api/v1`** ⇒ 页面 100% 不可用，
     而**当时三层判据一条都不会红**（页面用例只看 302、JS 用例只测纯函数、路由门只管后端）。
-    📄 事故全文与"为什么漏"⇒  §四。✅ **2026-10-06 已修**（需求方裁「并进  的 PR」）。
+    📄 事故全文与"为什么漏"⇒  §四。✅ **2026-10-06 已修**（作者裁「并进  的 PR」）。
   ⚠️ **当时的代价（记账）**：`app/static/trace_viewer.html` 那时**没有删** —— `docs/FAQ.md` 写过它的地址，
     删掉会让那条指引落到 404；只在它顶部加了一条指向 `/trace` 的横幅。
     🔴 **2026-10-07 改了做法**：**两个存量坏页都删掉**，并**在同一次改动里改掉
@@ -88,7 +88,7 @@
   现在走 `get_daily_token_usage`（`SELECT SUM(...) ... WHERE created_at >= CURRENT_DATE`）。
   **口径不同 ⇒ 无法用同一个计数器表达**；增量与  熔断（也已每请求一次 `SUM`）**同量级**。
 - ⬜ **`TextNormalizationMiddleware`（`:423`）未核** —— 本 spec 只核了另两条
-- ⬜ 零散的 `on_event` 弃用告警（`:675` / `:692`，FastAPI 建议改 lifespan）—— `ROADMAP` 待办 **T4** 的一类
+- ⬜ 零散的 `on_event` 弃用告警（`:675` / `:692`，FastAPI 建议改 lifespan）——  待办  的一类
 - ⬜ **`X-API-Key` 每请求查库 2 次**（上面那条）**在库不可用时变成"两次都要探一次库"** ——
   2026-10-05 起两处都 fail-open，所以**只是慢**，⛔ 不再是 500。
 
@@ -99,7 +99,7 @@
 | 看代码会以为 | 实际 |
 |---|---|
 | 🔴 **「`/static/` 就是普通地挂了个 `StaticFiles`，缓存行为是默认的」** | ⛔ **2026-10-16 起是 `_VersionedStaticFiles`，按后缀发【两种】缓存头**：`*.js`/`*.css` ⇒ `max-age=31536000, immutable`；**其余（尤其 `*.html`）⇒ `no-cache`**。<br>🔴 **为什么非分不可**：页面引 JS/CSS 时**带着内容哈希**（`?v=…`）⇒ 内容一变 URL 就变 ⇒ 长缓存安全；而 **HTML 的 URL 不带哈希、且它里面写着那些版本号** ⇒ 把 HTML 也钉成 immutable ⇒ **用户永远拿不到新版本号，比不加还糟**。<br>⚠️ `no-cache` ⛔ **不是** `no-store`：是"用之前先来问一句"，没变回 304、内容仍缓存着。<br>📄 起因是一次真事故（线上「登录后按钮没变、额度行不见」= 浏览器拿了旧 `authbar.js`）⇒  + 门 `test_static_asset_references_are_versioned_and_real`。<br>📌 判据：`curl -sI .../static/js/index.js \| grep -i cache-control` |
-| 🔴 **「`QuotaMiddleware` 只管【这一个用户】的日额度」** | ⛔ **2026-10-14 起它还管一条【全站】的** ——  §二·8 需求方裁「甲」：**全站 embedding 的滚动窗口**（`check_global_embedding_budget()`），**只对 `POOL_EMBEDDING` 的路径生效**。<br>🔴 **两条不是一回事**：前者是"你个人还剩多少"，后者是"**全站加起来**烧了多少 embedding token"（约束它的是 DashScope 那把 key 的免费额度 = 100 万总量/90 天）。<br>⚠️ **⛔ 别把这条闸挪进 `embedding_client.get_embedding()`** —— 那个函数在**启动预热**里也会被调 ⇒ 额度用完后**应用起不来**。落在这里是因为：① 按池覆盖所有 embedding 路径 ② **handler 之前**（拒绝时一个 token 都没花）③ **预热不走 HTTP**。<br>📌 判据 ⇒ `app/tests/test_global_embedding_gate.py`（含正控：⛔ 不许拦到 LLM 池） |
+| 🔴 **「`QuotaMiddleware` 只管【这一个用户】的日额度」** | ⛔ **2026-10-14 起它还管一条【全站】的** ——  §二·8 作者裁「甲」：**全站 embedding 的滚动窗口**（`check_global_embedding_budget()`），**只对 `POOL_EMBEDDING` 的路径生效**。<br>🔴 **两条不是一回事**：前者是"你个人还剩多少"，后者是"**全站加起来**烧了多少 embedding token"（约束它的是 DashScope 那把 key 的免费额度 = 100 万总量/90 天）。<br>⚠️ **⛔ 别把这条闸挪进 `embedding_client.get_embedding()`** —— 那个函数在**启动预热**里也会被调 ⇒ 额度用完后**应用起不来**。落在这里是因为：① 按池覆盖所有 embedding 路径 ② **handler 之前**（拒绝时一个 token 都没花）③ **预热不走 HTTP**。<br>📌 判据 ⇒ `app/tests/test_global_embedding_gate.py`（含正控：⛔ 不许拦到 LLM 池） |
 | 🔴 **「`resolve_rate_limit_identity()` 是在鉴权」** | ⛔ **不是**。它**只算【限流桶名】** —— 验签失败**不拦请求**，只是**让它落匿名桶**。<br>**真正的鉴权在 `app/routing/deps.py`**（那里才会抛 `AUTH_EXPIRED`）。<br>⚠️ **两者混起来看会得出"验了签就安全了"的错误结论。**<br>🔴 **2026-10-05它多了一种返回值 `None`** —— 含义是「**判不了**」（认证服务不可用），⛔ **不是 `"anonymous"`**（「判了，就是匿名」）。中间件见 `None` 会**跳过用户级限流**。 |
 | 🔴 **「`resolve_quota_identity()` 和限流那个应该长得一样」** | ⛔ **故意不一样** —— 两者在"库挂了"时的**出口不同**：<br>· 限流那个返回 `None` ⇒ 中间件**跳过用户级限流**（不落匿名桶）；<br>· 额度那个返回 `None` ⇒ 走 `QuotaMiddleware` **本来就有**的"未识别身份 ⇒ 原样放行"。<br>⚠️ **两边都是 fail-open**，但**落点不同**；⛔ 别为"看着统一"把它们的返回类型合并。<br>📄 四层分工（含 `deps.py` 的 fail-closed）⇒  |
 | 🔴 **「`MIDDLEWARE_EXEMPT_PATHS` 里的路径 = 不需要登录」** | ⛔ **不是**。它只表示**跳过两条中间件**（限流 + 配额）。<br>**该端点要不要鉴权，由它自己的依赖（`Depends(get_current_user)`）决定** —— **两回事**。<br>📌 **2026-10-05 前它叫 `PUBLIC_PATHS`** —— 那个名字**正是在犯这个错**。<br>📌 判据：（跑它，⛔ 别读名单）。 |
@@ -112,7 +112,7 @@
 | 🔴 **「想豁免某个路径 ⇒ 往 `MIDDLEWARE_EXEMPT_PATHS` 里加一条就行」** | ⛔ **只对【整条路径逐字相等】的成立** —— 那份名单是 **`frozenset` + `in` 精确匹配**。<br>🔴 ** 就是这么来的**：`/` 在名单里、它 302 到的 `/static/web/*.css` **不在** ⇒ 往名单里补一条 `/static/` **也补不上**（`"/static/web/app.css" != "/static/"`）⇒ **页面自己的 css/js 被 429 打进白屏**。<br>✅ **现在分两份**：精确的仍走 `MIDDLEWARE_EXEMPT_PATHS`；**带前缀的走 `MIDDLEWARE_EXEMPT_PREFIXES`**，判定统一进 `is_middleware_exempt(path)`。<br>⚠️ **前缀匹配刻意带边界**（`/staticfoo` **不豁免**）—— 本仓立场：「**判据要能证伪**」。 |
 | 🔴 **「`X-Quota-Limit` 说的是调用次数」** | ⛔ **2026-10-03 起它说的是【每天多少 token】**（头名**故意没改** —— 客户端已在读，改名的破坏面比改语义大）。<br>`X-Quota-Reset` 仍是**次日 0 点的 Unix 时间戳**（日预算由 SQL 的 `created_at >= CURRENT_DATE` 翻页）。 |
 | 🔴 **「配额那层拦不住就拒服务（fail-closed）」** | ⛔ **它是 fail-open 的** —— `get_daily_token_usage` **查库失败 ⇒ 退回内存缓存值 ⇒ 放行**。<br>**与  /  同取向**（额度是**成本控制**，不是安全边界）。<br>⛔ **别"顺手统一"成 `deps.py` 鉴权那套 fail-closed** —— 两者**故意不同**。 |
-| 🔴 **`/` 是什么（**2026-10-09 变了**）** | **现在是【总览首页】** —— `GET /` ⇒ **302 → `/static/web/index.html`**（施工单**刀 1** · 规格 §〇.五 #6）。<br>那段**服务索引 JSON 没丢**：**原样挪到了 `GET /api/v1/info`**（`app/routing/api_v1.py`，⛔ 不是删 —— 裁定的原话就是「**挪走**」）。<br>🔴 **本行原文写的是**：「**`/` 返回 JSON**……⚠️ **别想着把 `/` 改成跳转对话页** —— 那条是**线上契约**（已有人/脚本在读那个 JSON）」。<br>⚠️ **「已有人/脚本在读」那句【当时没有取证】** —— 2026-10-09 全仓扫过该 URL：**消费者 = 0**；`README` 与部署文档里 `curl` 的是**另一条** `/api/v1/`。⇒ 改它**是有据的**，⛔ 不是"拍脑袋动契约"。<br>⇒ **这一族现在形状统一**（`/` `/chat` `/approvals` `/trace` `/eval` = 5 条）：都 `include_in_schema=False`、都 302。<br>⚠️ ⛔ **但仍别把它们当"一类"管** —— 每条有自己的页面用例；**路由基线【不防删】**（见下一行）。 |
+| 🔴 **`/` 是什么（**2026-10-09 变了**）** | **现在是【总览首页】** —— `GET /` ⇒ **302 → `/static/web/index.html`**（**刀 1** · 规格 §〇.五 #6）。<br>那段**服务索引 JSON 没丢**：**原样挪到了 `GET /api/v1/info`**（`app/routing/api_v1.py`，⛔ 不是删 —— 裁定的原话就是「**挪走**」）。<br>🔴 **本行原文写的是**：「**`/` 返回 JSON**……⚠️ **别想着把 `/` 改成跳转对话页** —— 那条是**线上契约**（已有人/脚本在读那个 JSON）」。<br>⚠️ **「已有人/脚本在读」那句【当时没有取证】** —— 2026-10-09 全仓扫过该 URL：**消费者 = 0**；`README` 与部署文档里 `curl` 的是**另一条** `/api/v1/`。⇒ 改它**是有据的**，⛔ 不是"拍脑袋动契约"。<br>⇒ **这一族现在形状统一**（`/` `/chat` `/approvals` `/trace` `/eval` = 5 条）：都 `include_in_schema=False`、都 302。<br>⚠️ ⛔ **但仍别把它们当"一类"管** —— 每条有自己的页面用例；**路由基线【不防删】**（见下一行）。 |
 | ⚠️ **「`/chat` / `/approvals` / `/trace` 在路由基线里 ⇒ 它们被门保护着」** | ⛔ **基线只记录"有这条且无鉴权依赖"，⛔ 不防它被删**。<br>`check_route_auth.py --baseline` 见到**少一条**会报「少了 N 条（修好了）」并 **`exit 0`** ⇒ **删掉 `/approvals` 全绿**。<br>⇒ 真正的守卫是页面用例：`app/tests/test_chat_page.py` / `app/tests/test_approvals_page.py` **各 3 条**，`app/tests/test_trace_page.py` **6 条**（含"路由必须 302 到对应的那个 HTML"）。 |
 | 🔴🔴 **「页面能 302 过去 ⇒ 这个页面就能用」** | ⛔ **两件事** ——  的 `approvals.html` 实测：**302 正确、目标文件在磁盘上、不在 openapi 里**（三条用例全绿），**而页面在浏览器里 100% 打不开** —— 它 fetch 的 **4 条 URL 全少 `/api/v1`**。<br>⚠️ **三层判据一条都没红**：页面用例只看 302 · JS 用例全是**纯函数**（前缀不经过它们）· 路由门只管**后端有没有多余的无鉴权路由**。<br>⇒ **补了第 4 类守卫：读页面源码，把里面 `getJSON(...)` / `fetch(...)` 的字符串字面量抠出来，必须以 `/api/v1` 开头**。<br>🔴 **⚠️ 它现在在 `app/tests/test_web_pages.py`，不在 `test_trace_page.py` 里** —— 2026-10-06 搬的：原来**只读 `trace.html` 一个文件**，而**那正是它当初没拦住 `approvals.html` 的原因**；现在**扫 `app/static/` 下每一个 `.html`**（实测 **6 个**）。📄  §三·A。<br>📌 **判据（可打印）**：`grep -n "getJSON('/\|fetch('/" app/static/web/approvals.html` ⇒ **4 条**（在 `loadPending` / `openContext` / `decide` / `loadHistory` 四处），**现已全部带 `/api/v1`**（✅ 2026-10-06 修）。⚠️ **⛔ 别抄行号**（这次修复本身就把它们下移了 5 行）。 |
 
@@ -154,19 +154,18 @@
 | `app/billing/specs/token_tracker.md` | **配额**那一层的数据源（`get_token_budget_info`）—— 本文件只负责在中间件里消费它 |
 | `app/specs/归档/quota_limiter.md` | ⚰️ **已归档** —— 原先的「每日**次数**」计数器，**2026-10-03 随  删除** |
 | `后端补齐清单` **B9-b** | 限流分桶加验签（**2026-09-30 已做**） |
-| `后端补齐清单` **B12** | 错误文案 + `retry_after`（⚠️ **本文把落点从 1 处更正为 4 处**） |
+| `后端补齐清单`  | 错误文案 + `retry_after`（⚠️ **本文把落点从 1 处更正为 4 处**） |
 | `app/tests/test_rate_limit_identity.py` | `resolve_rate_limit_identity` 的 **8 条**回归测试（⚠️ 2026-10-05 批 3 **一条都没改** —— `None` 与 `"anonymous"` 没有互相污染） |
 | 🆕 `app/tests/test_auth_db_unavailable.py` | **批 3· 22 条** —— 其中**第三组**直接调两个中间件的 `dispatch`（⚠️ **只测函数不够**：删掉"照 `None` 办事"那两行，函数级用例照样全绿） |
-| 🆕 本仓的决策记录（⛔ 不随产品仓提供） |  的 **503** 口径 + 四层 fail-open/fail-closed 分工 |
+| 🆕  |  的 **503** 口径 + 四层 fail-open/fail-closed 分工 |
 | `app/tests/test_public_paths.py` | `MIDDLEWARE_EXEMPT_PATHS` 与真实路由的一致性 —— ⚠️ **其中那条「两个中间件共用同一处判定」2026-10-11 换过靶子**（：内联匹配收口成了 `is_middleware_exempt`） |
 | 🆕 `app/tests/test_static_exempt.py` | **8 条** ——  的判据（静态资源豁免）。🔴 **含两侧变异自证**：拆掉前缀 ⇒ **2 条红**；去掉边界 ⇒ **1 条红**。<br>⚠️ **⛔ 别改用 `TestClient` 判** —— 限流器连不上 Redis 时是 fail-open ⇒ 那种"绿"是**假的**（理由同 `resolve_rate_limit_identity` 抽出时那条）。 |
 | 🆕 `app/tests/test_rate_limit_ip.py` | **15 条** —— 按 IP 限流的判据。**纯函数 10 条 + 真调中间件 3 条**（把两个 limiter 换成假的，只记下收到的桶名）+ 开关默认值/收口各 1 条。<br>🔴 **变异自证两侧都跑过**：改成"总是信代理头" ⇒ **2 条红**；退回共用桶 ⇒ **4 条红**。<br>⚠️ 中间件那三条**不连 Redis**（假 limiter），所以它测的是**桶名**而不是"会不会 429"。 |
 | `app/tests/test_route_auth_scan.py` | **改名与接线那一轮的判据**—— 9 条：扫描口径必须**看得见 WS**、纯函数**不许 `chdir`**、**自证**旧口径扫不到 WS |
 |  | ⭐ **「哪些路由没鉴权」的权威判据** —— ⛔ **别读名单、读它**（现含 WS） |
-|  | 改名 + **把上面那个脚本真的接进 CI 与提交门**（此前它**哪都没跑**） |
-| 🔴 本仓的决策记录（⛔ 不随产品仓提供） | **第二条页面路由 `/approvals` 的依据**（§3.3 —— 硬门 D 的反例原文是「界面上找不到」，所以那一栏**只能靠页面**）· 消费它的接口在 `app/routing/specs/api_v1_agent.md` |
-| 🆕 本仓的决策记录（⛔ 不随产品仓提供） | **第三条页面路由 `/trace` 的依据** —— ⭐ 同时是**「302 对 ≠ 页面能用」那个事故**（`approvals.html` 4 条 URL 少 `/api/v1`）的**首次记录处** |
-| 🆕 本仓的决策记录（⛔ 不随产品仓提供） | **那个事故的收尾**（✅ 4 条 URL 已修 · 守卫从"盯一页"改成"盯全站"）· **`ci.yml` 的 `node --test` 改 glob** · 🔴 **裸 glob 的反证实测**（匹配不到 ⇒ `tests 0` / 退出码 0） |
+| 🔴  | **第二条页面路由 `/approvals` 的依据**（§3.3 —— 硬门 D 的反例原文是「界面上找不到」，所以那一栏**只能靠页面**）· 消费它的接口在 `app/routing/specs/api_v1_agent.md` |
+| 🆕  | **第三条页面路由 `/trace` 的依据** —— ⭐ 同时是**「302 对 ≠ 页面能用」那个事故**（`approvals.html` 4 条 URL 少 `/api/v1`）的**首次记录处** |
+| 🆕  | **那个事故的收尾**（✅ 4 条 URL 已修 · 守卫从"盯一页"改成"盯全站"）· **`ci.yml` 的 `node --test` 改 glob** · 🔴 **裸 glob 的反证实测**（匹配不到 ⇒ `tests 0` / 退出码 0） |
 | `app/tests/test_trace_page.py` | **6 条** —— 前 3 条照抄 `/chat`/`/approvals`，**后 3 条是页面坏法的守卫**（见「看代码会误判」表末两行）。⚠️ **原第 4 条已搬去 `app/tests/test_web_pages.py`** |
 | 🆕 `app/tests/test_web_pages.py` | **7 条** —— **扫 `app/static/` 下每一个 `.html`**（实测 **6 个**）里 `getJSON(...)`/`fetch(...)` 的字面量必须以 `/api/v1` 开头 + **1 条防空跑**（`test_page_scan_is_not_vacuous`）。⚠️ **⛔ 别改回逐页列名** |
 | `app/static/specs/static_frontend.md` | **那三条页面路由指向的地方**（页面本体 / 纯逻辑 / 用例） |

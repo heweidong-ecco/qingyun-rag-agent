@@ -1,11 +1,7 @@
 """`rate_limiter` 的容错与过期（批 3 ·  +  · 2026-10-05）
 
-两条**早已裁过**的方向（需求方 2026-09-30，见 `app/access/specs/rate_limiter.md` 末表）：
+两条**早已裁过**的方向（作者 2026-09-30，见 `app/access/specs/rate_limiter.md` 末表）：
 
-| # | 现状 | 裁定 |
-|---|---|---|
-| **** | 全文 **0 个 `EXPIRE`** ⇒ 桶键**永久**留在 Redis | **要加** |
-| **** | **没有 `except RedisError`** ⇒ Redis 不通时**非公开路径全站 500** | **fail-open + 必须响的日志** |
 
  那条**不是推断**：`app/tests/test_rag_search.py` 里早就写着「实测」，
 `.github/workflows/ci.yml:11` 也把它当**给 redis service 的理由**写着。
@@ -101,7 +97,7 @@ def test_redis不通时放行而不是把全站打崩(redis_down):
 def test_redis不通时留下响的日志(redis_down, logs):
     """**必须响** —— 否则就是「**限流悄悄失效**」，比报错更危险。
 
-    （需求方 2026-09-30 裁那条时就带着这一句：「fail-open + **必须响的日志**」。）
+    （作者 2026-09-30 裁那条时就带着这一句：「fail-open + **必须响的日志**」。）
     """
     _limiter().is_allowed("bucket-x")
 

@@ -48,7 +48,7 @@ def test_simple_tools_list_names_all_five():
     """`SIMPLE_TOOLS` 这个**列表**要与本模块的 `@tool` 定义一致。
 
     它目前**全仓零调用**（死导出）—— 本用例**不是为了用它**，是为了**不让它变成假话**。
-       删不删它 ⇒ 是另一件事（等需求方发话，见施工单「现状 4」）。
+       删不删它 ⇒ 是另一件事（等作者发话，见「现状 4」）。
     """
     from tools.simple_tools import SIMPLE_TOOLS
 

@@ -61,7 +61,7 @@ if doc_type not in CHUNK_CONFIGS:
     raise AppException(ErrorCode.PARAM_INVALID, ...)   # 🔴 未知档位 ⇒ 400
 ```
 
-⇒ ⚠️ **访客走的那条路一个字没变**（需求方裁的就是这个默认值）；
+⇒ ⚠️ **访客走的那条路一个字没变**（作者裁的就是这个默认值）；
 **`report` / `article` / `faq` 只有"我们的灌库脚本显式传"才用得上** —— ⛔ **别以为上传个文件就会自动分档**。
 
 🔴 **判据（可打印）**：
@@ -115,4 +115,3 @@ DEFAULT_SEPARATORS = ["\n\n", "\n", "。", "！", "？", "，", " ", ""]
 | `app/routing/specs/api_v1_rag.md` | 唯一调用点所在的模块（文档上传链） |
 | 预处理模块（`app/rag/document_preprocessor.py`） | ⛔ **它还没有 spec**（221 行）⇒ 本表**不给路径**（给了就是断链）。它在本链的**上游**：切块前先过它 |
 | `app/rag/specs/embedding_client.md` | 切出来的块**下一步去哪**（逐块算向量 = 真花钱） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 同仓对"非法取值该 422 而不是静默兜底"的裁定（本文件是**反例**） |

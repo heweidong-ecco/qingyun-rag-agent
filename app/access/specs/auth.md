@@ -102,7 +102,7 @@
 ### 6. 🔴 `authenticate_user` 比的是**环境变量里的明文口令**，⛔ 与 `verify_api_key` 无关
 
 ```python
-return _get_users_db().get(user_name) == password      # 明文 ==，⛔ 没有哈希
+return _get_users_db().get(user_name) == password      # 明文 =，⛔ 没有哈希
 ```
 
 ⚠️ **这是两条完全独立的认证路线**，⛔ 别混：
@@ -139,7 +139,3 @@ fail-closed：⛔ **不留任何默认口令**。⇒ 本地没设这个变量时
 | `app/access/specs/permission.md` | 角色判定（`"admin"` 那个硬编码字面量） |
 | `app/specs/main.md` | startup 顺序（`ensure_admin_exists` 在建表之后）+ 中间件那两处调用 |
 | `docs/契约/环境变量.md` | `LOGIN_USER_NAME` / `LOGIN_PASSWORD` / `TEST_USER_PASSWORD` / `JWT_SECRET_KEY` |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 登录口令从硬编码迁到环境变量（曾是**公开仓上的活凭据**） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | §⚠️ 第 4 条的来由 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | ⭐ §⚠️ 第 1 条 —— 两条路径共用一句谓词 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 契约 D：`is_active` 从**死列**变成真的在拦 |

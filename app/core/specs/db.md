@@ -18,7 +18,7 @@
   · 🔵 **留下的一条经验，与时过境迁无关**：**"能不能收口"的分界线 = 纯词法差异 vs 压根没有的能力** ——
     前者**卡口收**，后者**必须真分支**。⚠️ 当年那六类词法翻译与四类"没有的能力"**照抄是错的**，
     看的是**那条判据**，不是那份清单。
-  📄 全文 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+  📄 全文
 - **`ThreadedConnectionPool` 连接池**（上下限走 `config.py` 的 `DB_MIN_CONN` / `DB_MAX_CONN`）
 - **`create_table()`** —— 建 5 张表 + 索引 + `pgvector` 扩展；含**兼容旧表**的 `DO $$ … ADD COLUMN` 块
 - **向量检索 `search_similar()`** —— `pgvector` 余弦距离
@@ -79,13 +79,12 @@
 | ⚠️ **「`user_id` 传进来就安全了」** | ⚠️ **`_require_identity` 只挡【空值】，不挡【伪造】** —— 它查的是 `if not user_id`。<br>⇒ **身份真假由端点层的 `get_current_user_hybrid` 保证**；若哪条端点把**请求体里**的字段直接传下来，这层**挡不住**。<br>📌 判据：`grep -n "user_id=user_name" app/routing/api_v1_rag.py` ⇒ 传的必须**是鉴权依赖的返回值**，⛔ 不是 `req.` 上的字段 |
 | ⚠️ **「`get_db()` 用完不 commit 会丢」** | ✅ **不会** —— 它是 `@contextmanager`（`:35`）：正常退出 `commit`、异常 `rollback`、`finally` 归还连接。<br>⚠️ 但**别因此把 `with` 写成手动 `getconn/putconn`** —— 那会绕过归还逻辑，**连接池会漏** |
 | ⚠️ **「`search_similar` 第 4 列是"距离"，越小越像」** | ⛔ **是"相似度"** —— SQL 里写的是 `1 - (embedding <=> %s)`，`<=>` 是余弦**距离**，减完变成相似度 ⇒ **越大越像** |
-| 🔴🔴 **「调用方 patch 了【自己模块的】`get_db`，就能把这里的连接短路掉」** | ⛔ **不能** —— 本文件里的 `search_similar` / `bm25_search` 调的是 **`db.py` 自己的模块全局 `get_db`**。调用方 patch `api_v1_rag.get_db` **够不着这里**。<br>⇒ **调用方一旦从"自己写 SQL"改成"调共享层"**，原来那条 monkeypatch **静默失效** ⇒ 会**真去连库**。<br>🔴 **而本机看不出来**（本机 Postgres 开着 ⇒ 连上、回 `[]`，与假连接**返回值一样**）；**CI 没有 Postgres ⇒ `Connection refused`**（2026-10-03 实测 12 条红）。<br>⇒ **判据**：`grep -rn 'setattr(.*get_db' app/test_*.py` —— 逐条看 patch 的是**哪个模块的**。📄 本仓的复盘记录（⛔ 不随产品仓提供） |
+| 🔴🔴 **「调用方 patch 了【自己模块的】`get_db`，就能把这里的连接短路掉」** | ⛔ **不能** —— 本文件里的 `search_similar` / `bm25_search` 调的是 **`db.py` 自己的模块全局 `get_db`**。调用方 patch `api_v1_rag.get_db` **够不着这里**。<br>⇒ **调用方一旦从"自己写 SQL"改成"调共享层"**，原来那条 monkeypatch **静默失效** ⇒ 会**真去连库**。<br>🔴 **而本机看不出来**（本机 Postgres 开着 ⇒ 连上、回 `[]`，与假连接**返回值一样**）；**CI 没有 Postgres ⇒ `Connection refused`**（2026-10-03 实测 12 条红）。<br>⇒ **判据**：`grep -rn 'setattr(.*get_db' app/test_*.py` —— 逐条看 patch 的是**哪个模块的**。|
 | 🔴 **「代码里写的索引类型，就等于活库的索引类型」** | ⚠️ **现在（2026-10-16 起）成立 —— 但那是【自愈段】保证的，⛔ 不是它天然成立。**<br>`CREATE INDEX IF NOT EXISTS` **改不动已经存在的索引**（名字被占 ⇒ 整条空转）。本仓为此漂移过一段：代码里写 `ivfflat`、活库是手工建的 `hnsw`，**两边不一致而没有东西盯着**。<br>⇒ `create_table()` 建完**读 `pg_am.amname` 验类型**，与 `_VECTOR_INDEX_AM` 不符就 `DROP` + 重建。<br>📌 判据：`SELECT am.amname FROM pg_class c JOIN pg_am am ON am.oid=c.relam WHERE c.relname='documents_embedding_idx'` ⇒ 必须等于本文件里的 `_VECTOR_INDEX_AM`。|
 | 🔴 **「`enable_ann_iterative_scan()` 那两句写在那儿就一定生效」** | ⚠️ **在 `pgvector < 0.8` 上它是【静默空转】** —— 那两个 GUC **不存在**，而 `SET` 会被 PG 当**占位符**收下、**`SHOW` 还会回你设进去的那个值** ⇒ 看着是绿的、实际什么都没设。<br>⇒ 由 `assert_pgvector_supports_iterative_scan()` 在**启动时拒绝启动**兜住（⛔ 不是 warning）。<br>⚠️ **所以那条门查的是 `pg_settings`，⛔ 不是 `SHOW`** —— 占位符**不出现**在 `pg_settings` 里，真 GUC 才出现。<br>📌 判据：`app/tests/test_ann_iterative_scan.py::test_防护真的写进去了_而且不是占位符`。|
 
 ## 关联
 
-本仓的决策记录（⛔ 不随产品仓提供）（决策 3 · 5 · 7）·
 `app/rag/specs/bm25_index.md`（转发目标与缓存分桶）·
 `app/rag/specs/hybrid_search.md` · `docs/契约/数据模型.md`（表结构）·
 `docs/原理/架构.md`（依赖方向：`db` ← `bm25_index` 单向）

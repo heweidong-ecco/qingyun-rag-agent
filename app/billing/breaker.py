@@ -27,7 +27,7 @@
 
 ## 本文件【自己】没有调用点也是白搭
 
-接线在 `①b` ：**与  同一批调用点**
+接线在 `①b`：**与  同一批调用点**
 （`api_v1_agent.py` 5 处 + `api_v1_rag.py` 3 处 + 匿名烧钱的 `/api/v1/rag/benchmark-embedding`）。
 """
 

@@ -44,7 +44,7 @@ API_PASSWORD = os.getenv("LOGIN_PASSWORD", "")
 TOP_K = 3
 
 # 用于生成答案和 RAGAS 评估的 LLM
-# 2026-09-21 改（需求方裁 · ）：**judge LLM 从【硬编码 DashScope】改为【读 `.env`】。**
+# 2026-09-21 改（作者裁 · ）：**judge LLM 从【硬编码 DashScope】改为【读 `.env`】。**
 #
 #    **为什么必须改**：DashScope 的 **chat 免费额度已耗尽（403）**
 #    这个脚本**装好包也跑不动**。而更别扭的是 —— 它**硬编码走 DashScope**，
@@ -64,7 +64,7 @@ eval_llm = make_llm(
     "chat", "answer",
 )
 
-# **embedding 保持 DashScope**（需求方 2026-09-21 明确）——
+# **embedding 保持 DashScope**（作者 2026-09-21 明确）——
 #    chat 额度耗尽了，但 **embedding 那边仍可用**（`EMBEDDING_MODEL_MAIN`，2026-10-14 起 1024 维）。
 #    与 `app/core/config.py` 的 embedding 配置**同源**（同一个模型名 / base_url），
 #       差别只在这里显式取 `DASHSCOPE_API_KEY`（本脚本独立于应用运行）。
@@ -79,9 +79,9 @@ eval_llm = make_llm(
 #    （`input` 是 list[int]）。**OpenAI 官方接口接受这种形式，DashScope 的不接受。**
 #    连 `embed_query("一句普通中文")` 都会挂 —— 与问题长短、中英文**都无关**。
 eval_embeddings = OpenAIEmbeddings(
-    # 2026-10-11：改前这里**写死** `"text-embedding-v2"` —— 施工单只记了两个站点，
+    # 2026-10-11：改前这里**写死** `"text-embedding-v2"` —— 只记了两个站点，
     #    实测**这是第三处**（`grep -rn 'text-embedding-v2' app/ --include='*.py' | grep -v /tests/`）。
-    #    需求方的要求是「**全局**的 embedding 模型要全部改成从 .env 加载」⇒ 这一处也算。
+    #    作者的要求是「**全局**的 embedding 模型要全部改成从 .env 加载」⇒ 这一处也算。
     # **不改的后果是静默的**：切完模型后评测用的 embedding 与被评测的系统**不是同一个**
     #    ⇒ 分数看着正常，但量的不是那个系统。
     # 本脚本【不 import 任何本仓模块】（见 `app/eval/CLAUDE.md`）⇒ 这里**只读 env**，
@@ -95,7 +95,7 @@ eval_embeddings = OpenAIEmbeddings(
 # ============================================================================
 # RAGAS 与【中文 + DeepSeek】的三处不兼容 —— 均在 2026-09-21 实测定位并修掉
 # ============================================================================
-# 三处**都不是本仓 RAG 系统的错**，是评估链三方之间的不兼容。。
+# 三处**都不是本仓 RAG 系统的错**，是评估链三方之间的不兼容。
 
 # ① `answer_relevancy` 的 `strictness`（默认 3）⇒ 向 judge 要 **n=3** 个补全。
 #    **DeepSeek 明确拒绝**：`Invalid n value (currently only n = 1 is supported)` ⇒ 400 ⇒ nan。

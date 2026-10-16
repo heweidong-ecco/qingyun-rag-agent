@@ -80,7 +80,7 @@ def hybrid_search(query: str, top_k: int = 5, *, user_id: str, thread_id: str):
           那就还是  §二 那个 fail-open 根因。
     """
     # 1. 向量检索
-    query_embedding = get_embedding(query, user_name=user_id, thread_id=thread_id)   # 🔴 ：会话也要往下传
+    query_embedding = get_embedding(query, user_name=user_id, thread_id=thread_id)   # 🔴：会话也要往下传
     vector_results = search_similar(query_embedding, top_k=top_k * 2, user_id=user_id)  # 多召回一些
 
     # 2. BM25 关键词检索

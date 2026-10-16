@@ -7,7 +7,7 @@
   · 请求**次数** —— `permission.ROLE_QUOTA` + `quota_limiter`，挂在 `QuotaMiddleware` 上；
   · **token** —— `token_config.ROLE_DAILY_TOKEN` + `token_tracker`。
 
-需求方按  裁「**统一到 token 一套**」，本文件钉住这次落地。
+作者按  裁「**统一到 token 一套**」，本文件钉住这次落地。
 
 ## 为什么是「原位置换」而不是「直接撤」
 

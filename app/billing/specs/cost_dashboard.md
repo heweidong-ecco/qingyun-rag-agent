@@ -33,5 +33,5 @@
 
 - `app/billing/specs/token_tracker.md` —— 5 个格子的数据来源（各格口径的**权威**）
 - `app/static/specs/static_frontend.md` —— **面向访客的**那个 `GET /cost` 页（两者不是一回事）
-- 本仓的决策记录（⛔ 不随产品仓提供） —— 口径徽标与"三条有意不露"
+-  —— 口径徽标与"三条有意不露"
 - `app/tests/conftest.py` —— `GRADIO_ANALYTICS_ENABLED` 那行注释

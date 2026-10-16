@@ -7,7 +7,7 @@ from loguru import logger
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from core.llm_factory import make_llm   # ①b ：model / api_key / base_url / max_tokens 的唯一落点
+from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 from tools.search_tools import web_search   # **留** —— `:149` 的搜索子图节点直接 `.invoke` 它
 # 2026-10-08：`tool` / `datetime` / `calculate` 三个 import **删了** ——
 #    它们只服务于本文件原先自带的那两个 `@tool`（已删、改为取共享对象）⇒ 留着就是 F401。
@@ -33,7 +33,7 @@ llm = make_llm("chat", "agent")
 #    `eval` 那条没丢：实现仍在 `app/tools/safe_math.py`，守卫在 `test_safe_math_wiring.py`。
 
 
-# 2026-09-20（需求方裁「乙」）：**LLM 工具表改为从 MCP 注册表【派生】—— 单一事实源。**
+# 2026-09-20（作者裁「乙」）：**LLM 工具表改为从 MCP 注册表【派生】—— 单一事实源。**
 #
 #    此前这里是一份**手工维护**的列表，与 `mcp_server.TOOLS` **各写各的** ⇒ 漂移：
 #      · `mcp_server.TOOLS`   **6** 个
@@ -170,7 +170,6 @@ def create_search_subgraph():
     def search_summarize(state: AgentState, config: RunnableConfig):
         """总结搜索结果
 
-        **（2026-10-04）：改真流式** —— 声明 `config` 并把它转发给 `.stream`，
            这是 `astream(stream_mode="messages")` 出不出 token 的**唯一条件**。
            本文件所有节点**都是同步的**，别改成 `async def`：同步的 `graph.invoke`
            （`/agent/advanced_chat` 走的就是它）会当场抛 `TypeError`。
@@ -324,7 +323,6 @@ def create_react_subgraph():
     def agent_decide(state: AgentState, config: RunnableConfig):
         """决策节点：调用模型，让它决定是回复文本还是调用工具。
 
-        **（2026-10-04）：改真流式**（声明 `config` + 转发 `.stream`）。
            **`+` 聚合在这里是【必须】的**：`tool_calls` 是碎片化到达的，只拼 `content`
            会让本子图的 `should_continue` 判不出 `"tools"` ⇒ **工具永远不会被执行**，
            而 `summarize` 照样写出 `final_output`（看着像正常回答）。

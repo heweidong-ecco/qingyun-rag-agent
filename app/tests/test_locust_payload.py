@@ -80,7 +80,7 @@ def _extract_kwarg(block: str, kwarg: str):
 def _scan_locustfile(name: str, src: str):
     """扫一个 locustfile，返回 (问题列表, 检查过的请求数)。
 
-    按 `self.client.post(` 切块，取块内第一段路径字符串与是否用到 json=/params=。
+    按 `self.client.post(` 切块，取块内第一段路径字符串与是否用到 json=/params。
     """
     problems, checked = [], 0
     for m in re.finditer(r"self\.client\.post\((.*?)\n\s*\)", src, re.S):

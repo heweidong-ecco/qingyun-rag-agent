@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from core.exceptions import ErrorCode, AppException
 from routing.deps import get_current_user_hybrid
 
-#   · ：SSE 骨架 —— 本仓**所有**流式端点共用一份（含那 5 条实测约束的顺序）。
+#：SSE 骨架 —— 本仓**所有**流式端点共用一份（含那 5 条实测约束的顺序）。
 # 2026-10-04（批 3）：`anyio` / `json` / `StreamingResponse` / `logger` / `track_stream_cancel`
 #    这 5 个 import **已从这个文件删掉** —— 它们此前**只被** `/agent/langgraph_chat/stream`
 #    那一段内联生成器用到，现在那一段整块搬进了 `app/routing/sse.py`。
@@ -140,7 +140,7 @@ def agent_budget_intercept_message(why: str) -> str:
     ⇒ 改成「本轮未继续执行」—— 对**两种**拦截都成立。
     代价（选了就要认）：`/agent/mcp_chat` 那条 429 的中文**跟着变了**。
        而"哪个工具没执行"这个信息**没有丢** —— `check_multilevel_budget` 的 reason 里本来就带
-       （形如「工具 `x` 将超出…」）。裁定 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）。
+       （形如「工具 `x` 将超出…」）。裁定。
 
     **`why` 为空时也要能调**（`.get` 可能拿到 `None`）—— 返回一句兜底，不返回空串：
        空的 `{"error": ""}` 跑出去，调用方**比现在还看不懂**。
@@ -286,7 +286,7 @@ async def langgraph_chat(
     # **必须在 `summarize_agent_result` 之前 `raise`**：被拦的这一轮**没有停在审批点**
     #    ⇒ 下面 B5 那一支不许 `register`（否则队列里多一条**永远批不了**的假待办）。
     # 别在节点里 `raise` —— 会把 checkpoint 留成非法序列（§二 实测）。
-    # 裁定 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）。
+    # 裁定。
     if result.get("budget_intercept"):
         raise AppException(ErrorCode.QUOTA_EXCEEDED,
                            agent_budget_intercept_message(result["budget_intercept"]))
@@ -311,7 +311,7 @@ async def langgraph_chat(
     else:
         resolve(sess)
         # 答完了 ⇒ 收表（`total_tokens` / `total_cost` 本处取不到 ⇒ 保持 0）。
-        # **这就是那个"恒为 0"的来源**（`docs/待办总表.md` 未记，见  §六·2）——
+        # **这就是那个"恒为 0"的来源**（未记，见  §六·2）——
         #    页面**不许拿它当"本次花费"**，花费一律走 `/agent/trace/{thread_id}/cost`。
         finish_trace(user_name, thread_id, summary.get("answer") or "")
 
@@ -466,7 +466,7 @@ async def langgraph_chat_stream(
         #    —— `graph_message_text` 一并挡了（见 `app/routing/sse.py`）。
         extract=lambda item: graph_message_text(item, nodes=STREAMABLE_NODES),
         on_complete=_complete,
-        # ：**取消与异常两条出口**都把**已经流出去的那半截**补存进历史（不是直接丢）。
+        #：**取消与异常两条出口**都把**已经流出去的那半截**补存进历史（不是直接丢）。
         #    必须是**同步**的 —— 骨架会在 `await aclose` **之前**调它，
         #       这正是"晚切（用户已看到字再点停止）也存得下"的原因。
         #    这里**只能用 `collected`**：取消/异常时图正跑到一半，**没有最终状态可查**
@@ -509,7 +509,7 @@ async def approve_agent_action(
        `/agent/pending` 查不到、再批报"没有等待审批的任务"、同 thread 再问 500）。
        调用方要按**与首次触发时相同**的方式处理它（再走一遍本接口）。
 
-    **轮次上限（需求方 2026-10-05 裁「上限 3 轮」）**：上面那条"重新登记"
+    **轮次上限（作者 2026-10-05 裁「上限 3 轮」）**：上面那条"重新登记"
        **自带一个上限** —— 登记时记着 `rounds`，每"放行后又停" `+1`；到上限（`approval_round_cap`，
        默认 **3**，env `MAX_APPROVAL_ROUNDS` 可改）就**不再登记**，改为注入一条
        "已达上限、请直接作答"的 `ToolMessage` 并**续跑**，让图自己收尾：
@@ -532,7 +532,7 @@ async def approve_agent_action(
     #    **烧钱**端点（R1.3 由中间件覆盖 ⇒ 不是"零门"，但续跑照样烧钱）。
     #    **两条并列、都要过**（别合并）—— 与其余 11 条端点同款。
     #    用的是**调用方** `user_name`，**不是属主 `owner`**（属主要等查完队列才知道）。
-    #       这是一条**新裁决**：谁发请求谁被限，与其余端点一致。。
+    #       这是一条**新裁决**：谁发请求谁被限，与其余端点一致。
     ok, why = check_session_token_budget(user_name, thread_id)
     if not ok:
         raise AppException(ErrorCode.QUOTA_EXCEEDED, why)
@@ -575,7 +575,7 @@ async def approve_agent_action(
     sess = candidates[0]["thread_id"]
     config = {"configurable": {"thread_id": sess}}
 
-    # 按**登记的图**路由（需求方 2026-10-03 裁）：`/agent/langgraph_chat` ⇒ `agent_graph`，
+    # 按**登记的图**路由（作者 2026-10-03 裁）：`/agent/langgraph_chat` ⇒ `agent_graph`，
     #    `/agent/memory_chat` ⇒ `checkpointer_agent`。
     #    写死 `agent_graph` 的后果：memory_chat 那条会话**永远放行不了**
     #    （门关了却没有钥匙 —— 比不加门还糟）。
@@ -610,7 +610,7 @@ async def approve_agent_action(
     # 留痕（§3.2）：**只记"真的落到图上的裁决"**。
     #    位置是刻意的 —— 必须在上面那道「图没停在审批点 ⇒ 登记陈了」的守卫**之后**：
     #       那一条发生在归属校验**通过之后**，把它也算成一次裁决就是**假留痕**
-    #       （§3.2 只列了三条"不记"，这是第四条，见施工单具体化 C）。
+    #       （§3.2 只列了三条"不记"，这是第四条，见具体化 C）。
     #    `owner_name` 是**会话的**、`user_name` 是**动手的**（admin 接管时**必然不同**）
     #       —— 别合成一个字段。
     #    `edited` 的真实语义是「**代替模型给出了这次工具调用的结果**」，不是"改写了答案"。
@@ -675,7 +675,7 @@ async def approve_agent_action(
     #    判据 ⇒ `app/tests/test_approval_resume.py::test_resume_that_stops_again_is_re_registered`
     after = target.get_state(config)
     if after.next == ("approval",):
-        # 又停在审批点 ⇒ 按**轮次上限**分两路（需求方 2026-10-05 裁「上限 3 轮」）。
+        # 又停在审批点 ⇒ 按**轮次上限**分两路（作者 2026-10-05 裁「上限 3 轮」）。
         new_calls = list(getattr(after.values["messages"][-1], "tool_calls", None) or [])
         rounds = candidates[0].get("rounds", 1)
         if rounds >= approval_round_cap():
@@ -1034,7 +1034,7 @@ async def advanced_agent_chat_stream(
         extract=lambda item: graph_message_text(
             item, nodes=agent_graph_advanced_learning.STREAMABLE_NODES),
         on_complete=_complete,
-        # ：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
+        #：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
         on_incomplete=lambda collected, status: persist_turn(
             user_name, question, "".join(collected), thread_id=thread_id, status=status,
         ),
@@ -1186,7 +1186,7 @@ async def agent_plan_execute_stream(
     | `data: {"goal": …, "thread_id": …, "plan": […], "execution_result": "…"}` | 收尾**一帧汇总** |
     | `data: [DONE]` | 结束哨兵 |
 
-    ## 两条**必须知道**的现状（都摘自需求方 2026-10-04 的裁定）
+    ## 两条**必须知道**的现状（都摘自作者 2026-10-04 的裁定）
 
     1. **流内文本是【正在生成的 JSON 片段】，不是人读终稿。**
        `plan_task` 的提示词明确要求严格 JSON 输出（`:216-222`），下游还要 `json.loads`。
@@ -1272,7 +1272,7 @@ async def agent_plan_execute_stream(
         # `extract=None`：桥吐出来的**就是文本**（不是图的消息块）⇒ 原样发。
         #    别给它套 `graph_message_text`（那要 `(chunk, meta)`，会 ValueError）。
         on_complete=_complete,
-        # ：取消 / 异常两条出口的留痕。**提问变量是 `goal`**（本端点没有 `question`）。
+        #：取消 / 异常两条出口的留痕。**提问变量是 `goal`**（本端点没有 `question`）。
         #    **已知毛刺（登记，本轮不修）**：中途取消时存下去的是**半截 JSON**（`{"step"` 这种）
         #       —— 它的流本就不是人读终稿。**照实存**，不许为了好看去 `json.loads` 那半截（可能非法）。
         on_incomplete=lambda collected, status: persist_turn(
@@ -1440,7 +1440,7 @@ async def memory_chat_stream(
         extract=lambda item: graph_message_text(
             item, nodes=agent_checkpointer.STREAMABLE_NODES),
         on_complete=_complete,
-        # ：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
+        #：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
         on_incomplete=lambda collected, status: persist_turn(
             user_name, question, "".join(collected), thread_id=thread_id, status=status,
         ),
@@ -1483,7 +1483,7 @@ async def search_memory(
 
 # ==================== 单独的浏览器工具测试接口 ====================
 #
-# 2026-09-21 整块注释（N13 · 需求方裁「挂起 + 直接注释掉 + 标『# 可扩展能力』」）
+# 2026-09-21 整块注释（N13 · 作者裁「挂起 + 直接注释掉 + 标『# 可扩展能力』」）
 #
 #   **# 可扩展能力 —— 装上 chromium 后取消下面的注释即可启用。**
 #
@@ -1723,7 +1723,7 @@ async def mcp_agent_chat(
     #    （`agent_graph_advanced.py:246/268` → `record_tool_*`），
     #    那条轴的**读**端点 `/agent/trace/{thread_id}`（`:1133`）用的也是原值。
     #    两条轴别混：混了就得连追踪的读写一起改（那是另一件事，不是丙段）。
-    #    **那条轴本身有跨用户可见的洞** ⇒ 已立账 `docs/待办总表.md` 的 **N4**。
+    #    **那条轴本身有跨用户可见的洞** ⇒ 已立账  的。
     sess = session_key(user_name, thread_id)
 
     result = await mcp_agent.ainvoke(
@@ -1747,7 +1747,7 @@ async def mcp_agent_chat(
     #    **2026-10-05（批 7）文案改了**：从「本次**工具调用**未执行」改成
     #       「**本轮**未继续执行」（`agent_budget_intercept_message`）。理由：本批新增的 8 处
     #       软返回**根本没有工具调用**（入口节点在调 LLM 之前就拦下了）⇒ 旧句对它们不准。
-    #       **改既有判据不许静默** —— 声明与代价见 本仓的决策记录（⛔ 不随产品仓提供）。
+    #       **改既有判据不许静默** —— 声明与代价。
     if result.get("budget_intercept"):
         raise AppException(ErrorCode.QUOTA_EXCEEDED,
                            agent_budget_intercept_message(result["budget_intercept"]))
@@ -1842,7 +1842,7 @@ async def mcp_agent_chat_stream(
             msg = agent_budget_intercept_message(why)
             yield sse_frame({"error": msg}, ensure_ascii=False)
             yield DONE_FRAME
-            # ：留痕排在任何 `yield` 之前的那条约束这里**不适用**（本支不会异常），
+            #：留痕排在任何 `yield` 之前的那条约束这里**不适用**（本支不会异常），
             #    但"三条出口都要留痕"照办 —— 这条算 `error`（本轮没答成）。
             persist_turn(user_name, question, msg, thread_id=thread_id, status="error")
             return
@@ -1878,7 +1878,7 @@ async def mcp_agent_chat_stream(
         extract=lambda item: graph_message_text(
             item, nodes=agent_graph_advanced.STREAMABLE_NODES),
         on_complete=_complete,
-        # ：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
+        #：取消 / 异常两条出口的留痕（同步 · 排在 `await aclose` 之前）。
         on_incomplete=lambda collected, status: persist_turn(
             user_name, question, "".join(collected), thread_id=thread_id, status=status,
         ),

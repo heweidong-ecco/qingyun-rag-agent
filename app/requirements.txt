@@ -33,14 +33,14 @@ python-dotenv==1.2.3    # ← 2026-10-09 钉死（原 python-dotenv>=1.0.0 · SE
 #       → `ImportError: cannot import name 'create_tool_calling_agent' from 'langchain.agents'`
 #       ⇒ 应用在 **import 阶段**就崩（2026-09-15 实测）。
 #    ✅ **2026-10-09 真跳上 1.x，报错与上面那行【逐字一致】**；修法也正是它指的
-#       **改用 `langchain_classic`**（📄 本仓的决策记录（⛔ 不随产品仓提供） §2.4）。
+#       **改用 `langchain_classic`**（📄  §2.4）。
 #    ⚠️ **教训**：这条警告躺在文件里 **24 天**，而真跳时**没人先读它** ——
 #       发现顺序是「测试全绿 → 我手工调真身 → ImportError」，**不是**「先读注释」。
 #    ⇒ 现在本仓 **`langchain` 就是 1.x**（代码按 1.x 写）；全局只剩**一处**仍走 legacy：
 #      `app/routing/api_v1_rag.py` 的 agent executor（它上方的注释记了判据）。
 openai==2.54.0    # ← 2026-10-09 **大版本跳**（原 1.109.1 · `langchain-openai` 1.x 硬要 `>=2.26.0`）
                   #    🔴 本仓【直接】用它 ⇒ `app/rag/embedding_client.py:4` · `app/rag/query_rewriter.py:9`
-                  #    ⚠️ 选了 **2.x** 而不是 resolver 默认的 3.x ⇒ 见 本仓的决策记录（⛔ 不随产品仓提供）
+                  #    ⚠️ 选了 **2.x** 而不是 resolver 默认的 3.x ⇒ 见
 langchain==1.4.4    # ← 2026-10-09 **大版本跳**（原 0.3.30）· 总闸是 `langchain-core` 0.3→1.x
 langchain-openai==1.7.0    # ← 2026-10-09 **大版本跳**（原 0.2.14）·
 #    ⚠️ 判据（三条，都实测过）：① 全仓**零 import**（`grep -rn langchain_community app/` ⇒ 空）；
@@ -122,7 +122,7 @@ python-multipart==0.0.32    # ← 2026-10-09 钉死（原 python-multipart>=0.0.
 #     此处原先又裸名重复了一次（无约束）。重复条目会掩盖版本漂移，已删除。
 langgraph-checkpoint==4.2.0    # ← 2026-10-09 **大版本跳**（原 3.0.1；它原先还是**裸名**）·
 langgraph-checkpoint-sqlite==3.1.1    # ← 2026-10-09（原 3.0.3）· ⚠️ 它逼着 `langgraph-checkpoint` 上 4.x
-# 🔴 2026-10-09 **新登记**（需求方当天裁「补进去」，⛔ 不是我在代码里用到了它们）——
+# 🔴 2026-10-09 **新登记**（作者当天裁「补进去」，⛔ 不是我在代码里用到了它们）——
 #    `langgraph-sdk` / `langgraph-prebuilt` 是 `langgraph` 的**传递依赖**，
 #    原先**不在本清单里**（只由 `langgraph` 的区间约束）。
 #    ⚠️ **补的理由**：本仓「**依赖清单单一化**」的口径 —— 凡会进 本服务镜像的包，
@@ -158,9 +158,9 @@ mcp==2.3.0    # ← 2026-10-09 钉死（原 mcp>=2.3.0,<3 · SECURITY.md §3.5�
 gradio==6.27.0    # ← 2026-10-09 钉死（原 gradio>=4.0.0 · SECURITY.md §3.5）
 
 sqlalchemy==2.0.53    # ← 2026-10-09 钉死（原 sqlalchemy>=2.0.0 · SECURITY.md §3.5）
-# 🆕 2026-10-10（需求方裁「**装，进清单**」）：
+# 🆕 2026-10-10（作者裁「**装，进清单**」）：
 #       **没说它根本跑不了**（那是两件事）。
-#    ⚠️ **它【会进 本服务镜像】**（本清单就是镜像的依赖清单）—— 需求方知道这一点后仍裁「进清单」，
+#    ⚠️ **它【会进 本服务镜像】**（本清单就是镜像的依赖清单）—— 作者知道这一点后仍裁「进清单」，
 #       理由是「**不要留尾巴**」：一份跑不了的迁移目录比多装一个包更坏。
 
 # RAGAS 评估脚本依赖 datasets

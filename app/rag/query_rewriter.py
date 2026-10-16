@@ -182,7 +182,7 @@ def rewrite_query(original_query: str, conversation_history=None, *,
         completion_tokens=response.usage.completion_tokens,
         purpose="query_rewrite",
         user_name=user_name,
-        thread_id=thread_id,      # 🔴 ：同 `expand_query`，不带就落 `"unknown"`
+        thread_id=thread_id,      # 🔴：同 `expand_query`，不带就落 `"unknown"`
     )
 
     # 改写成空必须**回退到原问题**:否则会拿「空查询」去检索 → 召回到无关文档 →

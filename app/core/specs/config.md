@@ -152,5 +152,3 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))   # ⇒ 仓�
 | `app/access/specs/auth.md` | `LOGIN_USER_NAME` / `LOGIN_PASSWORD` / `TEST_USER_PASSWORD` 的**三个消费口** |
 | `app/access/specs/permission.md` | §⚠️ 第 5 条的另一半（`"admin"` 那个硬编码字面量） |
 | `app/core/specs/llm_factory.md` | `LLM_API_KEY` 的**报错点**与两条轴 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 登录口令从硬编码迁到环境变量 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 撤掉 `LLM_API_KEY` 的 `DASHSCOPE` 兜底（§⚠️ 第 3 条）· 生成端点固定 DeepSeek |

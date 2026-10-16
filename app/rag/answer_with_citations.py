@@ -62,7 +62,7 @@ def generate_answer_with_citations(
             "source": doc.get("source", "未知"),
             "content": doc["content"],
             "content_preview": doc["content"][:100],
-            # ：形状与流式出口**逐字同构**，这条键也必须跟着加。
+            #：形状与流式出口**逐字同构**，这条键也必须跟着加。
             # 本链的 `contexts` 来自 `rag_pipeline` 的 RRF 融合结果，那里**没有**
             #    `similarity`（候选字典只有 id/content/source/from/rrf_score）
             #    ⇒ 这里会**诚实地**取到 `None`。前端 `formatSource` 对 `None` 画 `—`，

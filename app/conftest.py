@@ -84,7 +84,6 @@ def auth_headers(client):
     """登录管理员账号，返回 JWT 认证头
 
     口令从 `config` 读（= `.env` 的 `LOGIN_PASSWORD`），**不硬编码** ——
-    。
     """
     assert LOGIN_PASSWORD, "需在 .env 设置 LOGIN_PASSWORD（应用启动也会因此失败）"
     response = client.post("/api/v1/auth/login", json={
@@ -103,7 +102,7 @@ def sample_document():
     }
 
 # ══════════════════════════════════════════════════════════════════════
-# B1 · ：**每条用例前后都清掉角色缓存**
+# B1：**每条用例前后都清掉角色缓存**
 # ══════════════════════════════════════════════════════════════════════
 #
 # `permission.get_user_role` 带**进程内 TTL 60s 缓存**（它在配额热路径上，
@@ -134,7 +133,7 @@ def _clear_role_cache_between_tests():
 # ## 它修的是什么
 #
 # `needs_db` / `integration` 那些用例会**真的写库**（往 `token_usage_logs` / `documents` /
-# `api_keys` 里 INSERT）。而本仓**有前科**：本仓的复盘记录（⛔ 不随产品仓提供）
+# `api_keys` 里 INSERT）。而本仓**有前科**：
 # ——R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行。
 #
 # 2026-10-13 实查：真库 `rag_db` 里躺着**一批测试写进去的假记录** ——
@@ -176,7 +175,7 @@ def needs_db_isolation_problem(db_name) -> str | None:
     return (
         f"🔴 这条用例要【真库】，而 `POSTGRES_DB` 现在是 {db_name!r} —— "
         "它**不是**以 `_test` 结尾的隔离库。\n"
-        "⇒ 它真跑起来会**往真库写**（本仓前科：本仓的复盘记录（⛔ 不随产品仓提供））。\n"
+        "⇒ 它真跑起来会**往真库写**（本仓前科）。\n"
         "⇒ 跑法：`POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/… -q`\n"
         "⚠️ 这条闸是在它**能写库之前**拦的；⛔ 别为了「让它跑起来」把库名改成别的 —— "
         "要跑真库用例，就去建/用那个 `_test` 库。"

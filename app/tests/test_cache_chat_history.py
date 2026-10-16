@@ -1,4 +1,4 @@
-"""`app/core/cache.py` 的 `chat_history` 落痕口径（`docs/待办总表.md` N1）。
+"""`app/core/cache.py` 的 `chat_history` 落痕口径（N1）。
 
 **本文件存在的理由**： 的全部意义是「**读的人能分辨**这一轮是**说完了**还是**被打断了**」。
 判据只有一个 —— 存进去的那条**带不带 `status`、带的是什么**。

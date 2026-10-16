@@ -145,6 +145,3 @@ if not text.strip():
 | `app/routing/specs/api_v1_rag.md` | 流式留痕的调用点（`persist_turn` 三条出口） |
 | `app/routing/specs/api_v1_agent.md` | `persist_turn` **9 处**（Agent 各条路径） |
 | `app/specs/main.md` | `warmup_cache` 的启动调用（`:713`） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | §⚠️ 第 6、7 条的裁定 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | §⚠️ 第 3 条（`status` 必填）· 三条出口共用一段 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 契约 C：`thread_id` 进键（改前**不切分历史**） |

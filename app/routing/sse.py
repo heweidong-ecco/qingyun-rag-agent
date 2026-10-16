@@ -13,7 +13,7 @@
 
 | # | 约束 | 出处（都是实测，不是推断） |
 |---|---|---|
-| ① | **同步收尾（计数 → 日志 → `on_incomplete`）必须排在【任何 `await` 之前】** | ：`await stream.aclose` 会被**二次投递的取消**打断 ⇒ 排在它后面的收尾**一件都不跑**，而**单测全绿**（假流的 `aclose` 不抛）。只在**晚切**（用户已看到字再点停止）时露出来 |
+| ① | **同步收尾（计数 → 日志 → `on_incomplete`）必须排在【任何 `await` 之前】** |：`await stream.aclose` 会被**二次投递的取消**打断 ⇒ 排在它后面的收尾**一件都不跑**，而**单测全绿**（假流的 `aclose` 不抛）。只在**晚切**（用户已看到字再点停止）时露出来 |
 | ② | **关上游必须包 `anyio.CancelScope(shield=True)`** | 同上。取消作用域在**每个 await 点反复投递** ⇒ 不护住，"关"这个动作每次都半途而废 |
 | ③ | `except asyncio.CancelledError: raise` —— **不吞 · 不在里面 `yield`** | /：旧实现在取消时还发了一帧 `[DONE]`，**实测真发得出去**（接收方已走，发出去只会让"已取消"与"正常收尾"在**帧层面长得一样**） |
 | ④ | `X-Accel-Buffering: no` **不可省** | 有反代（Nginx / Cloudflare）时它会把 SSE **攒着发** ⇒ 本地直连一切正常、**上线后变成假流式** |
@@ -46,7 +46,6 @@
 2. **聚合与发帧是两件事**：本模块只管**发帧**。节点内部要把流**聚合成一条完整消息**去记账时，
    **必须对【所有】块做 `+`，不许跳过 `content` 为空的块** ——
    实测本仓 provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上，跳过它**账就没了**
-   （判据见 本仓的施工单（⛔ 不随产品仓提供））。
 """
 
 from __future__ import annotations
@@ -201,7 +200,6 @@ async def sse_stream(
         on_complete: **async 生成器**，`(collected) -> AsyncIterator[str]`。**只有正常跑完才进**，
             负责产**整条收尾尾巴**（汇总帧 / `[DONE]` / sources…）。骨架不替你补 `[DONE]`。
         on_incomplete: **同步** callable，`(collected, status) -> None`。**两种"没走完"各调一次**
-            ：取消 ⇒ `status="cancelled"`；异常 ⇒ `status="error"`。
             必须是同步的 —— 这正是它能躲开"二次投递的取消"的原因（约束①）。
             **正常跑完一次都不调** —— 那条路归 `on_complete`。
             **两条出口不会各调一次**：异常那条会 `return`，`finally` 里那块只在
@@ -253,7 +251,7 @@ async def sse_stream(
         # 别让异常**静默**变成"流自然结束" —— 那前端看到的是"答案说了一半就没了"，
         #    而**没有任何错误信号**。
         logger.error(f"[stream] 生成出错 endpoint={endpoint}: {exc}")
-        # ：留痕排在**任何 `yield` 之前** —— 理由与约束① 同源（`yield` 也是 await 点，
+        #：留痕排在**任何 `yield` 之前** —— 理由与约束① 同源（`yield` 也是 await 点，
         #    被"二次投递的取消"打断 ⇒ 后面的收尾一件都不跑，而错误帧照样发得出去）。
         if on_incomplete is not None:
             on_incomplete(collected, "error")

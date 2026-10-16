@@ -41,7 +41,7 @@
 
 - `docs/契约/接口契约.md` —— 对外契约的**权威**
 - `app/routing/specs/api_v1.md` · `app/routing/specs/api_v1_agent.md` —— 谁在用这些模型
-- 本仓的决策记录（⛔ 不随产品仓提供） —— Swagger 示例与凭据的边界
+-  —— Swagger 示例与凭据的边界
 
 ## 🔴 2026-10-12 · `QuestionRequest` 删了 `mode`+ 本仓**第一个响应模型**
 

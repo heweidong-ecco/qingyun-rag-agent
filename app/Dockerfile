@@ -15,7 +15,7 @@ COPY requirements.txt .
 
 # 在第一阶段（builder）里
 #
-# 🔴 2026-09-29：**镜像源从 aliyun 换成 tsinghua**（需求方指示「换镜像源」）。
+# 🔴 2026-09-29：**镜像源从 aliyun 换成 tsinghua**（作者指示「换镜像源」）。
 #
 #    **为什么**：2026-09-29 在**容器内**实测（同一个包 `numpy==1.26.4`，同一条件）：
 #
@@ -36,7 +36,7 @@ RUN mkdir -p /root/.pip && echo "[global]\nindex-url = https://pypi.tuna.tsinghu
 # 将依赖安装到 /install 目录，用于后续复制
 # --user 安装到用户目录，避免权限问题
 #
-# 🔴 2026-09-29：**构建期裁掉重排序依赖**（需求方裁「甲」，）。
+# 🔴 2026-09-29：**构建期裁掉重排序依赖**（作者裁「甲」，）。
 #
 #    **为什么**：`requirements.txt:59` 的 `sentence-transformers` 会**连带拉入 `torch`** ——
 #      实测 `torch-2.14.0-cp310-manylinux_2_28_x86_64.whl` = **554.6 MB**（另加 scipy 37.7 / gradio 31.4 …），
@@ -46,15 +46,15 @@ RUN mkdir -p /root/.pip && echo "[global]\nindex-url = https://pypi.tuna.tsinghu
 #      （`from sentence_transformers import CrossEncoder` 写在 `get_reranker()` **函数体内**），
 #      只有 `mode=accurate/full` 与 `rerank_search` 才碰它 —— 默认 `accurate_norerank` 根本不 import。
 #
-#    ⇒ **这正是 `施工单 §4.2 档 1（推荐）`「api（fast 模式，不装重排序）」那条**：
+#    ⇒ **这正是 「api（fast 模式，不装重排序）」那条**：
 #      线上跑 2核4G，**重排序直接不做**（本机 8 GB 都跑不动它）。
 #
-#    ⚠️ **没有加第二份清单**（需求方裁过「**不用双 requirements.txt，这样会混**」）——
+#    ⚠️ **没有加第二份清单**（作者裁过「**不用双 requirements.txt，这样会混**」）——
 #       这里只是**构建期过滤**，仓里**仍然只有一份 `requirements.txt`**。
 #    ⚠️ **代价（已知并接受）**：镜像里**跑不了 `mode=accurate` / `rerank_search`**。
 #       线上本来就标注「fast 模式；重排序未启用」（延续 README 的 🔻 调性）。
 #       若将来要恢复：把这行换回 `pip install ... -r requirements.txt` 即可。
-# 🔴 2026-09-29 扩到 **5 个包**（需求方裁「乙」，）。
+# 🔴 2026-09-29 扩到 **5 个包**（作者裁「乙」，）。
 #
 #    新增裁掉的 3 个，**都是【工具】，不是【功能】**（2026-09-29 实测三者的调用形态）：
 #

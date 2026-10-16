@@ -28,4 +28,4 @@
 
 - `app/tools/specs/mcp_server.md` —— 调用方与注册表
 - `app/tools/specs/tool_health.md` —— 那条被放大的判据
-- 本仓的决策记录（⛔ 不随产品仓提供）* · * —— MCP 上界与长驻会话那两批
+- * · * —— MCP 上界与长驻会话那两批

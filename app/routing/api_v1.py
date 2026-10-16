@@ -228,7 +228,7 @@ async def create_user(
 #   ③ 消费者 = 0（仓内无前端 · 无测试引用 · 只有 Postman 1 个文件夹，已删）。
 #
 # **别照抄这个形状再把端点加回来** —— `app/tests/test_removed_endpoints.py::test_users_by_id_stays_removed`
-#    会红。若真要恢复，**先读 本仓的决策记录（⛔ 不随产品仓提供）**，且必须**同时**给出真实数据来源
+#    会红。若真要恢复，**先读 **，且必须**同时**给出真实数据来源
 #    与 `Depends(require_admin)`（它读的是**任意** user_id）。
 # ================================================================================
 
@@ -286,7 +286,7 @@ async def check_quota(user_name: str = Depends(get_current_user_hybrid)):
     """查看**自己**的日配额（**token 口径**）。
 
     2026-10-03 改：原先返回「每日**请求次数**」（`permission.ROLE_QUOTA` + `quota_limiter`）。
-    两者口径实测**差 35 倍**⇒ 需求方裁「统一到 token 一套」。
+    两者口径实测**差 35 倍**⇒ 作者裁「统一到 token 一套」。
     字段名 `daily_limit` / `remaining` **保留**，但**单位已从「次」变成 token**。
 
     2026-10-10：`user_name` **从路径参数改成依赖注入的返回值** ——

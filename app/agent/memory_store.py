@@ -248,7 +248,7 @@ def memory_block(user_id: str, query: str) -> str | None:
     #    根因就是 DashScope 的 key 在 CI 里是**占位值** ⇒ 这一句抛 401
     #    **异常从图节点里穿出来** ⇒ 整条请求挂。
     #    本机**看不见**：本机有真 key ＋ Redis 里有 embedding 缓存（同问句早算过）。
-    #    追因与判据 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）（§六）
+    #    追因与判据 ⇒ （§六）
     try:
         memories = search_user_memory(user_id, query)
     except Exception as e:                      # noqa: BLE001 —— 见上：**任何**失败都只该降级

@@ -40,7 +40,5 @@
 
 ## 关联
 
-（**为什么换、为什么否掉另外三个方案** —— 含实测证据）·
-（**是它记下来的**，本条把它结掉）·
 `app/agent/specs/agent_graph.md`（⚠️ 表里"`calculator` 不进白名单 ≠ 它安全"那条）·
 `app/tests/test_safe_math.py` · `app/tests/test_safe_math_wiring.py` · `app/tests/test_impl_modules.py`（**既有契约**：`1/0` 文案）

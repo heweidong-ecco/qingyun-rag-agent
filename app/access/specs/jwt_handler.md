@@ -26,4 +26,3 @@
 
 - `app/core/specs/config.md` —— `JWT_SECRET_KEY` / 两个有效期常量的来源
 - `app/access/specs/auth.md` —— API Key 那条**并行的**鉴权路径（两条不是一回事）
-- 本仓的决策记录（⛔ 不随产品仓提供）

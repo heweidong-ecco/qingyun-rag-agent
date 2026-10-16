@@ -114,7 +114,7 @@ def test_failure_result_is_not_cached(fake):
 
 
 # ==================== fail-open：Redis 不通不拒服务====================
-# 需求方 2026-10-08 裁定。**为什么必须 fail-open**：接上缓存后，`web_search` /
+# 作者 2026-10-08 裁定。**为什么必须 fail-open**：接上缓存后，`web_search` /
 #    `calculator` 会从"不需要 Redis"变成"需要 Redis" ⇒ Redis 一挂它们就 500。
 #    **缓存是优化，不该因为它拿不到就拒服务**（本仓 `app/tools/tool_cache.py` 文件头那句）。
 # 同形先例：`app/access/rate_limiter.py` 的  兜底。

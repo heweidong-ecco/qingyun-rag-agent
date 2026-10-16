@@ -14,7 +14,7 @@
 2. `agent_graph_advanced_learning.inject_memories_to_prompt`
 3. `agent_graph_advanced_learning.supervisor`（**入口节点**，**直调** —— 第 2 处的处置盖不到它）
 
-**第 3 处是这次新照出来的**：`docs/待办总表.md` 的  原先只写了前两处。
+**第 3 处是这次新照出来的**： 的  原先只写了前两处。
 漏了它 ⇒ `/agent/advanced_chat` 照旧整条 500，而上面两条用例**照样全绿**。
 
 ## 每一条都必须先跑【正控】

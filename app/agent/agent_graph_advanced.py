@@ -10,7 +10,7 @@ from loguru import logger
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from core.llm_factory import make_llm   # ①b ：model / api_key / base_url / max_tokens 的唯一落点
+from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 from langchain_core.messages import AIMessage, ToolMessage,SystemMessage
 from langchain_core.runnables import RunnableConfig   # B1：节点要靠它把回调接进模型调用
 from billing.token_tracker import record_usage
@@ -138,7 +138,7 @@ MCP Client 连接管理（**单 task 自开自关**版）
 
    ⇒ 现在的契约：**谁调用，谁在【自己这个 task 内】把会话开出来、用完关掉。**
    （代价：每次调用起一个 MCP 子进程。本仓的工具调用量下可接受；
-     要复用会话，得上 HTTP/SSE transport —— 那是另一个方案，。）
+     要复用会话，得上 HTTP/SSE transport —— 那是另一个方案。）
 
    回归测试：`app/tests/test_agent_repairs.py::test_call_mcp_tool_keeps_session_lifecycle_inside_one_task`
 """
@@ -431,7 +431,7 @@ async def tool_execute(state: AgentState):
 
     **别改成在这里 `raise`**（哪怕它看着更"硬"）—— 实测会把 checkpoint 留成
     `next=('tools',)` + 一条**没人回答**的 `AIMessage(tool_calls)` ⇒ **那个 thread 从此废掉**。
-    实测输出与备选评估 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）。
+    实测输出与备选评估。
     `record_tool_end` 在**被拦这条路上仍然不写**（追踪里留一条"开了没结束"）——
     这与改前**一字不差**（原来 `continue` 也不写），不是本批引入的回归。
     """
@@ -537,7 +537,6 @@ def build_mcp_agent():
     async def chat_node(state: AgentState, config: RunnableConfig):
         """处理不需要工具调用的直接对话，或工具调用完成后的最终总结
 
-        **（2026-10-04）：改真流式** —— 本节点是 `async`，所以走 `astream` 并把
            `config` 转发下去（：声明 `config` + 转发，是出不出 token 的**唯一条件**）。
            **别照抄** `agent_graph.py` / `agent_checkpointer.py` 那两处 —— 那两处是**同步**
            节点、用同步 `.stream`；这里改成同步会阻塞事件循环。

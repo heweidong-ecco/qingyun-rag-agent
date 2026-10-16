@@ -9,7 +9,7 @@
 ## ✅ 做了什么
 
 - **RRF（Reciprocal Rank Fusion，k=60）** —— 融合稠密向量检索与稀疏 BM25 两路结果
-- 是 `ROADMAP` 功能现状表里标 **✅「混合检索（向量 + BM25 + RRF 融合）」** 的落点
+- 是  功能现状表里标 **✅「混合检索（向量 + BM25 + RRF 融合）」** 的落点
 
 ## 🔴 2026-10-03 · 多用户隔离（甲段）
 
@@ -52,7 +52,7 @@ hybrid_search_with_rewrite(query, top_k=5, conversation_history=None, *, user_id
 
 - 🔴 **同算法两份实现**（见下）
 - 🔴 **零测试覆盖**（`docs/说明/测试.md` §六 **#1**）
-- ⚠️ **它是 `ROADMAP` 自己点名的"复审出过 bug 的地方"**：
+- ⚠️ **它是  自己点名的"复审出过 bug 的地方"**：
   > 「**RRF 恰恰是 2026-08-17 复审出 bug 的地方**」
   > （那次是元组解包崩溃：按 3 元组解包，而 `db.search_similar` 返回 4 列 —— 修复记录 #4）
 
@@ -74,5 +74,4 @@ hybrid_search_with_rewrite(query, top_k=5, conversation_history=None, *, user_id
 
 ## 关联
 
-`ROADMAP` 功能现状表 · `docs/说明/测试.md` §六 · `docs/原理/架构.md` §1.2（"同一算法两份实现"）·
-（多用户隔离）· （RAG 侧关闭零记账）· `app/rag/specs/query_rewriter.md`
+ 功能现状表 · `docs/说明/测试.md` §六 · `docs/原理/架构.md` §1.2（"同一算法两份实现"）·

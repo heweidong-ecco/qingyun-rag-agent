@@ -6,13 +6,13 @@ import billing.token_config as token_config
 
 
 def test_single_call_caps_are_the_agreed_values():
-    """需求方 2026-09-30 裁的起始值。终值等前端做完、浏览器实测后再调。"""
+    """作者 2026-09-30 裁的起始值。终值等前端做完、浏览器实测后再调。"""
     assert token_config.MAX_TOKENS_ANSWER == 2000
     assert token_config.MAX_TOKENS_AGENT == 1024
 
 
 def test_admin_is_no_longer_infinite():
-    """需求方 2026-09-30 裁：「admin 也要同样上限」⇒ 不许是 inf。
+    """作者 2026-09-30 裁：「admin 也要同样上限」⇒ 不许是 inf。
 
     **2026-10-11靶子改过**：日额度按【池】分成两张表
     这条**对两张表各判一遍**（不是删断言）—— 「admin = premium」是**口径**，
@@ -139,7 +139,7 @@ def test_embedding_model_still_priced():
     """**在用的** embedding 模型必须登记（`rag/embedding_client` 按 model 记账）。
 
     2026-10-11 改成**推导型**（改前写死 `"text-embedding-v2"`）。
-    **为什么必须改**：施工单  的 反证 写着「把新模型那行注释掉 ⇒ 上面那条守卫必须红」——
+    **为什么必须改**：  的 反证 写着「把新模型那行注释掉 ⇒ 上面那条守卫必须红」——
        **实测它不红**（`test_models_actually_in_use_have_explicit_pricing` 只管
        `LLM_MODEL_FAST` / `LLM_MODEL_CHAT`，**不管 embedding**；而这条写死了旧模型名，
        对"新模型没登记"**无感**）⇒ 结论：**换 embedding 模型这件事上，一道门都没有**。

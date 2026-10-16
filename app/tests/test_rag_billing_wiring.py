@@ -11,7 +11,7 @@
 而**门后面的计量表没接上**（从没往 `token_usage_logs` 写一行）。
 本文件钉的就是**那张表**。
 
-裁定 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+裁定
 起因 ⇒  §遗留·2（当时核出、**有意没做**）
 
 ## 两条必须一起读的话
@@ -114,7 +114,7 @@ def test_expand_query_records_real_usage_and_identity(monkeypatch, no_cache):
     assert "原问题" in out
     assert len(recorded) == 1
     assert recorded[0]["user_name"] == "bob"
-    assert recorded[0]["thread_id"] == "t-bob", "🔴 ：会话必须到得了记账点"
+    assert recorded[0]["thread_id"] == "t-bob", "🔴：会话必须到得了记账点"
     assert recorded[0]["purpose"] == "query_expand"
 
 
@@ -450,7 +450,7 @@ def test_query_rewriter_uses_record_usage_not_record_from_response():
 #   骨架只把**通过 `llm_chunk_text` 过滤的块**攒进 `collected`；而本仓 provider 把
 #   `usage_metadata` 挂在**最后一帧、且那帧 `content=''`** 上 ⇒ `llm_chunk_text` 返回
 #   `chunk.content or None` = `None` ⇒ **恰好被丢掉**。
-#   判据（可打印）⇒ 本仓的施工单（⛔ 不随产品仓提供） §结论 1/2
+#   判据（可打印）⇒  §结论 1/2
 #
 # 本节的用例**驱动真实端点函数**（含真实 `sse.sse_stream` 骨架）—— 不是只测 tap 类。
 #    理由：tap 挂在骨架**逐块调用 `extract`** 这个性质上；只测 tap 会漏掉

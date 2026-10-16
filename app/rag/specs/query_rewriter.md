@@ -40,9 +40,8 @@
 
 ## 关联
 
-（RAG 侧关闭零记账）· （同型：Agent 侧）·  §遗留·2（本条的**起因**）·
 `app/rag/specs/hybrid_search.md` · `app/billing/specs/token_tracker.md` · `app/routing/specs/api_v1_rag.md`
 
 > ⚠️ **`app/rag/rag_pipeline.py` 至今没有 spec** ——
 > 它是 `/rag/search` 的真管线，**本轮改了它三处**（`:99` `:105` `:207`）。
-> 建 spec 是**另一件事**，⛔ 本轮没做，已登记 `docs/待办总表.md`。
+> 建 spec 是**另一件事**，⛔ 本轮没做，已登记。

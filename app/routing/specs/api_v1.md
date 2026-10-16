@@ -13,7 +13,7 @@
   因为 `GET /` 改成了总览首页。⛔ 本表在 2026-10-10 之前**一直漏记它**）
 - **认证两条**：`/auth/login`（`:89`，`authenticate_user` → 双令牌）· `/auth/refresh`（`:109`）
 - **用户管理**：`/admin/create_user`（`:156`，**2 条带 `Depends(require_admin)` 的路由之一**）
-- **一堆 `/debug/*`**（4 条 · 🔴 **2026-10-10 ：改成「登录即可」+ 删掉路径形参**）：
+- **一堆 `/debug/*`**（4 条 · 🔴 **2026-10-10：改成「登录即可」+ 删掉路径形参**）：
   `/debug/count`（`:240` 直查 `documents` 行数）· `/debug/quota`（`:257`，⛔ **不再是 `{user_name}`**）·
   `/debug/cache_stats`（`:319` 扫 `emb:*`）· `/debug/rate_limit`（`:360`，同上）
 - **对比测试**（原 **2** 条，现 **1** 条）：`/rag/benchmark-embedding`（`:240`，**真调 embedding 两次**）·
@@ -34,7 +34,7 @@
   其余 3 条**有意公开** ⇒ **匿名可调 0 条**。
   🔴 **2026-10-10 起这个数是 2**（把 4 条 `/debug/*` 降到「登录即可」）
   ⇒ **现况看上面「状态」那一行**。⚠️ 追溯口径见 ⚠️①②③（**三行的"现状"已不成立，原文保留**）。
-- ✅ ~~⬜ **未裁**：`/debug/*` 这类**调试端点到底要不要挂到线上**~~ **2026-10-10 需求方裁：「挂」（保持现状）**。
+- ✅ ~~⬜ **未裁**：`/debug/*` 这类**调试端点到底要不要挂到线上**~~ **2026-10-10 作者裁：「挂」（保持现状）**。
   🔴 **裁的理由不是"风险小就算了吧"** —— 是**不挂的话「运维探针」那一页在 线上是死的**
   （4 个面板全打不开），而那是「**限流真的在生效**」这条**唯一可见的证据**
   与最高判据「**看得见 + 点得到**」正面相拗。
@@ -57,7 +57,7 @@
 | 🔴 **② 「匿名只能打到不烧钱的端点」** | ✅ **2026-10-04已不成立** —— 该端点**已带 `Depends(require_admin)`**，匿名打 ⇒ **401**（**实测**，见下）。<br>⚠️ **⚠️ 是 401 ⛔ 不是 403** —— **没带凭据** ⇒ `AUTH_MISSING`（**401**）；**带上非管理员的凭据**才轮到 `FORBIDDEN`（**403**，`app/core/exceptions.py` 的映射表）。<br>**实测（2026-10-04 · 裸 `TestClient`，5 条新收口路由一条不落）**：<br>`POST /api/v1/rag/benchmark-embedding {"question":"x"}` + `GET /api/v1/debug/{count,cache_stats,quota/admin,rate_limit/admin}` ⇒ **全部 401**，体为 `{"error":"请提供 API Key 或 Bearer Token","code":"AUTH_MISSING","status_code":401}`。<br>⚠️ **原文（收口前，保留供查）**：⛔ **错。`/api/v1/rag/benchmark-embedding` 匿名可打，且【真花钱】。**<br>**实测（2026-09-30，服务运行中）**：<br>```bash<br>curl -X POST http://127.0.0.1:8000/api/v1/rag/benchmark-embedding \\<br>  -H "Content-Type: application/json" -d '{"question":"匿名能烧钱吗"}'<br># → HTTP 200<br># → {"first_call_ms": 385.71, "second_call_ms": 1.12, ...}<br>```<br>**不带 `X-API-Key`、不带 `Authorization`** ⇒ **200**，且 **385ms = 真调了 DashScope**（第二次 1.12ms 是缓存命中）。<br>⚠️ **配额对匿名是跳过的**（`app/main.py:314` 的 `if not user_name:` ⇒ 直接放行）⇒ **匿名按 3 次/秒的速率无限烧 embedding**。<br>🔴 **它推翻了先前对  的判断**（原写「匿名能打到的只有两个端点，而它们是桩」）—— **那个核法漏了一整类**：<br>只查了**标注"无需 API Key"的两个**，**没查"完全没有鉴权依赖"的**。⛔ 后者用 `grep Depends(` **一条命令就能列全**。 |
 | 🔴 **③ 「`/debug/*` 只是调试，无所谓」** | 🔴🔴 **2026-10-10 本行【被  取代了一半】**：那 4 条**不再要 `require_admin`**，改成「登录即可」—— 而**取代它的正是下面那句「收口后仍收任意 `user_name`」被拿掉了**（两条的**路径形参已删**，永远查自己）。**现况看顶部「状态」行**。✅ **2026-10-04（历史）：4 条 `/debug/*` 全部补上 `Depends(require_admin)`**。<br>⚠️ **收口后仍收【任意 `user_name`】参数** —— 那对**管理员是对的**（他就是要能查别人）；⛔ **但别把它当"用户自助查询"**。<br>⚠️ **原文（收口前，保留供查）**：⛔ **两条会泄露【任意用户名】的信息**：<br>· `/debug/quota/{user_name}`（`:215`）⇒ 返回该用户的 **role / `daily_limit` / `remaining` / `used_today`**<br>· `/debug/rate_limit/{user_name}`（`:314`）⇒ 返回该用户的**剩余令牌 + 容量 + 速率**<br>⚠️ 配合 `permission.get_user_role` 的**按名字硬编码**（`admin` / `test_user` 特判）⇒ **可用来【枚举用户名】**。<br>另有 `/debug/count`（文档总数）· `/debug/cache_stats`（缓存键样本）。<br>🔴 **2026-10-03 起**：`/debug/quota` 的数字**单位是 token**（字段名 `daily_limit` / `remaining` 保留）—— ⛔ **别当次数读**。 |
 | ⚠️ **④ 「`/users/{user_id}` 会查用户」** | 🔴 **2026-10-04 该端点已【删除】**—— ⛔ **不是修好了，是删了**。<br>⛔ **守卫**：`app/tests/test_removed_endpoints.py::test_users_by_id_stays_removed`（判据 = **404**）。<br>⚠️ **原文（保留供查）**：⛔ **不会** —— 它**直接回显参数**：`return {"user_id": user_id, "detail": include_detail}`（`:196`）。<br>**不查库、不看 `user_name`**。⇒ 它是**参数校验的演示**，不是用户查询。<br>📌 本 spec 早在 2026-09 就把它标成「**要么真查库，要么删**」（见下方"没裁"表第 **4** 条）⇒ 本次走的是**删**。 |
-| ⚠️ **⑤ 「没用的 import 只是脏，没影响」** | ⚠️ **有一条不是** —— **`from agent_graph import agent_graph`（`:49`）** 会在 **import 期就构建那张图**（`agent_graph.py` 末尾 `agent_graph = build_agent_graph()`）。<br>⇒ 改 `agent_graph.py` 会**牵动 `api_v1.py` 的导入**，而本文件**根本不用它**。<br>📌 同族：`embedding_client.client` 也曾是模块级客户端（`ROADMAP` 待办 **T1**）—— ✅ **2026-10-05（批 6）已了结**：本文件 `:35` 那行 `from embedding_client import client` **已删**（全仓唯一引用、且从未被使用），客户端改**惰性构造**。 |
+| ⚠️ **⑤ 「没用的 import 只是脏，没影响」** | ⚠️ **有一条不是** —— **`from agent_graph import agent_graph`（`:49`）** 会在 **import 期就构建那张图**（`agent_graph.py` 末尾 `agent_graph = build_agent_graph()`）。<br>⇒ 改 `agent_graph.py` 会**牵动 `api_v1.py` 的导入**，而本文件**根本不用它**。<br>📌 同族：`embedding_client.client` 也曾是模块级客户端（待办）—— ✅ **2026-10-05（批 6）已了结**：本文件 `:35` 那行 `from embedding_client import client` **已删**（全仓唯一引用、且从未被使用），客户端改**惰性构造**。 |
 
 ## 关联
 
@@ -66,7 +66,7 @@
 | `app/specs/main.md` | **中间件的 `PUBLIC_PATHS` 只豁免中间件，≠ 该端点不需要鉴权** —— 本文件的 ⚠️① 就是这条的实例 |
 | `app/access/specs/rate_limiter.md` | `/debug/rate_limit` 用的是它；`user_name` 在那里是**桶名** |
 | `app/specs/归档/quota_limiter.md` | ⚰️ **已归档** —— `/debug/quota` **原先**用的是它；**2026-10-03 起改用 `token_tracker.get_token_budget_info`** |
-| `后端补齐清单` **B9** | ⚠️ **本文件 ⚠️② 直接改变 B9 的状态** —— 见下 |
+| `后端补齐清单`  | ⚠️ **本文件 ⚠️② 直接改变 B9 的状态** —— 见下 |
 |  · `app/billing/specs/token_tracker.md` | 🔴 **2026-10-03 配额口径改动** —— `/debug/quota` 的数字**从「次数」变成 token**；`get_user_quota` **已删**（原是本文件 + `main.py` 共三个调用点之一） |
 | `docs/说明/测试.md` §六 | 「103 个未使用导入」的一个来源（已裁「先挂起」） |
 
@@ -87,7 +87,7 @@
 >
 > | # | 事 | 结果 |
 > |---|---|---|
-> | **1** | 🔴 **给 `/debug/*` 加鉴权**（至少 `require_admin`），或**决定线上不挂载它们** | ✅ **已加 `require_admin`**（4 条）。<br>⬜ **但「线上要不要挂载」未裁** ⇒ `docs/待办总表.md` **** |
+> | **1** | 🔴 **给 `/debug/*` 加鉴权**（至少 `require_admin`），或**决定线上不挂载它们** | ✅ **已加 `require_admin`**（4 条）。<br>⬜ **但「线上要不要挂载」未裁** ⇒   |
 > | **2** | 🔴 **`/rag/benchmark-embedding` 加鉴权** | ✅ **已加 `require_admin`**。 |
 > | **3** | ⚠️ **21 个未使用 import** | ⏸ **仍挂起**⇒ ⛔ **别顺手清**（本次只动了**因删端点而失效的那 2 行**）。 |
 > | **4** | ⚠️ **`/users/{user_id}` 要么真查库，要么删** | ✅ **走了「删」**。 |
@@ -95,10 +95,10 @@
 > #### ⬜ 仍未裁（本次**没动**）
 >
 > - ⬜ **`/debug/*` 这类调试端点到底要不要挂到线上** —— **现已锁成「仅管理员」**，
->   但「**锁住**」与「**线上不挂载**」是**两件事** ⇒ `docs/待办总表.md` ****。
+>   但「**锁住**」与「**线上不挂载**」是**两件事**。
 > - ✅ **`/api/v1/`（`main.py` 的根路径）无鉴权 = 【有意公开】** —— 它是**唯一**一条剩下的
 >   （判据： ⇒ **无鉴权路由 1 条**；
->    同）。📄 口径同时写在 `docs/待办总表.md` 🅗。
+>    同）。📄 口径同时写在  🅗。
 
 ---
 

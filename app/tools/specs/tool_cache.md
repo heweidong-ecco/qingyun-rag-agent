@@ -4,7 +4,7 @@
 |---|---|
 | **状态** | ✅ **已接进产品路径（2026-10-08）** —— 🔴 **此前它是"没接上的模块"**（整块死代码，见下） |
 | **对外提供** | `cached_tool()`（装饰器）· `get_ttl()` · `TTL_BY_TOOL`（**唯一**的 TTL 事实源）<br>底层：`get_tool_cache_key()` · `get_cached_tool_result()` · `set_cached_tool_result()` |
-| **谁在用** | `simple_tools.py`（`calculator` / `date_today` / **`date_calc`** / **`json_extract`** / **`stats`** —— 🔴 后三个 2026-10-08  新增）· `search_tools.py`（`web_search`）· `code_executor.py`（`execute_python`）<br>⇒ ⭐ **缓存包在 `@tool` 那一层**，不是调用点、不是 handler<br>⚠️ **本行原带 `:11` / `:42` / `:17` 三个行号，已删** —— 本仓 ：行号锚点**系统性漂移**⇒ 一律改用**模块名 / 函数名** |
+| **谁在用** | `simple_tools.py`（`calculator` / `date_today` / **`date_calc`** / **`json_extract`** / **`stats`** —— 🔴 后三个 2026-10-08  新增）· `search_tools.py`（`web_search`）· `code_executor.py`（`execute_python`）<br>⇒ ⭐ **缓存包在 `@tool` 那一层**，不是调用点、不是 handler<br>⚠️ **本行原带 `:11` / `:42` / `:17` 三个行号，已删** —— 本仓：行号锚点**系统性漂移**⇒ 一律改用**模块名 / 函数名** |
 | **测试** | `app/tests/test_tool_cache.py`（**8**）· `app/tests/test_tool_cache_wiring.py`（**5**）<br>⚠️ 数字会变，判据：`cd app && ../venv/bin/python -m pytest test_tool_cache.py test_tool_cache_wiring.py --collect-only -q \| tail -1` |
 
 ## ✅ 做了什么
@@ -12,7 +12,7 @@
 - **三大防护**：防穿透（空值也缓存，60 秒）· 防击穿（Redis `nx` 互斥锁）· 防雪崩（TTL 加随机抖动）
 - ⭐ **TTL 表只有一份**：`TTL_BY_TOOL` —— 2026-10-08 从
   `agent_graph_advanced.CACHE_TTL_MAP` **搬过来并收口**（那份只盖住 `/agent/mcp_chat` 一条路）
-  · 🔴 **2026-10-08 ：4 条 → 7 条**（+`date_calc` / `json_extract` / `stats`，**全是 86400**）
+  · 🔴 **2026-10-08：4 条 → 7 条**（+`date_calc` / `json_extract` / `stats`，**全是 86400**）
 - ⭐ **缓存接在工具函数体上** ⇒ 四条执行路径**天然全覆盖**，将来加第 5 条路径也不用动
   （改动的点是 3 个**工具定义文件**，⛔ 不是 4 条路径）
 - **抢锁有上限**（`_LOCK_WAIT_SECONDS = 2.0`，`:94`）：等超了就**降级直通**。
@@ -40,7 +40,7 @@
 ## ⚠️ 看代码【真的】会误判的一条（历史）
 
 2026-10-08 之前，本文件的 `@cached_tool` **一个产品调用点都没有** ——
-`docs/待办总表.md` 里它被登记为「**整块死代码**」，和 `tools_with_cache.py` 并列。
+ 里它被登记为「**整块死代码**」，和 `tools_with_cache.py` 并列。
 ⚠️ **那一栏现在已经过期**：本批之后它是**唯一的**缓存实现（`tools_with_cache.py` 已被删除）。
 
 📌 **教训**：登记"死代码"时若只按**当时**的引用数算，**接上之后没人会回头改那一栏**。
@@ -48,7 +48,6 @@
 ## 关联
 
 - **决策** ⇒ （Redis 不通 fail-open）· （缓存的唯一落点）·
-  （工具清单收口到一处）
 - **守卫** ⇒ `app/tests/test_tool_cache_wiring.py`（"四条工具**真的**带缓存"—— 调的是
   `mcp_server.TOOLS` 里那个 `@tool` 对象，与 Agent 拿到的是同一个）·
   `app/tests/test_tool_cache.py::test_every_mcp_registered_tool_has_a_ttl`（**新工具忘了登记 TTL 的唯一拦网**）

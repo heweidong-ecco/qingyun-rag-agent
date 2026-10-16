@@ -188,10 +188,10 @@ test('`thread_id` 带 `rag-page-` 前缀（方便在 cost/records 里一眼认�
   assert.match(R.newThreadId(), /^rag-page-/);
 });
 
-/* ══════════════ 8 · 引用 ↔ 检索到的资料（需求方 2026-10-12 裁的那条） ══════════════ */
+/* ══════════════ 8 · 引用 ↔ 检索到的资料（作者 2026-10-12 裁的那条） ══════════════ */
 
 test('🔴🔴 没成文（只有 docs）⇒ 显示【检索到的资料】，⛔ 不是空着', () => {
-  // ⚠️ 需求原话：「当我只打开 citations、没有打开 generate_answer，我点击提问，
+  // ⚠️ 作者原话：「当我只打开 citations、没有打开 generate_answer，我点击提问，
   //    右侧的"引用"没有内容显示。**这个是错的**…… 用户只想知道本地知识库通过 RAG 检索找资料。」
   const r = R.referenceRows({
     docs: [{ source: 'B-01.md', content: '保修制度正文', from: 'vector', rrf_score: 0.03 }],
@@ -239,7 +239,7 @@ test('🔴 语料自带的 `**` 在渲染前要去掉（⛔ 但一个字都不�
   assert.ok(r.rows[0].body.includes('谁在什么时候做什么保养'), '把内容也改掉了 ⇒ 违反「真数据」');
 });
 
-/* ══════════════ 9 · 接口切换器（需求方 2026-10-12 定） ══════════════ */
+/* ══════════════ 9 · 接口切换器（作者 2026-10-12 定） ══════════════ */
 
 test('🔴 这一页只列 2 个可切接口 —— ⛔ 不列被 mode 覆盖的那三条', () => {
   // ⚠️ 判据（读代码核过）：hybrid_search = mode=fast · rewrite_search = mode=accurate_norerank

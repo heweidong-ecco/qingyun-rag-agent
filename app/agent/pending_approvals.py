@@ -23,7 +23,7 @@ import time
 _lock = threading.Lock()
 _pending: dict[str, dict] = {}
 
-# 一次会话允许的人工审批轮次上限（需求方 2026-10-05 裁「上限 3 轮」）。
+# 一次会话允许的人工审批轮次上限（作者 2026-10-05 裁「上限 3 轮」）。
 # 可用 env `MAX_APPROVAL_ROUNDS` 覆盖 —— 见 `approval_round_cap`。
 _DEFAULT_MAX_APPROVAL_ROUNDS = 3
 
@@ -66,7 +66,7 @@ def register(session_key: str, user_name: str, tool_calls: list, *,
       不传 ⇒ 退回等于 `session_key`（**只为兼容老调用点 / 测试**；新代码一律显式传）。
 
     `graph`：这条会话**停在【哪张图】**的审批点上（`"agent_graph"` / `"checkpointer_agent"`）。
-      **必须有它**（需求方 2026-10-03 裁）：`/agent/approve` 早先把 `agent_graph` **写死**了，
+      **必须有它**（作者 2026-10-03 裁）：`/agent/approve` 早先把 `agent_graph` **写死**了，
          而 `/agent/memory_chat` 走的是 `checkpointer_agent` ⇒ 光给它加审批门，
          **那个会话会永远停在审批点、没人放行**（比不加门还糟）。
          默认值 `"agent_graph"` 只是**兼容老调用点**；新调用点**一律显式写**。

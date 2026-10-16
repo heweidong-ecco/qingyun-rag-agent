@@ -39,7 +39,7 @@ ALLOWED_BUILTINS = [
     # 常用数学模块
     "math",
 
-    # 2026-09-20 加（§三·N17 · 需求方裁「放开」）：**异常类**。
+    # 2026-09-20 加（§三·N17 · 作者裁「放开」）：**异常类**。
     #
     #    此前白名单里**一个异常类都没有** ⇒ 被执行的代码**不能**写
     #      `try: … except ValueError: …`，也不能 `raise ValueError(…)`
@@ -59,7 +59,7 @@ ALLOWED_BUILTINS = [
     "OSError", "RuntimeError", "StopIteration", "TypeError",
     "ValueError", "ZeroDivisionError",
 
-    # 2026-09-21 加（§十四·N18 · 需求方裁「放开」）：`__build_class__` —— **让 `class` 语法成立**。
+    # 2026-09-21 加（§十四·N18 · 作者裁「放开」）：`__build_class__` —— **让 `class` 语法成立**。
     #
     #    此前被执行的代码**不能定义类**：
     #      `class Mine(Exception): pass` ⇒ `NameError: __build_class__ not found`

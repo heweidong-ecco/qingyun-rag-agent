@@ -105,5 +105,5 @@ def stats(numbers: str) -> str:
 
 # 工具列表（2026-10-08 实测：**全仓零调用** —— `mcp_server` 是**逐个名字**导入的，
 #   本行不是它的来源。原注释写「方便 MCP Server 批量导入」，**那是假的**，已改准。
-#   删不删它 ⇒ 另一件事（等需求方发话）；本行只保证**内容与上面的定义一致**。）
+#   删不删它 ⇒ 另一件事（等作者发话）；本行只保证**内容与上面的定义一致**。）
 SIMPLE_TOOLS = [calculator, date_today, date_calc, json_extract, stats]

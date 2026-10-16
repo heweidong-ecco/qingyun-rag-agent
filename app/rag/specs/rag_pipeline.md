@@ -136,7 +136,7 @@ if self.enable_rerank and candidates:
 ⛔ **别给默认值** —— 给了就等于「**可以忘记传**」（`user_id` 那条的原话，逐字同款）。
 🔒 守卫 ⇒ `app/tests/test_embedding_attribution.py::test_every_call_site_passes_a_thread`
 （活代码里每个 `get_embedding(` 都得带 `thread_id=`；白名单要写理由）。
-📄 决策与备选（`contextvars` 为什么被否）⇒  · 账 ⇒ `docs/待办总表.md`
+📄 决策与备选（`contextvars` 为什么被否）⇒  · 账
 
 ### 6. 🔴 身份 `user_id` 是**必填关键字**（`:65`），⛔ 不给默认值
 
@@ -187,6 +187,3 @@ preprocessor = DocumentPreprocessor()
 | `app/rag/specs/answer_with_citations.md` | ⚠️ **另一半的记账点**（§⚠️ 第 4 条） |
 | `app/billing/specs/token_tracker.md` | `record_from_response` |
 | `app/core/specs/llm_factory.md` | `make_llm("fast", "answer")` 的两条轴 |
-| 本仓的决策记录（⛔ 不随产品仓提供） | `user_id` 必填贯穿（§⚠️ 第 6 条） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | ⭐ §⚠️ 第 4 条 —— "零记账而测试全绿" |
-| 本仓的决策记录（⛔ 不随产品仓提供） | 会话键/留痕口径（对比 §⚠️ 第 5 条） |

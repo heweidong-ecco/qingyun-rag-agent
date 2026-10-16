@@ -1,7 +1,6 @@
 """`app/routing/sse.py` 共享层自身的用例（剩余 4 条链 · 批 2）。
 
 **本文件存在的理由**：`app/routing/sse.py` 收的**不是"重复代码"，是那 5 条实测出来的顺序约束**
-（）。那几条错一次，**症状是"接口一切正常、而收尾一件都不跑"**
 —— 只有**钉在骨架上**才测得出来；等到四条链各自接线再测，红的是端点，**看不出是骨架错了**。
 
 **本文件只测骨架，不碰任何端点** —— 端点的等价性由批 3 的两份既有用例（`app/tests/test_agent_sse.py`
@@ -284,7 +283,7 @@ def test_incomplete_hook_is_not_called_on_normal_completion(monkeypatch):
 
 
 def test_cancel_emits_no_frame_at_all():
-    """取消路径**一帧都不发**（含 `[DONE]`）—— ：旧实现真发得出去一帧。"""
+    """取消路径**一帧都不发**（含 `[DONE]`）——：旧实现真发得出去一帧。"""
     events = []
     up = _FakeUpstream(["a", "b"], events)
 

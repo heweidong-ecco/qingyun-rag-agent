@@ -6,7 +6,7 @@
 | 文件 | 代 | 契约 |
 |---|---|---|
 | `locustfile.py` · `locustfile_v2.py` · `locustfile_hybrid.py` | **上一代** | 🔴 **被 `app/tests/test_locust_payload.py` 守卫着**（那三个名字就写在该测试里） |
-| **`locustfile_bench.py`** | **这一代**（`T5-8`） | 🔴 需求方 2026-10-07 裁「**不进 pytest**」—— 它跑**代码里的参数**，给来仓库看的人看 |
+| **`locustfile_bench.py`** | **这一代**（`T5-8`） | 🔴 作者 2026-10-07 裁「**不进 pytest**」—— 它跑**代码里的参数**，给来仓库看的人看 |
 | `README.md` | —— | `T5-8` 那份的口径与跑法 |
 
 ## 🔴 本层特有的规矩

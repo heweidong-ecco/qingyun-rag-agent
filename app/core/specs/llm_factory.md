@@ -92,8 +92,7 @@ make_llm("chat", "agent")          # 两个轴，见下
 
 | 文档 | 说明 |
 |---|---|
-| ⭐ 本仓的决策记录（⛔ 不随产品仓提供） | **本模块的形状**：为什么只收口、⛔ 为什么不做自动兜底（含 `with_fallbacks` 的实测） |
-| 本仓的决策记录（⛔ 不随产品仓提供） | **缺 key 时报什么** + ⛔ 为什么真惰性**不在本批**（要动 3 张图的模块级 `bind_tools`） |
+| ⭐  | **本模块的形状**：为什么只收口、⛔ 为什么不做自动兜底（含 `with_fallbacks` 的实测） |
 | `app/billing/specs/token_config.md` | 两个上限常量（`MAX_TOKENS_*`）的**唯一落点** |
 | `app/billing/specs/token_tracker.md` | `①b`  的原始计划与【修订后的形态】（形态 = 甲） |
 | `app/tests/test_llm_factory.py` | 钉返回值形状（**记账不失真**）+ 两个轴 + 参数校验 + 不拉 langchain |

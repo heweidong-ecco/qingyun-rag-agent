@@ -46,7 +46,7 @@
 
 ## 关联
 
-本仓的决策记录（⛔ 不随产品仓提供） · `app/agent/specs/pending_approvals.md`
+ · `app/agent/specs/pending_approvals.md`
 `app/routing/specs/api_v1_agent.md` · `app/schema.sql` · `app/tests/test_approval_events_db.py`（真库那一半）
 
 > ✅ **2026-10-08 已结清 —— `approval_events` 进 `app/schema.sql` 了**

@@ -317,7 +317,7 @@ test('🔴🔴 页面内联脚本里【会变成页面文字】的字符串，�
 test('🔴🔴 `ops.js` 对外只许留【一个】全局键（`RagOps`）', () => {
   // ⚠️ 这条是拿一个真事故换来的：经典脚本的顶层 `function`/`const` **全是全局的**，
   //    与页面自己的顶层绑定撞上 ⇒ 整段内联脚本一行都不执行，而当时所有用例全绿。
-  //    📄 复盘 ⇒ 本仓的复盘记录（⛔ 不随产品仓提供）
+  //    📄 复盘
   const sandbox = { module: undefined, window: {}, console };
   sandbox.window = sandbox;
   vm.createContext(sandbox);

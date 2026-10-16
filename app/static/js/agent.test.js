@@ -260,7 +260,7 @@ test('🔴🔴 `agent.js` 对外只许留【一个】全局键（`RagAgent`）',
   //    与页面自己的顶层绑定（每页都有 `const key = …` / `function el(…)`）撞上
   //    `SyntaxError: Identifier 'key' has already been declared`
   //    ⇒ **整段内联脚本一行都不执行**，而当时 982 条 pytest + 283 条 node **全绿**。
-  //    📄 复盘 ⇒ 本仓的复盘记录（⛔ 不随产品仓提供）
+  //    📄 复盘
   const sandbox = { module: undefined, window: {}, console };
   sandbox.window = sandbox;
   vm.createContext(sandbox);

@@ -10,7 +10,7 @@ from loguru import logger
 from typing import Literal
 from fastapi import APIRouter, Depends, Path, Query
 
-# ①b ：LLM 的唯一构造落点（`model` / `api_key` / `base_url` / `max_tokens` 都收在那一处）。
+# ①b：LLM 的唯一构造落点（`model` / `api_key` / `base_url` / `max_tokens` 都收在那一处）。
 # `llm_factory` 模块级只 import `os`（langchain 是在 `make_llm` **函数内**才 import）
 # ⇒ 放文件头**不破坏**本文件「导入期不拉 langchain」的既有做法（原 `MAX_TOKENS_ANSWER` 同理）。
 from core.llm_factory import make_llm
@@ -44,7 +44,7 @@ from routing.schemas import (
 #    `LoginRequest`/`RefreshRequest`/`UserCreate` · `insert_batch_documents` · `get_weather`
 #    `append_chat_history`/`INTERRUPTED_SUFFIX` · `agent_graph`。**没删任何模块**，只删导入行。
 from routing.deps import get_current_user_hybrid
-# ：WebSocket 的首帧认证依赖 —— 它与上面那两个**不能互换**（浏览器 WS
+#：WebSocket 的首帧认证依赖 —— 它与上面那两个**不能互换**（浏览器 WS
 # 不能自定义请求头，`X-API-Key` / `Authorization` 送不上来）。
 from routing.deps import require_ws_user
 from core.db import get_db, insert_document, PUBLIC_OWNER, enable_ann_iterative_scan  # PUBLIC_OWNER：列表/取全文的作用域（N35）· enable_ann_iterative_scan：
@@ -282,7 +282,7 @@ async def insert_batch(
     """批量插入文档"""
     count = 0
     for doc in batch.documents:
-        embedding = get_embedding(doc.content, user_name=user_name, thread_id="ingest")   # 🔴 ：同上
+        embedding = get_embedding(doc.content, user_name=user_name, thread_id="ingest")   # 🔴：同上
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -377,13 +377,13 @@ async def upload_document(
         #        doc_type = "legal" if ext == "pdf" else "technical"
         #    ⇒ **除 PDF 外的一切全吃 `technical`** ⇒ `report`/`article`/`faq` 三档**从来用不上**。
         #    现在：**调用方给了就用**（乙的灌库脚本按类别显式给），**没给才回落到原来的推断**
-        #    ⇒ **访客走的那条路一字不变**（需求方 2026-10-08 裁的就是这个默认值）。
+        #    ⇒ **访客走的那条路一字不变**（作者 2026-10-08 裁的就是这个默认值）。
         doc_type = doc_type.strip() or ("legal" if ext == "pdf" else "technical")
 
         # 未知档位 ⇒ **当场拒绝**，不许往下走。
         #    理由：`chunker.get_text_splitter` 是 `CHUNK_CONFIGS.get(doc_type, default)`
         #    ⇒ **静默回落** `default` ⇒ 一个拼错的档名会让整批语料按 500/50 切，**不报任何错**。
-        #    这一步是**本 Agent 补的**（§二）—— 需求原话只说"加可选形参"。
+        #    这一步是**本 Agent 补的**（§二）—— 作者原话只说"加可选形参"。
         if doc_type not in CHUNK_CONFIGS:
             raise AppException(
                 ErrorCode.PARAM_INVALID,
@@ -405,7 +405,7 @@ async def upload_document(
 
         # 入库
         for chunk in chunks:
-            embedding = get_embedding(chunk, user_name=user_name, thread_id="ingest")     # 🔴 ：同上
+            embedding = get_embedding(chunk, user_name=user_name, thread_id="ingest")     # 🔴：同上
             insert_document(chunk, file.filename, embedding, user_name)  # user_name 作为 requested_by
 
         # 2026-10-12 补：**文档已变更 ⇒ 必须失效 BM25 进程内缓存**。
@@ -471,9 +471,9 @@ async def delete_document(
     return {"status": "deleted", "id": doc_id, "requested_by": user_name}
 
 # ==================== 列出文档 + 取整篇（2026-10-12）====================
-# 补的是 ：**全仓此前没有任何"列出文档"的端点** ⇒ `/kb` 只能做成
+# 补的是：**全仓此前没有任何"列出文档"的端点** ⇒ `/kb` 只能做成
 #    「传一条 ⇒ 回你 id ⇒ 拿 id 删」的闭环，而**访客看不见自己库里有什么**。
-# 需求方 2026-10-12 定的目的（逐字）：「让大部分不想自己提交文档的访客，
+# 作者 2026-10-12 定的目的（逐字）：「让大部分不想自己提交文档的访客，
 #    能知道已有哪些是已有的，是可以直接搜索，我该搜索什么，会出现内容」—— 即**可发现性**。
 # 作用域：`mine`（默认）只看自己 · `public` 只看公用语料·
 #    **不许把别人的列出来**。
@@ -550,7 +550,7 @@ async def get_document_full(
     **`doc_id` 传该篇的【任意一个 chunk id】** —— 返回的是**整篇**，
        不是那一条：全文 = 该 `source` 的**全部 chunk 按 id 序拼起来**。
        这个语义有点反直觉，所以写在这里：列表里每行给的 `first_id` 就是干这个用的。
-    **走 PostgreSQL 直接取文本**（不经向量库）—— 这正是需求方要的那种"看文件内容"。
+    **走 PostgreSQL 直接取文本**（不经向量库）—— 这正是作者要的那种"看文件内容"。
     越权面：**只许看自己的 + 公用语料**。
     """
     with get_db() as conn:
@@ -577,7 +577,7 @@ async def get_document_full(
 #    在这之前**全仓没有任何"读回对话历史"的出口**（`get_chat_history` 只被服务端用来喂模型），
 #    而对话页**从来没做过回显** ⇒ 访客换个页面再回来，**页面上对话是空的、而模型还记得**
 #    ⇒ 它自己那句写着「本页不显示历史消息；这个会话的上下文模型仍然记得」。
-#    **那不是创空间的限制**（那只是单容器）。需求方 2026-10-11 实测报的：
+#    **那不是创空间的限制**（那只是单容器）。作者 2026-10-11 实测报的：
 #       「进行了一个对话，然后点执行轨迹，再点会话，原来的对话就没有了」。
 #    设计 + 裁定 ⇒ `frontend/DES-整体调整-导航与运行区-20261011.md` §七。
 @router.get("/rag/chat_history", response_model=ChatHistoryResponse, tags=["对话"])
@@ -609,7 +609,7 @@ async def get_thread_history(
 
 
 # ==================== 检索接口 ====================
-# 新增 ：只检索 和 返回当前用户的文档
+# 新增：只检索 和 返回当前用户的文档
 @router.post(
     "/rag/pg_search",
     summary="向量语义检索",
@@ -650,13 +650,13 @@ async def get_thread_history(
 )
 async def pg_search(
     req: QuestionRequest,
-    thread_id: str = Query("default", min_length=1),   # 🔴 ：与同族 `/rag/hybrid_search` 同形
+    thread_id: str = Query("default", min_length=1),   # 🔴：与同族 `/rag/hybrid_search` 同形
     user_name: str = Depends(get_current_user_hybrid)
 ):
     query_embedding = get_embedding(req.question, user_name=user_name, thread_id=thread_id)
     with get_db() as conn:
         with conn.cursor() as cur:
-            enable_ann_iterative_scan(cur)      # 🔴 ：别让 ivfflat 静默回空
+            enable_ann_iterative_scan(cur)      # 🔴：别让 ivfflat 静默回空
             cur.execute("""
                 SELECT content, source, 1 - (embedding <=> %s::vector) AS similarity
                 FROM documents
@@ -702,7 +702,7 @@ async def hybrid_search_api(
 @router.post("/rag/rerank_search")
 async def rerank_search_api(
     req: QuestionRequest,
-    thread_id: str = Query("default", min_length=1),   # 🔴 ：同 `/rag/hybrid_search`，原先也没有
+    thread_id: str = Query("default", min_length=1),   # 🔴：同 `/rag/hybrid_search`，原先也没有
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """带重排序的混合检索（**只在该用户自己的文档内**）"""
@@ -795,7 +795,7 @@ async def unified_search(
     # 2026-09-17 修：此处原先是一个**裸 `else`** —— 任何拼错的 mode（如 `fst`）
     # 都不报错，而是**静默换成 `accurate_norerank`**（多跑一次查询改写 = 多花钱、多延迟）。
     # 现在：`mode` 声明为 `SearchMode`（`Literal`），非法值由 FastAPI 在进入函数体之前挡成 422；
-    # 且下方改用**查表**，结构上不存在"兜底分支"。决策见 本仓的决策记录（⛔ 不随产品仓提供）。
+    # 且下方改用**查表**，结构上不存在"兜底分支"。决策。
     pipeline = PIPELINE_FACTORIES[mode]()
 
     # 执行检索
@@ -841,7 +841,7 @@ async def unified_search(
 #
 # **别照抄这个形状再把端点加回来** —— `app/tests/test_removed_endpoints.py::test_rag_jwt_ask_stays_removed`
 #    会红（判据是 **404**，不是"不是 200"：它删之前带鉴权，回的就是 **401**）。
-# 全文（消费者清点 · 改动清单 · 反悔成本）⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+# 全文（消费者清点 · 改动清单 · 反悔成本）
 
 # ==================== 流式输出（SSE） ====================
 # 2026-09-20 删（D1/pyflakes 报 redefinition）：此处的 `StreamingResponse` 与 `json`
@@ -884,7 +884,7 @@ class _StreamUsageTap:
 
     `sse.sse_stream` 只把**通过 `text` 过滤的块**攒进 `collected` ——
     而本仓 provider 把 `usage_metadata` 挂在**最后一帧、且那帧 `content=''`** 上
-    （实测 ⇒ 本仓的施工单（⛔ 不随产品仓提供） §结论 1/2）
+    （实测 ⇒  §结论 1/2）
     ⇒ 它**必然**被 `llm_chunk_text`（`return chunk.content or None`）滤掉。
     ⇒ 累积必须发生在**过滤之前**。骨架里唯一看到**每一块**的钩子就是 `extract`
       （`sse.py`：`text = extract(item) if extract is not None else item` 排在
@@ -945,7 +945,7 @@ class _StreamUsageTap:
 # 判据是「**以它开头**」，不是"含"：2026-10-06 spike 实测 **8/8** 模型都把它放在**开头**
 #    （与 prompt 里那句「请**直接说**」相符）。**误判比漏判有害**（把答得好的那轮画成"资料里没有"）
 #    ⇒ 宁可严。代价写实：换过措辞的拒答（如「文档未提及净利润，因此无法回答该问题。」）会被漏掉，
-#    那只是**退化成今天的样子**，不会更糟。取舍全文 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）。
+#    那只是**退化成今天的样子**，不会更糟。取舍全文。
 REFUSAL_SENTENCE = "根据现有资料，无法回答"
 
 
@@ -996,7 +996,7 @@ async def stream_search(
     # 1. 检索（与普通接口相同）
     # 1. 向量检索（这部分不是流式的，一次性查完）
     # 构建当前输入的这条的历史对话，真停止按钮的调用（使它支持历史补偿）
-    # 🔴 ：本条此前是**半个** —— 答案生成那笔已经带了调用者的 `thread_id`，
+    # 🔴：本条此前是**半个** —— 答案生成那笔已经带了调用者的 `thread_id`，
     #    只有 embedding 这一处漏了（落 `"system"`）⇒ 同一个会话的两笔账在两个桶里。
     query_embedding = get_embedding(req.question, user_name=user_name, thread_id=thread_id)
     # 2026-10-03 乙段（§1.2 第 8 条）：改用**共享层**，不再自己写 SQL。
@@ -1034,7 +1034,7 @@ async def stream_search(
                 #    `content_preview` 仍在（老前端用它）—— 不是替换，是追加。
                 "content": doc["content"],
                 "content_preview": doc["content"][:100],
-                # ：硬门 B 的证真那句要求「点开能看到 **chunk id + 相似度分**」。
+                #：硬门 B 的证真那句要求「点开能看到 **chunk id + 相似度分**」。
                 #    这个数**本来就在手上**（上面 `contexts` 里的 `r[3]`）—— 只是没人往帧里放。
                 # **两个出口**（本处 + `answer_with_citations.py`）必须保持同形，
                 #    有 `test_both_sources_exits_have_the_same_key_set` 钉着。
@@ -1071,7 +1071,7 @@ async def stream_search(
     
     # 4. 流式生成器
     ENDPOINT = "rag_stream_search"    # Prometheus 的 label，别与函数名混用
-    tap = _StreamUsageTap()           # ：流式答案的记账（见类 docstring）
+    tap = _StreamUsageTap()           #：流式答案的记账（见类 docstring）
 
     # 2026-10-04（剩余 4 条链 · 批 3）：**内联生成器整个换成 `sse.sse_stream` 骨架**。
     #    这段原来有 ~80 行 `try / except / except / finally`，与 `/agent/langgraph_chat/stream`
@@ -1115,7 +1115,7 @@ async def stream_search(
             yield sse_frame({"no_answer": True}, ensure_ascii=True)
         # ---- 在这里记录对话历史 ----
         # 生成完成后，将本轮问答自动存入 Redis
-        # ：三条出口（`done` / `cancelled` / `error`）**共用 `persist_turn`**
+        #：三条出口（`done` / `cancelled` / `error`）**共用 `persist_turn`**
         #    ⇒ `status` 这个区分只有一份实现，不是在这里手写一遍 `append_chat_history`。
         #    `done` 的字节与改前**逐字相同**（答案原样，不 strip、不带标记）。
         #    **唯一的行为变化**：空答案 ⇒ **连提问也不写**（旧代码会写下孤零零的提问）。
@@ -1148,11 +1148,11 @@ async def stream_search(
         endpoint=ENDPOINT,
         # 这是**裸 LLM**（不是图）⇒ 旧口径用 `llm_chunk_text`。空 `content` 由它一并挡掉
         #    （不过滤 ⇒ 前端收到一串空白帧）。
-        # ：现在传 `tap.extract` —— 它**返回的仍是 `llm_chunk_text(chunk)`**（发帧口径不变），
+        #：现在传 `tap.extract` —— 它**返回的仍是 `llm_chunk_text(chunk)`**（发帧口径不变），
         #    只是**顺手把每一块 `+` 进聚合**（usage 挂在最后一帧、而那帧 `content=''` ⇒ 见类的 docstring）。
         extract=tap.extract,
         on_complete=_complete,
-        # ：**取消与异常两条出口**都把**已经生成的那半截**补存进历史（不是直接丢）。
+        #：**取消与异常两条出口**都把**已经生成的那半截**补存进历史（不是直接丢）。
         #    它**必须是同步的**（`persist_turn` 走同步的 `append_chat_history`）——
         #       骨架会在 `await aclose()` **之前**调它，这正是"晚切也存得下"的原因。
         #    骨架的 `logger.info` 与 `_on_error` 里的 `print` 不冲突：前者进日志文件，后者仍在 stdout。
@@ -1187,7 +1187,7 @@ from routing.websocket_callback import WebSocketAgentCallback
 #    现整段搬进 get_agent_executor()，**首次使用时才建**，之后复用（与原先单例语义一致）。
 #    工具 docstring 与 prompt 文本**逐字未改** —— 那是给 LLM 看的接口。
 _agent_executor = None
-# ：与 `_agent_executor` **同一个单例里**的 LLM —— 记账要用它的 `model_name`。
+#：与 `_agent_executor` **同一个单例里**的 LLM —— 记账要用它的 `model_name`。
 # 别让记账去猜模型名（：本仓因写死 `"qwen-turbo"` 按错的单价记过账）。
 _agent_llm = None
 
@@ -1402,7 +1402,7 @@ async def agent_websocket(websocket: WebSocket, ws_user_name: str = Depends(requ
 #         `QuestionRequest`，且多了 embedding / `ORDER BY` / 更丰富的输出），而全仓**无消费者**。
 #    **别照抄这个形状再加回来** —— `app/tests/test_removed_endpoints.py` 会红。
 #    顺带消灭了它响应体里那个 **重复的 `"requested_by"` 键**（本仓一处已登记的 dead code）。
-#    全文（含消费者清点 · 7 处改动 · 2 处活口径同步 · 反悔成本）⇒ 本仓的决策记录（⛔ 不随产品仓提供）
+#    全文（含消费者清点 · 7 处改动 · 2 处活口径同步 · 反悔成本）
 
 # ============ 【已删除】POST /rag/async_ask · POST /rag/parallel_ask ============
 # 2026-10-04 **删除**—— 连同它们**专用的**两个 helper

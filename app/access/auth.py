@@ -26,7 +26,7 @@ def hash_api_key(api_key: str) -> str:
 #:    **2026-10-06 的缺陷就是这么来的**：自检只 `COUNT(*)` **行数**，不看 `is_active`
 #:    ⇒ （按用户名撤，撤的是该用户名下的**全部行**）
 #:    之后，自检照样报「管理员账户已存在，跳过自动创建」，而认证侧一把都过不去
-#:    ⇒ **admin 锁死，而日志说一切正常**。裁定见 本仓的决策记录（⛔ 不随产品仓提供）。
+#:    ⇒ **admin 锁死，而日志说一切正常**。裁定。
 #:    守卫 ⇒ `app/tests/test_auth_ensure_admin_exists.py::test_两条路径的_is_active_口径是同一句`
 #:
 #: **必须 `COALESCE`** —— 迁移 `828721f77ef2` 建列时是 `nullable=True`，

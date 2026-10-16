@@ -19,14 +19,14 @@ Plan-and-Execute 模块
 >     执行层**当前只有 4 个工具可用**：`calculator` / `date_today` / `web_search` / `execute_python`
 >
 > 登记位置：`docs/待办登记-2026-09-20-全仓审计与方向更正.md` §十四（N15）。
->   裁决记录：需求方 2026-09-20「**从零新做**」，原话「**大改是必要的**」。
+>   裁决记录：作者 2026-09-20「**从零新做**」，原话「**大改是必要的**」。
 """
 import json
 import time
 from loguru import logger
 from dataclasses import dataclass
 from typing import List, Dict, Optional
-from core.llm_factory import make_llm   # ①b ：model / api_key / base_url / max_tokens 的唯一落点
+from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 from langchain_core.messages import HumanMessage, SystemMessage
 
 # 2026-09-21（§十四 · ③-b）：接上**预算与记账**。
@@ -63,7 +63,7 @@ from billing.token_tracker import check_budget_before_call, record_usage
 #       过剩的代价：一个卡住的 `plan` 要**等满 60 秒**才放弃，而总预算只有 120 秒
 #       ⇒ **两次卡住就把整个计划掐了**。
 #
-#    ⇒ 收到 **30 / 20 / 15**（需求方 2026-09-21 裁「乙·保守折中」）—— 对实测 max 约 **11–13 倍**。
+#    ⇒ 收到 **30 / 20 / 15**（作者 2026-09-21 裁「乙·保守折中」）—— 对实测 max 约 **11–13 倍**。
 #      **为什么不再往下收**：样本小（`plan` 只有 **n=2**），而 **LLM 延迟是重尾分布** ——
 #      **观测到的 max ≠ P99**。收太紧会在真抖动时**误杀正常请求**。
 #      ⇒ 若线上发现正常计划被截断，**先调这三个数**，别急着去掉上限。
@@ -107,7 +107,7 @@ planner_llm = make_llm(
 
 # ==================== 任务规划器 ====================
 
-# 2026-09-20 修（§三·C1，需求方裁「同源」）：**可用工具清单改为从 MCP 注册表派生。**
+# 2026-09-20 修（§三·C1，作者裁「同源」）：**可用工具清单改为从 MCP 注册表派生。**
 #
 #    此前这里**手写了两份互相矛盾**的工具清单（同一个 prompt 里！）：
 #      · 第一份写 `search` —— 而 MCP 注册表里**没有** `search`，真名是 **`web_search`**
@@ -187,7 +187,7 @@ def _invoke_llm(llm, messages, purpose: str, user_name: str = "unknown",
           **聚合循环必须遍历【所有】块**，不许跳过 `content` 为空的块：
           实测本仓 provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上
           ⇒ 跳过它，**下面的 `record_usage` 就静默不执行了**，而接口一切正常。
-          判据（可打印）⇒ 本仓的施工单（⛔ 不随产品仓提供）
+          判据（可打印）
     """
     allowed, reason = check_budget_before_call(user_name, purpose=purpose)
     if not allowed:
@@ -261,10 +261,10 @@ def plan_task(user_goal: str, user_name: str = "unknown",
     2026-10-04：`on_token` 透传给 `_invoke_llm` —— `/agent/plan_execute/stream`
        靠它把**规划段**的 token 逐块送出来。默认 `None` ⇒ 行为与改动前一致。
 
-    **流出去的是【正在生成的 JSON 片段】，不是人读终稿**（需求方 2026-10-04 裁定"甲"）。
+    **流出去的是【正在生成的 JSON 片段】，不是人读终稿**（作者 2026-10-04 裁定"甲"）。
        理由：本函数要求严格 JSON 输出、下游 `json.loads` ⇒ 前端**只能**把它当"规划中"
        指示器，终稿看**最后一帧汇总**。**别把流到的 JSON 直接渲染成计划**。
-       判据/上下文 ⇒ 本仓的决策记录（⛔ 不随产品仓提供）（本批）· `app/agent/specs/plan_execute.md`
+       判据/上下文 ⇒ （本批）· `app/agent/specs/plan_execute.md`
     """
     system_prompt = """你是一个专业的任务规划助手。你的职责是将用户的目标分解为可执行的步骤清单。
 
@@ -362,7 +362,7 @@ def execute_plan_with_replan(plan: List[Dict], user_goal: str = "",
         # 检查工具是否已失效
         if tool_name in failed_tools:
             # 工具已失效 —— **仍然试一次真调用**，但**失败原因必须留下**。
-            # 2026-09-21 修（复盘 本仓的复盘记录（⛔ 不随产品仓提供） §五·A）。
+            # 2026-09-21 修（复盘  §五·A）。
             #    改前是：`fallback_result = <一句编好的串>` + `except: pass`，三处问题：
             #      ① 与 `execute_single_step` 的 docstring 契约**正好相反** ——
             #         `:562` 明文写「**失败一律【抛异常】，不吞成错误字符串** ——
@@ -674,7 +674,7 @@ def execute_step_with_retry(step: Dict, input_data: str, context: str,
 def execute_single_step(step: Dict, input_data: str, context: str) -> str:
     """**真正的单步执行** —— 把这一步交给 MCP 注册表里那个工具【真调用】。
 
-    2026-09-21 重写（§十四 · N15 · 需求方裁「**从零新做**」）。
+    2026-09-21 重写（§十四 · N15 · 作者裁「**从零新做**」）。
        此前这里**只对 `calculator` 真调用**，其余**全部走「请 LLM 模拟执行」** ——
        端点 `/agent/plan_execute` 看起来在跑真工具，**实际只有规划是真的**。
 
