@@ -11,6 +11,46 @@ from starlette.websockets import WebSocketDisconnect
 from main import app
 
 
+@pytest.fixture(autouse=True)
+def _no_rate_limit(monkeypatch):
+    """**本模块只断「路由存不存在」，⛔ 不该被限流影响。**
+
+    🔴🔴 **：实测这对用例【随机红】（`assert 429 == 404`），根因是限流的层级**。
+
+    限流在**中间件**里，而**中间件跑在路由之前** ——
+
+    ```
+    第一层：全局限流（令牌桶，按秒补）   ← 前面用例把它耗掉 ⇒ 这里直接 429
+    第二层：用户级限流
+    路由匹配                            ← 才会给出 404
+    ```
+
+    ⇒ 请求一条**根本不存在的路径**时**先被限流拦下**，拿不到 404。
+    而桶**按秒补** ⇒ 前面那些用例**跑得快慢不同，桶里剩的就不一样**
+    ⇒ **有时够、有时不够** ⇒ **波动**。
+
+    ⚠️ 它已经在 CI 上把**两个仓**打红过 **3 次**（开发仓 2 次 · 产品仓 1 次），
+      而**每次重跑就好** —— 那正是"波动"的形状。
+    ⚠️ 本机（~55s）过、CI（~37s）挂，也是同一件事：**时间轴不同**。
+
+    ⇒ 换成**恒放行的桩**：这条用例要说的是「**它不该回来**」，
+      ⛔ 不是"限流器今天忙不忙"。手法与同目录 `test_rate_limit_ip.py` 的
+      `_RecordingLimiter` 一致（`get_limit_info` 必须回**真形状** ——
+      中间件写响应头时要读那三个键）。
+    """
+    import main as _main
+
+    class _AlwaysAllow:
+        def is_allowed(self, key):
+            return True
+
+        def get_limit_info(self, key):
+            return {"limit": 20, "remaining": 19, "reset": 0}
+
+    monkeypatch.setattr(_main, "global_limiter", _AlwaysAllow())
+    monkeypatch.setattr(_main, "user_limiter", _AlwaysAllow())
+
+
 def test_rag_ask_stays_removed():
     """`/rag/ask` 已删—— 它回来就该红，别默默改回来。
 
