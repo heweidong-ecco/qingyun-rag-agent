@@ -376,7 +376,7 @@ async def tool_execute(state: AgentState):
     `next=('tools',)` + 一条**没人回答**的 `AIMessage(tool_calls)` ⇒ **那个 thread 从此废掉**。
     实测输出与备选评估。
     `record_tool_end` 在**被拦这条路上仍然不写**（追踪里留一条"开了没结束"）——
-    这与改前**一字不差**（原来 `continue` 也不写），不是本批引入的回归。
+    这与改前**一字不差**（原来 `continue` 也不写），不是引入的回归。
     """
     last_message = state["messages"][-1]
     tool_messages = []
@@ -484,7 +484,7 @@ def build_mcp_agent():
         # 预算检查必须在**任何花钱的调用之前** —— 不只是 `llm.invoke`：
         #    下面那句 `inject_memories_to_prompt` 会去打一次 DashScope embedding（**也是花钱的**）。
         #       仍然花掉一笔 embedding，而结果**当场被丢弃**（走不到 `messages`）。
-        #       这是本批的判据在 CI（dummy key）里**真打网络**才暴露出来的。
+        #       这是的判据在 CI（dummy key）里**真打网络**才暴露出来的。
         if not check_token_budget(user_name, estimated_tokens=500):
             #    改前只把它当一句正常答案返回，端点照常回 **HTTP 200** ⇒ 调用方看不出被拒了。
             #    `chat_node` **不是入口节点** ⇒ 清零不在这里（在 `agent_decide`）。
@@ -549,7 +549,7 @@ def build_mcp_agent():
         if not check_token_budget(user_name, estimated_tokens=500):
             #     当时写的是 `**cleared`（= 置 `None`）—— 那是因为当年**只有**
             #       工具触发那一种拦截（写在 `tool_execute` 里），入口节点这一处
-            #       的任务只是"别让上轮的值串过来"。**本批新增的正是这一种**
+            #       的任务只是"别让上轮的值串过来"。**新增的正是这一种**
             #       它必须自己写原因，不能再是 `None`。
             return {
                 "final_output": "今日Token预算已用完，请明天再试。",

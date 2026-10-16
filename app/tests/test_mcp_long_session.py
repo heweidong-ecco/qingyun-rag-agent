@@ -55,7 +55,7 @@ def _install_fakes(monkeypatch, m, events):
 
 
 def test_initialize_runs_once_across_many_calls(monkeypatch):
-    """**本批的全部收益就在这一条**：会话开一次、`initialize` 只跑一次。
+    """**的全部收益就在这一条**：会话开一次、`initialize` 只跑一次。
 
     反证：把 actor 换回"每次调用自开自关" ⇒ `initialize` 会变成 3 次 ⇒ 本用例红。
     """

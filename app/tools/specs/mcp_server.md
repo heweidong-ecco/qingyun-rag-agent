@@ -61,7 +61,7 @@ server = Server("agent-tools", on_list_tools=list_tools, on_call_tool=call_tool)
 
 ### 4. 🔴 那个 `@server.list_tools()` 的**名字还在**，但**签名全变了**
 
-`list_tools` / `call_tool` **仍叫这两个名字**（本批有意保留，让 diff 最小），
+`list_tools` / `call_tool` **仍叫这两个名字**（有意保留，让 diff 最小），
 但它们 1.x 与 2.x 的**签名、返回值、调用方式都不一样**：
 
 | | 1.x | 2.x |

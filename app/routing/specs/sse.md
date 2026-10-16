@@ -28,10 +28,10 @@
 | 批 | 事 | 状态 |
 |---|---|---|
 | 2 | 建 `app/routing/sse.py` + 本 spec + `app/tests/test_sse_layer.py` | ✅ |
-| 3 | 两条既有端点改用它（**行为逐帧等价**） | ✅ **改的那一刻两份文件一行未动** —— `app/tests/test_agent_sse.py` / `app/tests/test_cancel_propagation.py` **都不在 PR #78 的改动清单里**（`git show --stat 93eb2fb`）<br>⚠️ 本行原写 **44 passed** —— 那是把 `app/tests/test_sse_layer.py` 的 **15** 条也算进去了（**当时**那两份文件 **29** 条：29 + 15 = 44）⇒ **命令与数字对不上**。评审收口按**实测**更正：同一命令 **31 passed**（29 + 本批新增的 2 条） |
+| 3 | 两条既有端点改用它（**行为逐帧等价**） | ✅ **改的那一刻两份文件一行未动** —— `app/tests/test_agent_sse.py` / `app/tests/test_cancel_propagation.py` **都不在 PR #78 的改动清单里**（`git show --stat 93eb2fb`）<br>⚠️ 本行原写 **44 passed** —— 那是把 `app/tests/test_sse_layer.py` 的 **15** 条也算进去了（**当时**那两份文件 **29** 条：29 + 15 = 44）⇒ **命令与数字对不上**。评审收口按**实测**更正：同一命令 **31 passed**（29 + 新增的 2 条） |
 | 4 | 改节点（A/B/C 三张图） | ✅ 见 `agent_graph.md` · `agent_checkpointer.md` · `agent_graph_advanced.md` · `agent_graph_advanced_learning.md` |
 | 5 | 4 条新 SSE 路由 | ✅ `advanced_chat` · `memory_chat` · `mcp_chat` · `plan_execute` |
-| 6 | `app/tests/test_agent_stream_chains.py` | ✅ **39 条**（收工时的数）<br>⚠️ 评审收口后 **47 条**（本批补：白名单 × 图 4 · 链 C 碎片守卫 1 · 汇总帧 `requested_by` 3）<br>⚠️ **同一天 落地后 60 条**（留痕 13 条：完成 / 取消 / 异常 × 3 链 + 审批点不写 + 链 D 三条） |
+| 6 | `app/tests/test_agent_stream_chains.py` | ✅ **39 条**（收工时的数）<br>⚠️ 评审收口后 **47 条**（补：白名单 × 图 4 · 链 C 碎片守卫 1 · 汇总帧 `requested_by` 3）<br>⚠️ **同一天 落地后 60 条**（留痕 13 条：完成 / 取消 / 异常 × 3 链 + 审批点不写 + 链 D 三条） |
 | 7 | `on_cancel` ⇒ `on_incomplete` | ✅ **异常出口也收尾了** —— 原来只有**取消**一条出口调同步钩子，`except` 那条**一个字都不留**。<br>泛化后两条出口**各调一次**（`status` = `"cancelled"` / `"error"`），`on_complete` 管正常出口。<br>⚠️ **`outcome == "error"` ⇒ `finally` 里那块不会再调一次**（一次出口只调一次） |
 
 - ✅ **链 D（`plan_execute`）的「线程 → 事件循环」桥接器按计划落在调用方** ——
@@ -69,7 +69,7 @@
 
 ---
 
-## 📎 原先写在代码 docstring 里的设计说明
+## 📎 从代码 docstring 移出的设计说明
 
 > 来源 = `app/routing/sse.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
 

@@ -165,7 +165,7 @@ class _ChainGraph:
     """四条链（A/B/C）共用的假图。
 
     `astream` 收 `**kw` —— 链 A 会传 `subgraphs=True`，而既有两份假图的签名都是
-       位置参数写死的（故**不改**那两份：它们是已合入文件的夹具，本批要求"复用"）。
+       位置参数写死的（故**不改**那两份：它们是已合入文件的夹具，要求"复用"）。
     上游流用 `test_cancel_propagation._AsyncSpyStream`（**手动迭代器**）——
        理由见那份文件头：写成 async generator 的话，取消用例会**假绿**。
     """
@@ -592,7 +592,7 @@ def test_chain_a_whitelist_is_the_graph_module_s_own(monkeypatch):
     used = [n for n in ast.walk(tree)
             if isinstance(n, ast.Attribute) and n.attr == "STREAMABLE_NODES"]
     assert used, "端点里找不到任何 `…STREAMABLE_NODES` 引用 ⇒ 白名单从哪来的？"
-    # 链 ①（`/agent/langgraph_chat`，本批之前就有）走的是**裸名**
+    # 链 ①（`/agent/langgraph_chat`，之前就有）走的是**裸名**
     #    `from agent_graph import agent_graph, STREAMABLE_NODES` ⇒ 它**不**出现在这里
     #    （它是 `ast.Name` 不是 `ast.Attribute`）。别据此把那条也算进来。
     qualifiers = {n.value.id for n in used if isinstance(n.value, ast.Name)}

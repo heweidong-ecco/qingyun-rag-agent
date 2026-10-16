@@ -8,7 +8,7 @@ import inspect
 # ===========================================================================
 
 def test_real_static_asset_paths_are_exempt():
-    """**本批要修的那条**：页面真正会去拉的那几个静态资源，必须判为豁免。
+    """**要修的那条**：页面真正会去拉的那几个静态资源，必须判为豁免。
 
     路径逐条取自真实页面（`app/static/web/*.html` 里的 `<link>` / `<script>`），
     不是编的 —— 判据要在**真实**路径上成立，否则修了等于没修。
@@ -90,7 +90,7 @@ def test_existing_exact_entries_still_exempt():
 def test_both_middlewares_call_the_same_helper():
     """判据抄 `test_public_paths.py` 那条同款纪律：**两个中间件必须走同一个判定**。
 
-    **靶子已随本批改动换过** —— 它原先钉的是源码里 `request.url.path in
+    **靶子已随改动换过** —— 它原先钉的是源码里 `request.url.path in
     MIDDLEWARE_EXEMPT_PATHS` 出现 >= 2 次；现在这句**只剩 1 处**（在判定函数内部）。
     ⇒ 不许为了让门绿把它删掉，要**改靶子**（本仓规矩）。
     """
@@ -126,12 +126,12 @@ def test_naive_fix_would_not_have_worked():
 
     没有这条，「为什么这次要引入前缀匹配」就只是我的声称。
     实现在改前就是**精确匹配**（`request.url.path in MIDDLEWARE_EXEMPT_PATHS`）
-    ⇒ 本批的成因正是它。
+    ⇒ 的成因正是它。
     """
     from main import MIDDLEWARE_EXEMPT_PATHS
 
     naive = set(MIDDLEWARE_EXEMPT_PATHS) | {"/static/"}
     assert "/static/web/index.html" not in naive, (
-        "前提变了：精确匹配居然能匹配上带后缀的路径 —— 那本批的成因就不是精确匹配了"
+        "前提变了：精确匹配居然能匹配上带后缀的路径 —— 那的成因就不是精确匹配了"
     )
     assert "/static/app.css" not in naive

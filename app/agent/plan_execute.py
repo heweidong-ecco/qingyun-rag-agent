@@ -191,7 +191,7 @@ def plan_task(user_goal: str, user_name: str = "unknown",
     **流出去的是【正在生成的 JSON 片段】，不是人读终稿**（作者 裁定"甲"）。
        理由：本函数要求严格 JSON 输出、下游 `json.loads` ⇒ 前端**只能**把它当"规划中"
        指示器，终稿看**最后一帧汇总**。**别把流到的 JSON 直接渲染成计划**。
-       判据/上下文 ⇒ （本批）· `app/agent/specs/plan_execute.md`
+       判据/上下文 ⇒ · `app/agent/specs/plan_execute.md`
     """
     system_prompt = """你是一个专业的任务规划助手。你的职责是将用户的目标分解为可执行的步骤清单。
 

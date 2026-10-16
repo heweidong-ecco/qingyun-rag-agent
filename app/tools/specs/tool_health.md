@@ -120,7 +120,7 @@ if result and "工具调用失败" not in result and "未找到工具" not in re
 
 ---
 
-## 📎 原先写在代码 docstring 里的设计说明
+## 📎 从代码 docstring 移出的设计说明
 
 > 来源 = `app/tools/tool_health.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
 

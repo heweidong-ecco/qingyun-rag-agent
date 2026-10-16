@@ -38,8 +38,9 @@
 | 🔴 **「`thread_id` 也对了吧？」** | ⚠️ **`user_name` 对 ⛔ 不等于 `thread_id` 对** —— 这是 照出来的：<br>`/rag/search?thread_id=X` 那次调用，账落 `(user, "system")` —— **用户是对的**，而**会话闸查的是 `(user, X)`** ⇒ **闸恒看到 0** ⇒ 那条路上的**会话 50k 上限永远不会触发**。<br>✅ **现在两个都要传**，`thread_id` 由调用链从端点一路带下来（`rag_pipeline` / `hybrid_search` / `api_v1_rag`）⇒ `search_async(..., *, user_id, thread_id)`。<br>⚠️ **默认值仍留 `"system"`**，理由与 `user_name` **逐字同款**（启动预热 / 维度自检 / `__main__` 本来就没有会话）。<br>🔴 **判据**：同一个文件里的 `test_every_call_site_passes_a_thread`（白名单 3 条，各写理由）。 |
 | 「LLM 能换，Embedding 也能换」 | 🟡 **要分开说**：**端点**仍然写死 DashScope（`base_url` 在模块里，⛔ 不是配置项，`DASHSCOPE_API_KEY` 专用）；**模型名**已可配（`EMBEDDING_MODEL_MAIN`）。⚠️ 换它**必须连维度 + 表定义一起**（§2.1）—— 只换模型名 ⇒ **最危险的是"维度恰好相同"时不报错，而检索结果全是垃圾** |
 | 「缓存命中的是"这句话的向量"」 | 🔴 **不是** —— 命中是「**这句话 + 这个模型**」的向量。键里**没有模型名**的那一版（之前）会让切模型后的查询**静默拿回旧向量** |
-| 「LLM 侧也一样修好了」 | ⛔ **没有** —— 同族的 `make_llm()` **仍在 import 期构造**，本批**只把「报什么」改对**。真惰性要动 3 张图的模块级 `llm` + `bind_tools`，**与 「运行时可切」是同一件事**，⛔ 不单独立项 |
+| 「LLM 侧也一样修好了」 | ⛔ **没有** —— 同族的 `make_llm()` **仍在 import 期构造**，**只把「报什么」改对**。真惰性要动 3 张图的模块级 `llm` + `bind_tools`，**与 「运行时可切」是同一件事**，⛔ 不单独立项 |
 
 ## 关联
 
+·  §三 （**已销账**）·
 `docs/契约/环境变量.md` §4（Embedding 与 LLM 不是同一家）· `app/core/llm_factory.py`（LLM 侧同族，只改了报错）

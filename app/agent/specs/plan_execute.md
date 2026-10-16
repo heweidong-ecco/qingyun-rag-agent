@@ -724,7 +724,7 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 
 ---
 
-## 📎 原先写在代码 docstring 里的设计说明
+## 📎 从代码 docstring 移出的设计说明
 
 > 来源 = `app/agent/plan_execute.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
 

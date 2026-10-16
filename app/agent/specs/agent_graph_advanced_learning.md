@@ -26,7 +26,7 @@
   `user_id = f"{user_name}:{memory_space}"`
   · 🔴 **批 7：`supervisor` 的那次检索【下移到预算门之后】**
     —— 改前它在门**之上** ⇒ **预算已被拒的那一轮照样打一次 DashScope embedding**，结果**当场被丢弃**。
-    ⚠️ 发现方式：本批用例**本机绿、CI 红**（本机 `.env` 有真 key ⇒ **在花真钱**）。
+    ⚠️ 发现方式：用例**本机绿、CI 红**（本机 `.env` 有真 key ⇒ **在花真钱**）。
   · 🔴 **：两处都改成 fail-open** —— 检索失败只**少一段上下文**，⛔ 不打挂
     `/agent/advanced_chat`（改前是裸调用 ⇒ embedding 取不到即**整条 500**）。
     ⚠️ **必须是【两处】**：`supervisor` 是**直调** `search_user_memory`，**⛔ 不在**
@@ -85,7 +85,7 @@
 | ⚠️ **⑤ `should_continue` 是本仓唯一那个** | ⛔ **不是** —— 本文件 `:278` 那个是**局部函数**，返回 **`"tools"` / `END`**；<br>`agent_graph.py:195` 那个返回 **`"approval"` / `"tools"` / END**；`agent_graph_advanced.py:430` 那个返回 **`"tools"` / `"chat"`**。<br>**同名 · 三个语义 · 三个作用域。** |
 | ⚠️ **⑥ 路由是"容错"的** | ⛔ **是【精确匹配】的**（`:513`）：`intent.content.strip()` 与 `"SEARCH"` 等**逐字相等**才命中，<br>**否则一律落 `chat`**（兜底）。⇒ 模型多吐一个句号（`REACT。`）就**静默走错分支**、且**不报错**。<br>⚠️ 这是**真实风险**，不是理论 —— 提示词（`:430`）只写「只返回一个单词」，**没有输出约束**。<br>🔵 ** 之后这条更值得注意**：`chat_node` 是兜底 ⇒ **大多数请求走的其实是这条分支**（其 docstring 已写明） |
 | 🔴 **⑦ 「超预算了，6 个节点都 `return {"final_output": …}` 就完事」** | ⛔ **`supervisor` 那处必须【同时】返回 `intent`**（`:469`：`{"intent": "CHAT", "final_output": BUDGET_EXCEEDED_MSG, "budget_intercept": BUDGET_EXCEEDED_MSG}`）—— <br>因为它的下游是 `route_by_intent`（`:513`），**读 `state["intent"]`**：只给 `final_output` ⇒ 当场 `KeyError`。<br>⚠️ **其余 5 处出口不同**：`chat_node` / `search_summarize` / `calc_execute` / `translate_execute` 的出口是 `final_output`；<br>REACT 的 `agent_decide`（`:311`）出口是 `messages`（`{"messages": [AIMessage(...)]}`）—— 它的下游 `should_continue` 读 `messages[-1].tool_calls`。<br>⇒ **同一件事（拦），返回形状按【节点在图里的位置】定，⛔ 不能一刀切。**<br>🔴 **批 7 追加**：**6 处都还要加 `budget_intercept`**—— 但 **`intent` 照样一个都不能少**。 |
-| 🔴 **⑦b 「被拦那轮 `supervisor` 写 `None` 就对了」** | ⛔ **反了** —— `supervisor` 是**入口节点**，**它自己就是拦截点** ⇒ 被拦那一轮必须写**本轮原因**。写 `None` 等于**把这次拦截藏起来**（那正是本批要治的病）。<br>✅ **`None` 只该出现在【正常出口】**（`:512`，原地改 state 再返回）。⚠️ 改前它写的是 `**cleared`（显式清零）—— 那个写法在"拦截只有 `tool_execute` 一种"的年代是对的，**本批语义翻转**。 |
+| 🔴 **⑦b 「被拦那轮 `supervisor` 写 `None` 就对了」** | ⛔ **反了** —— `supervisor` 是**入口节点**，**它自己就是拦截点** ⇒ 被拦那一轮必须写**本轮原因**。写 `None` 等于**把这次拦截藏起来**（那正是要治的病）。<br>✅ **`None` 只该出现在【正常出口】**（`:512`，原地改 state 再返回）。⚠️ 改前它写的是 `**cleared`（显式清零）—— 那个写法在"拦截只有 `tool_execute` 一种"的年代是对的，**语义翻转**。 |
 | 🔴 **⑦c 「被拒那轮反正要返回预算话术，记忆检索放前面无所谓」** | ⛔ **钱已经花了** —— `search_user_memory`（`:497`）/ `inject_memories_to_prompt` 会**真打一次 DashScope embedding**，而取回的记忆**当场被丢弃**（走不到 `messages`）。<br>✅ 批 7 已把两条都**下移到预算门之后**。📌 判据 `app/tests/test_budget_soft_return.py::_no_memory`（**一调就炸**，⛔ 不是挡成 passthrough）。 |
 | 🔴 **⑨ 「改了 `inject_memories_to_prompt` 就等于把本图的记忆检索改完了」** | ⛔ **漏了一处** —— `supervisor` 是**直调** `search_user_memory`（`:497`），**⛔ 不走** `inject_memories_to_prompt`（`:116`）<br>⇒ 只改那个函数，`/agent/advanced_chat` 在 embedding 取不到时**照旧整条 500**，而**没有任何门会红**。<br>🔴 ** 的账原先就是这么写的**（只列了两个 `inject_memories_to_prompt`）—— 修的时候**逐处扫调用点**才照出来。<br>⚠️ **同族**：这就是本仓「第二层闸 / 漏一处就没人红」那一族（`grep -rn "search_user_memory" app/agent/` 数**调用点**，⛔ 不是数 `def`）。<br>🔴 **两处里的 `except AssertionError: raise` 也⛔ 不是冗余** —— 见 `agent_graph_advanced.md` ⚠️⑨（探针报的是 `AssertionError`，它是 `Exception` 的子类）。<br>📌 守卫 ⇒ `app/tests/test_memory_injection_failopen.py`（**4 条**，每条带**正控**；**变异自证**：拆入口那处守卫 ⇒ 1 红 · 拆 `except AssertionError` ⇒ 1 红 · 拆两处函数内的 ⇒ 2 红）。 |
 | 🔴 **⑧ 「记账就是 `record_usage`，grep 它就能查有没有记账」** | ⛔ **本模块走的是 `record_from_response`**（三张图共用的**唯一入口**，`token_tracker.py`）—— <br>`grep -c record_usage` 在本文件**仍然是 0**（改前改后都是）⇒ **拿它当判据会得出"还是没记"的错误结论**。<br>✅ 正确判据：`python -m pytest app/tests/test_billing_wiring.py -q`（它按**最内层函数**逐个点数）。 |

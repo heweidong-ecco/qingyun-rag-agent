@@ -281,7 +281,7 @@ async def insert_batch(
                 )
                 conn.commit()
         count += 1
-    # 同上：批量插入后也须失效，否则本批新文档检索不到
+    # 同上：批量插入后也须失效，否则新文档检索不到
     invalidate_bm25_cache()
     return {"status": "inserted", "count": count, "requested_by":user_name}
 

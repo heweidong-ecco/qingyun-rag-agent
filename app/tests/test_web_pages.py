@@ -597,7 +597,7 @@ def test_page_inline_tags_are_balanced(page):
         f"`{page}` 的行内标记没配平（{len(problems)} 处）：\n"
         + "\n".join(f"    第 {line} 行：{why}" for _name, line, why in problems)
         + "\n⇒ 多半是**脚本按文本替换**时把闭合标签一起吃掉了（本仓栽过：`tmp/apply_copy.py` 回写 52 条文案）。\n"
-        "⇒ 处置：**逐条**把标记补回去，⛔ 别用脚本批量补 —— 上一次就是脚本干的。"
+        "⇒ 处置：**逐条**把标记补回去，⛔ 别用脚量补 —— 上一次就是脚本干的。"
     )
 
 

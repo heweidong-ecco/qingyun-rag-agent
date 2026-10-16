@@ -40,7 +40,7 @@
 ## ⚠️ 看代码【真的】会误判的一条（历史）
 
  里它被登记为「**整块死代码**」，和 `tools_with_cache.py` 并列。
-⚠️ **那一栏现在已经过期**：本批之后它是**唯一的**缓存实现（`tools_with_cache.py` 已被删除）。
+⚠️ **那一栏现在已经过期**：之后它是**唯一的**缓存实现（`tools_with_cache.py` 已被删除）。
 
 📌 **教训**：登记"死代码"时若只按**当时**的引用数算，**接上之后没人会回头改那一栏**。
 
@@ -52,5 +52,5 @@
   `app/tests/test_tool_cache.py::test_every_mcp_registered_tool_has_a_ttl`（**新工具忘了登记 TTL 的唯一拦网**）
 - **邻居** ⇒ `app/tools/specs/safe_math.md`（`calculator` 的安全实现）
 - ⚠️ **`app/tools/simple_tools.py` / `app/tools/search_tools.py` / `app/tools/code_executor.py` 目前【没有 spec】**
-  （=`spec_status.sh` 的「没 spec」名单里）—— 本批**没给它们建**，⛔ 别以为这里漏写了路径
+  （=`spec_status.sh` 的「没 spec」名单里）—— **没给它们建**，⛔ 别以为这里漏写了路径
 - ⚠️ **`app/access/rate_limiter.py` 的 ** —— fail-open 的**同形先例**，本文件的捕获范围照抄它的形状

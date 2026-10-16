@@ -199,7 +199,7 @@ def test_软返回那一轮的出口也要带上本轮的值(monkeypatch):
 
     **批 7 新增的正是"入口节点自己就是拦截点"**（预算不够 ⇒ 根本走不到工具）
     ⇒ 本出口必须写**本轮的原因**，再写 `None` 就等于**把这次拦截藏起来**
-    （而那正是本批要治的病）。裁定。
+    （而那正是要治的病）。裁定。
 
     ⇒ 守的东西没变（**上轮的值不许串过来**），判据从"是 `None`"改成"**不是上一轮那个值**"。
     """
@@ -249,7 +249,7 @@ def _blocked_result():
 
 
 def test_被拦时非流式端点回429(monkeypatch):
-    """**本批要的就是这一条** —— 改前这里回 **200 + 一段"预算不够"的答案**。"""
+    """**要的就是这一条** —— 改前这里回 **200 + 一段"预算不够"的答案**。"""
     _patch_gates(monkeypatch)
     monkeypatch.setattr(m, "mcp_agent", _FakeGraph(_blocked_result()))
     with pytest.raises(AppException) as ei:

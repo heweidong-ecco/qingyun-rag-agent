@@ -68,7 +68,7 @@ class _RouteFake(_BillingFakeModel):
 def test_拦截文案带上原因且不写死工具调用():
     """文案必须是**本轮**口径，不是「本次工具调用未执行」。
 
-    理由：本批新增的 10 处软返回里，绝大多数**根本没有工具调用**
+    理由：新增的 10 处软返回里，绝大多数**根本没有工具调用**
     （四张图的**入口节点**在调 LLM 之前就拦下了）⇒ 旧文案对它们**不准**。
     """
     msg = m.agent_budget_intercept_message(REASON)
@@ -124,7 +124,7 @@ def _patch_no_llm(monkeypatch, mod, *names):
 
 
 def _no_memory(monkeypatch, mod, *names):
-    """预算已被拒 ⇒ **不许再花那笔 embedding 的钱**（本批顺带堵掉的一类漏网）。
+    """预算已被拒 ⇒ **不许再花那笔 embedding 的钱**（顺带堵掉的一类漏网）。
 
     改前 `agent_graph_advanced.chat_node` 与 `agent_graph_advanced_learning.supervisor`
     把记忆检索排在门**之上** ⇒ 被拒的那一轮照样打一次 DashScope embedding，

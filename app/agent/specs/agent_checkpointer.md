@@ -39,7 +39,7 @@
   **看不出被拒了**。· 现在**两个出口都显式给 `budget_intercept`**：软返回出口（`:99`）写**本轮原因**、
   正常出口（`:137`）写 **`None`**（清零 —— 入口节点 `agent_decide` 每轮第一个跑）。
   ⚠️ **本文件的返回形状是"孤例"** —— 它返 `AIMessage`（`should_continue` 读 `messages[-1].tool_calls`），
-  ⛔ **不是 `final_output`** ⇒ 本批**只加键、⛔ 没动返回形状**（动了会动到本图路由）。
+  ⛔ **不是 `final_output`** ⇒ **只加键、⛔ 没动返回形状**（动了会动到本图路由）。
   · 📄 裁定；📌 判据 ⇒ `app/tests/test_budget_soft_return.py`（21 例）
 
 ## 🟡 做到哪 / 缺什么
