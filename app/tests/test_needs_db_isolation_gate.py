@@ -52,7 +52,7 @@ def test_the_real_database_is_refused_with_a_runnable_recipe():
     assert msg, "真库名该被拒 —— 放行它 = 假用量会写进去，而且**没有任何异常**"
     assert "rag_db" in msg, "要把**实际读到的库名**打出来（不然不知道它读到了什么）"
     assert "POSTGRES_DB=rag_test" in msg, "要给一条**能直接抄的**跑法"
-    assert "复盘" in msg, "要点名那条前科 —— 不然这条闸看起来像是多余的谨慎"
+    assert "前科" in msg, "要点名那条前科 —— 不然这条闸看起来像是多余的谨慎"
 
 
 @pytest.mark.parametrize("bad", ["", None, "rag_db", "ragtest", "rag_test2", "test"])

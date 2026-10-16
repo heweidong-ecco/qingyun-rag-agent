@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **已实施**（2026-10-15） |
+| **状态** | ✅ **已实施** |
 | **对外提供** | `hash_password()` · `verify_password()` · `authenticate_from_db()` · `add_user()` · `set_active()` · `list_users()` · 🔴 **`login_account_blocked()`**（**撤销立即生效**那半边）· `invalidate_active_cache()` |
 | **谁在用** | `access/auth.py::authenticate_user`（**第二条来源**）· `app/manage_users.py`（运维动作） |
 | **落盘** | 表 `login_users` —— DDL 在 `app/core/db.py::create_table()` |

@@ -2,10 +2,10 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **新建（2026-10-03）** —— `calculator` 工具的**求值实现**，替代 `eval(expression)` |
+| **状态** | 🟢 **新建** —— `calculator` 工具的**求值实现**，替代 `eval(expression)` |
 | **规模** | 235 行 |
 | **对外提供** | `calculate(expression) -> str`（**永不抛**）· `evaluate(expression)`（**会抛**）<br>异常 `InvalidExpression` / `UnsafeExpressionError`（子类）· `DivisionByZero`（子类）<br>常量 `MAX_EXPRESSION_LENGTH` / `MAX_POWER_EXPONENT` / `MAX_RESULT_BITS` |
-| **谁在用** | **6 处**：`agent_graph.py` · `agent_checkpointer.py` · `agent_graph_advanced_learning.py` · `simple_tools_impl.py`（→ `simple_tools` → `mcp_server`）· `tools_with_cache.py`（⚰️ 生产不可达）· **`api_v1_rag.py`（第 6 处，2026-10-04 才挖出来 ——）**<br>🔴 **原来写「5 处」是错的** —— 漏的那一处**一直写的是 `eval`**（`2c1a922` · 2026-07-17 引入），**而且（当时）匿名 WS 可达**。<br>✅ **2026-10-05**：那处 WS 已加首帧认证 ⇒ **不再是匿名可达**。⚠️ **但"可达的人"只从路人换成了持凭据的用户** —— 而 `expression` 由 LLM 生成、上下文含用户输入 ⇒ **注入面没消失，闸不能撤**。 |
+| **谁在用** | **6 处**：`agent_graph.py` · `agent_checkpointer.py` · `agent_graph_advanced_learning.py` · `simple_tools_impl.py`（→ `simple_tools` → `mcp_server`）· `tools_with_cache.py`（⚰️ 生产不可达）· **`api_v1_rag.py`（第 6 处，才挖出来 ——）**<br>🔴 **原来写「5 处」是错的** —— 漏的那一处**一直写的是 `eval`**（`2c1a922` · 引入），**而且（当时）匿名 WS 可达**。<br>✅ ：那处 WS 已加首帧认证 ⇒ **不再是匿名可达**。⚠️ **但"可达的人"只从路人换成了持凭据的用户** —— 而 `expression` 由 LLM 生成、上下文含用户输入 ⇒ **注入面没消失，闸不能撤**。 |
 | **依赖** | **只有标准库**（`ast` / `math` / `operator`）⇒ ⛔ **别加第三方依赖**（`simple_tools_impl.py` 的「只 import 标准库」不变量靠这条成立） |
 
 ## ✅ 做了什么

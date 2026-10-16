@@ -2,8 +2,8 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **客户端已惰性构造**（2026-10-05 · 批 6 ·）· 🔴 **模型名已从 env 读**（2026-10-11） |
-| **对外提供** | `get_embedding(text, model=None, *, user_name="system", thread_id="system")` —— `None` 时解析成 `EMBEDDING_MODEL_MAIN`（先 env 后 `core.config`）· `assert_model_dimension(expected)`<br>🔴 **2026-10-11 新增 `user_name`（关键字限定）**—— 见「看代码会误判」第 1 条；⛔ **别把默认值删掉**（三条路本来就没有用户） |
+| **状态** | ✅ **客户端已惰性构造**· 🔴 **模型名已从 env 读** |
+| **对外提供** | `get_embedding(text, model=None, *, user_name="system", thread_id="system")` —— `None` 时解析成 `EMBEDDING_MODEL_MAIN`（先 env 后 `core.config`）· `assert_model_dimension(expected)`<br>🔴 **新增 `user_name`（关键字限定）**—— 见「看代码会误判」第 1 条；⛔ **别把默认值删掉**（三条路本来就没有用户） |
 | **谁在用** | 几乎所有检索/入库路径（经 `rag_pipeline` / `api_v1_rag` / `cache.warmup_cache` / `hybrid_search`） |
 
 ## ✅ 做了什么

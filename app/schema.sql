@@ -20,7 +20,7 @@
 --             **`vector(1024)`** —— 换 `qwen3.7-text-embedding-flash` 后**实测**的维度）
 --           → 🔴 **2026-10-16 再生成**（：`documents_embedding_idx` 由 `ivfflat`
 --             改成 **`hnsw`** —— ⚠️ **顺带补上了 `login_users`**，它 2026-10-16 加进活库后一直没进快照）
--- 来源数据库：本机开发库（Docker 容器 `postgres-rag`，镜像 `pgvector/pgvector:pg17`）
+-- 来源数据库：本机开发库（Docker 容器 `qingyun-rag-agent-postgres-1`，镜像 `pgvector/pgvector:pg17`）
 --
 -- ## 🔴 2026-10-08 这次重新生成，改了什么
 --

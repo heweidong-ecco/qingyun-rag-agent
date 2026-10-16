@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🆕 **新建（2026-10-03 ·）** —— 待接管队列（硬门 D 的"数据"那一半）<br>🔴 **2026-10-03 丙段改键**：登记键由**裸 `thread_id`** 改成 **`session_key(user_name, thread_id)`**，并新增 `raw_thread_id` / `graph` 两个字段<br>🔴 **2026-10-05 加轮次上限**：新增 `rounds` 字段 + `approval_round_cap()`，让"放行后又停"**有界** |
+| **状态** | 🆕 **新建** —— 待接管队列（硬门 D 的"数据"那一半）<br>🔴 **丙段改键**：登记键由**裸 `thread_id`** 改成 **`session_key(user_name, thread_id)`**，并新增 `raw_thread_id` / `graph` 两个字段<br>🔴 **加轮次上限**：新增 `rounds` 字段 + `approval_round_cap()`，让"放行后又停"**有界** |
 | **对外提供** | 函数 `register` / `resolve` / `list_pending` / **`find_by_raw_thread_id`** / **`approval_round_cap`** / `clear` / `warn_if_backend_mismatch`；<br>经路由 **`GET /agent/pending`** 露出 |
 | **谁在用** | `api_v1_agent.py` —— `langgraph_chat`（登记/注销）· `langgraph_chat_stream`（登记/注销）· **`memory_chat`（登记/注销）** · `approve_agent_action`（**反查属主** + 注销）· `list_pending_approvals` 端点 |
 

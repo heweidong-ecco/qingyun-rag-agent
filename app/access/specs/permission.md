@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **已接 DB**（2026-10-09 · B1）—— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
+| **状态** | ✅ **已接 DB**—— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
 | **对外提供** | `UserRole`（`str, Enum`：`FREE` / `PREMIUM` / `ADMIN`）· `get_user_role(user_name) -> UserRole` · 🆕 **`invalidate_role_cache(user_name=None)`**（**写侧改完角色必须调它**） |
 | **谁在用** | **11 处**：`deps.py:76`（`require_admin`）· `api_v1.py:244` · `api_v1_rag.py:383` · `api_v1_agent.py` **7 处**（admin 判定）· `token_tracker.py:513`（`get_user_token_budget` —— 🔴 **配额热路径**，一个请求最多调 10 次） |
 | **测试** | 🆕 `app/tests/test_user_role_from_db.py`（**19 条，本模块自己的用例**，⭐ 含反向守卫与"非数据库异常必须冒泡"）· `test_isolation.py` · `test_pending_visibility.py` · `test_approve_ownership.py` · `test_trace_isolation.py` · `test_quota_middleware.py` · `test_token_config.py` · `test_rate_limit_identity.py`（`_no_db` 守卫也拦本模块 —— 见那里 fixture 的说明） |

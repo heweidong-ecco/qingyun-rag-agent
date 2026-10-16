@@ -39,7 +39,7 @@
 
 ```bash
 docker compose up -d          # ⚠️ 先确认没有评测在跑：docker ps | grep eval ⇒ 空
-docker ps --format '{{.Names}}\t{{.Status}}'   # ⇒ rag-api / rag-executor / redis-rag / postgres-rag 全 healthy
+docker ps --format '{{.Names}}\t{{.Status}}'   # ⇒ qingyun-rag-agent-api-1 / qingyun-rag-agent-executor-1 / qingyun-rag-agent-redis-1 / qingyun-rag-agent-postgres-1 全 healthy
 ```
 
 ### 2.2 拿一把 key（🔴 **它⛔ 不进仓**）

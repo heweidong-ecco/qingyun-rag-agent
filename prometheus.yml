@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'rag-api'
+  - job_name: 'qingyun-rag-agent-api-1'
     static_configs:
       - targets: ['api:8000']
     metrics_path: '/metrics'

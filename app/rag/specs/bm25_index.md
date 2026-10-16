@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 且 **2026-10-03 起它是「多用户隔离」的两个承重层之一**（决策 5：过滤写在共享层） |
+| **状态** | 🟡 **可用** —— 且 **它是「多用户隔离」的两个承重层之一**（决策 5：过滤写在共享层） |
 | **对外提供** | `bm25_search()` · `get_all_documents()` · `get_bm25_index()` · `invalidate_bm25_cache()`（+ 私有的 `_meaningful_tokens()` / `_require_identity()` / `_NON_WORD`） |
 | **谁在用** | ⚠️ **没有直接调用方** —— 都是经 `db.py` 的**惰性转发层**（`db.bm25_search` / `db.bm25_search_async` / `db.invalidate_bm25_cache`）⇒ 再往上是 `hybrid_search.py` 与 `rag_pipeline.py` |
 

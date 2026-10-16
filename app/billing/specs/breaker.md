@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**（2026-10-02 · `①b`）；`model:` 那类**还没做**（留给） |
+| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**；`model:` 那类**还没做**（留给） |
 | **对外提供** | `circuit(key, estimated_tokens=0) -> (bool, str)` · `global_key() -> str` |
 | **谁在用** | 9 处（8 个端点函数）：`api_v1_agent.py` 5 处（`:109 :186 :224 :280 :527`）· `api_v1_rag.py` 2 处（`:609 :832`，后者在 WS 里）· `api_v1.py` 1 处（`:244`） |
 | **测试** | `test_breaker.py`（9 条 · 函数本身）· `test_breaker_wiring.py`（9 条 · **接线**）· `test_global_daily_budget.py::test_yesterdays_usage_does_not_count`（**跨天恢复**） |

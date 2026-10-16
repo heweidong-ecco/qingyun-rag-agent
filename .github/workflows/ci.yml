@@ -3,24 +3,53 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
+    name: 离线测试（app/ 全套 · 减 integration/needs_db · redis）
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: app
-    env:
-      POSTGRES_PASSWORD: ci-dummy-not-a-real-key
-      JWT_SECRET_KEY: ci-dummy-not-a-real-key
-      LOGIN_PASSWORD: ci-dummy-not-a-real-key
-      DASHSCOPE_API_KEY: ci-dummy-not-a-real-key
-      LLM_API_KEY: ci-dummy-not-a-real-key
+    timeout-minutes: 15
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - run: pip install -r requirements.txt pytest
-      - run: python -m pytest . -m "not integration and not needs_db" -q
+          cache: pip
+          cache-dependency-path: app/requirements.txt
+
+      - name: 安装测试依赖
+        run: |
+          FILTER='^(sentence-transformers|transformers|locust|ragas|datasets)'
+          grep -vE "$FILTER" app/requirements.txt > /tmp/req-light.txt
+          pip install -r /tmp/req-light.txt pytest
+
+      - name: 跑离线测试
+        env:
+          GRADIO_ANALYTICS_ENABLED: "False"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          DASHSCOPE_API_KEY: ci-dummy-not-a-real-key
+          LLM_API_KEY: ci-dummy-not-a-real-key
+          POSTGRES_PASSWORD: ci-dummy-not-a-real-key
+          JWT_SECRET_KEY: ci-dummy-not-a-real-key
+          LOGIN_PASSWORD: ci-dummy-not-a-real-key
+        run: pytest app/ -m "not integration and not needs_db" -v

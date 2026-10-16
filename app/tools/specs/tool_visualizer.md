@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **部分可用** —— 记录与查询都在，但① 存储是**进程内存**（重启即空）② **只有 2 个模块**往里写（`api_v1_agent` 的两条 MCP 链 + `api_v1_rag.stream_search`，共 **3 处**调用点 —— 见 §🟡） |
+| **状态** | 🟡 **部分可用** —— 记录与查询都在，但 存储是**进程内存**（重启即空） **只有 2 个模块**往里写（`api_v1_agent` 的两条 MCP 链 + `api_v1_rag.stream_search`，共 **3 处**调用点 —— 见 §🟡） |
 | **对外提供** | `start_trace` · `finish_trace` · `record_tool_start` · `record_tool_end` · `record_agent_decision` · `get_trace` · `get_trace_of_any_owner` · `get_all_traces` · 数据类 `AgentTrace` / `ToolCallRecord` |
-| **谁在用** | 写：`api_v1_agent.mcp_agent_chat` · `mcp_agent_chat_stream`（建轨迹）· **`api_v1_rag.stream_search`（2026-10-08）** · `agent_graph_advanced` 的两个节点（工具与决策）。<br>读：`/agent/trace/{thread_id}` · `/agent/traces` 两个端点<br>🆕 **2026-10-06**：新页面 **`/trace`**（`app/static/web/trace.html`）读**本轴**画上半页，读**成本轴**画下半页 —— 同一个页面上**两条轴并排、互不相加** |
+| **谁在用** | 写：`api_v1_agent.mcp_agent_chat` · `mcp_agent_chat_stream`（建轨迹）· **`api_v1_rag.stream_search`** · `agent_graph_advanced` 的两个节点（工具与决策）。<br>读：`/agent/trace/{thread_id}` · `/agent/traces` 两个端点<br>🆕 ：新页面 **`/trace`**（`app/static/web/trace.html`）读**本轴**画上半页，读**成本轴**画下半页 —— 同一个页面上**两条轴并排、互不相加** |
 | **存储** | 模块级字典 `_traces`，**键 = `session_key(user_name, thread_id)`**（决策 9 / N4） |
 
 ## ✅ 做了什么

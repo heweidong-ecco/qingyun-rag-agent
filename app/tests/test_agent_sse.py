@@ -359,7 +359,7 @@ def _call_stream_route(monkeypatch, fake_graph, redis=None, **kw):
     顺带把 B8 / B11 短路掉：本文件测的是**流式接线**，不是预算判定
        （那两条各有自己的用例：`test_session_budget_wiring.py` / `test_breaker_wiring.py`）。
      起端点会往 `chat_history` 写留痕 ⇒ 必须短路存储
-       （不打桩就会写**真 redis**：本机 `ci-local.sh` 复用长期容器 `redis-rag`，会攒 key）。
+       （不打桩就会写**真 redis**：本机 `ci-local.sh` 复用长期容器 `qingyun-rag-agent-redis-1`，会攒 key）。
     """
     monkeypatch.setattr(m, "agent_graph", fake_graph)
     monkeypatch.setattr(m, "check_session_token_budget", lambda *a, **k: (True, ""))

@@ -2,10 +2,10 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 基于 Redis 的令牌桶，**全局 + 用户两层**<br>🔴 它曾有 **3 个"看代码看不出来"的性质** ⇒ **2026-10-05（批 3 ·）起 ②③ 已修、① 早于 2026-09-30 已修**（`B9-b`）<br>⚠️ **但 ⚠️ 节还在** —— ①④⑤ 仍然是"看代码会误判"的（其中 ④ 是**已知未修**），⛔ 别因为"②③修了"就当整节过时了 |
-| **对外提供** | `TokenBucketLimiter`（`is_allowed` / `get_remaining` / `get_limit_info`，**三处都 fail-open**）· 两个模块级实例 `global_limiter` · `user_limiter` · `_TOKEN_BUCKET_LUA`（**2026-10-05 提成模块级常量** —— 提出来才测得到，） |
+| **状态** | 🟡 **可用** —— 基于 Redis 的令牌桶，**全局 + 用户两层**<br>🔴 它曾有 **3 个"看代码看不出来"的性质** ⇒ **（批 3 ·）起 已修、 早于 已修**（`B9-b`）<br>⚠️ **但 ⚠️ 节还在** —— 仍然是"看代码会误判"的（其中 是**已知未修**），⛔ 别因为"修了"就当整节过时了 |
+| **对外提供** | `TokenBucketLimiter`（`is_allowed` / `get_remaining` / `get_limit_info`，**三处都 fail-open**）· 两个模块级实例 `global_limiter` · `user_limiter` · `_TOKEN_BUCKET_LUA`（**提成模块级常量** —— 提出来才测得到，） |
 | **谁在用** | `main.py` 的 `RateLimitMiddleware`（**唯一的生产消费者**）· `api_v1.py` 的 `/debug/*` 查询端点 |
-| **规模** | 🔴 **别写死行数** —— 跑 `wc -l app/access/rate_limiter.py`（2026-10-05 时为 **210**） |
+| **规模** | 🔴 **别写死行数** —— 跑 `wc -l app/access/rate_limiter.py` |
 
 ## ✅ 做了什么
 
@@ -52,7 +52,7 @@
 >   sleep 0.1
 > done
 > # 然后直接问 Redis 桶里真实的 tokens
-> docker exec redis-rag redis-cli HGETALL rate_limit:anonymous
+> docker exec qingyun-rag-agent-redis-1 redis-cli HGETALL rate_limit:anonymous
 > ```
 >
 > | 次 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | **Redis 里实际** |

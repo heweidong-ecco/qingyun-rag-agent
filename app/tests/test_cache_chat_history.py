@@ -6,7 +6,7 @@
 而那时红的是端点，**看不出是存储层漏了**。
 
 **不碰真 redis**：`cache.redis_client` 换成 `conftest.FakeRedis`（`fake_redis` 夹具）。
-   本机  复用**长期容器 `redis-rag`**，真写会攒 key 且跨用例互相污染。
+   本机  复用**长期容器 `qingyun-rag-agent-redis-1`**，真写会攒 key 且跨用例互相污染。
 """
 import json
 

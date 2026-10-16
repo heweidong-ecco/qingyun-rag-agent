@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **新建（2026-10-01 · B7）** —— 额度类常量的**唯一落点**<br>✅ **`MAX_TOKENS_*` 已接线**（2026-10-01 · `①b`，15 处构造点；**2026-10-02 ·  起收进 `app/core/llm_factory.py`**）<br>✅ **`SESSION_TOKEN_LIMIT` 已有判定函数 + 7 个调用点**（`①b`）<br>✅ **`GLOBAL_DAILY_TOKEN_LIMIT` 已接线**（2026-10-02 · `①b`，经 `app/billing/breaker.py` **8 处**）<br>⚠️ **2026-10-01 当天它曾是"有函数、无调用点"—— 那句已作废** |
-| **对外提供** | `MAX_TOKENS_ANSWER` · `MAX_TOKENS_AGENT` · `MAX_TOKENS_REWRITE_*` · `SESSION_TOKEN_LIMIT` · `GLOBAL_DAILY_TOKEN_LIMIT` · 🔴 **`LLM_DAILY_TOKEN` + `EMBEDDING_DAILY_TOKEN`**（2026-10-11 起**按池两张表**）· `DEFAULT_DAILY_TOKEN_BUDGET` · `MODEL_PRICING` · `DEFAULT_MODEL_PRICING` · `MAX_SINGLE_CALL_COST` · `MAX_THREAD_COST` · `GLOBAL_LIMIT_*` · `USER_LIMIT_*` |
-| **谁在用** | `token_tracker.py`（别名 `PRICING` / …）🔴 **2026-10-11：`ROLE_TOKEN_BUDGET` 那个别名已删**（两池分开后没有"每个角色一个数"）· `rate_limiter.py`（现 `:137` / `:140` 两个既有 `TokenBucketLimiter` 的实例化）<br>✅ **`MAX_TOKENS_*` 的 15 个调用点** —— ⚠️ **2026-10-02起，它们不再直接 import 本模块**，而是经 `app/core/llm_factory.py` 的 `make_llm()` 读。<br>📌 清单见 `app/tests/test_max_tokens_wiring.py` 的 `EXPECTED_ROLES`（旧名 `EXPECTED_MAX_TOKENS`， 随门禁改写） |
+| **状态** | 🟢 **新建** —— 额度类常量的**唯一落点**<br>✅ **`MAX_TOKENS_*` 已接线**<br>✅ **`SESSION_TOKEN_LIMIT` 已有判定函数 + 7 个调用点**（``）<br>✅ **`GLOBAL_DAILY_TOKEN_LIMIT` 已接线**<br>⚠️ **当天它曾是"有函数、无调用点"—— 那句已作废** |
+| **对外提供** | `MAX_TOKENS_ANSWER` · `MAX_TOKENS_AGENT` · `MAX_TOKENS_REWRITE_*` · `SESSION_TOKEN_LIMIT` · `GLOBAL_DAILY_TOKEN_LIMIT` · 🔴 **`LLM_DAILY_TOKEN` + `EMBEDDING_DAILY_TOKEN`**· `DEFAULT_DAILY_TOKEN_BUDGET` · `MODEL_PRICING` · `DEFAULT_MODEL_PRICING` · `MAX_SINGLE_CALL_COST` · `MAX_THREAD_COST` · `GLOBAL_LIMIT_*` · `USER_LIMIT_*` |
+| **谁在用** | `token_tracker.py`（别名 `PRICING` / …）🔴 **：`ROLE_TOKEN_BUDGET` 那个别名已删**（两池分开后没有"每个角色一个数"）· `rate_limiter.py`（现 `:137` / `:140` 两个既有 `TokenBucketLimiter` 的实例化）<br>✅ **`MAX_TOKENS_*` 的 15 个调用点** —— ⚠️ **，它们不再直接 import 本模块**，而是经 `app/core/llm_factory.py` 的 `make_llm()` 读。<br>📌 清单见 `app/tests/test_max_tokens_wiring.py` 的 `EXPECTED_ROLES`（旧名 `EXPECTED_MAX_TOKENS`， 随门禁改写） |
 | **规模** | 89 行（`wc -l app/billing/token_config.py`） |
 
 ## ✅ 做了什么

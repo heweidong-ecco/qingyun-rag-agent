@@ -9,7 +9,7 @@
 |---|---|
 | `breaker.md` | `app/billing/breaker.py` 的 spec |
 | `cost_dashboard.md` | `app/billing/cost_dashboard.py` 的 spec |
-| 🆕 **`quota_pools.md`** | `app/billing/quota_pools.py` 的 spec —— **两个额度池 · 按路径归池**（2026-10-11 建，⚠️ **本表原先漏了它**，2026-10-13 补登） |
+| 🆕 **`quota_pools.md`** | `app/billing/quota_pools.py` 的 spec —— **两个额度池 · 按路径归池** |
 | `token_config.md` | `app/billing/token_config.py` 的 spec |
 | `token_tracker.md` | `app/billing/token_tracker.py` 的 spec |
 

@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **已接进产品路径（2026-10-08）** —— 🔴 **此前它是"没接上的模块"**（整块死代码，见下） |
+| **状态** | ✅ **已接进产品路径** —— 🔴 **此前它是"没接上的模块"**（整块死代码，见下） |
 | **对外提供** | `cached_tool()`（装饰器）· `get_ttl()` · `TTL_BY_TOOL`（**唯一**的 TTL 事实源）<br>底层：`get_tool_cache_key()` · `get_cached_tool_result()` · `set_cached_tool_result()` |
-| **谁在用** | `simple_tools.py`（`calculator` / `date_today` / **`date_calc`** / **`json_extract`** / **`stats`** —— 🔴 后三个 2026-10-08  新增）· `search_tools.py`（`web_search`）· `code_executor.py`（`execute_python`）<br>⇒ ⭐ **缓存包在 `@tool` 那一层**，不是调用点、不是 handler<br>⚠️ **本行原带 `:11` / `:42` / `:17` 三个行号，已删** —— 本仓：行号锚点**系统性漂移**⇒ 一律改用**模块名 / 函数名** |
+| **谁在用** | `simple_tools.py`（`calculator` / `date_today` / **`date_calc`** / **`json_extract`** / **`stats`** —— 🔴 后三个 新增）· `search_tools.py`（`web_search`）· `code_executor.py`（`execute_python`）<br>⇒ ⭐ **缓存包在 `@tool` 那一层**，不是调用点、不是 handler<br>⚠️ **本行原带 `:11` / `:42` / `:17` 三个行号，已删** —— 本仓：行号锚点**系统性漂移**⇒ 一律改用**模块名 / 函数名** |
 | **测试** | `app/tests/test_tool_cache.py`（**8**）· `app/tests/test_tool_cache_wiring.py`（**5**）<br>⚠️ 数字会变，判据：`cd app && ../venv/bin/python -m pytest test_tool_cache.py test_tool_cache_wiring.py --collect-only -q \| tail -1` |
 
 ## ✅ 做了什么

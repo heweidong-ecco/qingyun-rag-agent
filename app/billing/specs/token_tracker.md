@@ -2,10 +2,10 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— ⚠️ **2026-10-03 起它不再是"三套口径"之一**（次数那套已删）<br>🟢 **①a 已落地（2026-10-01）**：额度常量已收口到 `app/billing/token_config.py`（本文件**只剩同名别名**）· 本文件下方 **实施计划 ①a** 已执行完<br>🔵 **①b（2026-10-02）**： ✅ /  ✅（B7 接线）/  /  /  / （改写后只做构造收口，⛔ 自动兜底【推迟】—— 见该 Task 的修订块） /  / <br>⚠️ ** 曾一度"有函数没接线"（2026-10-01 当天）—— 那句话已作废**，2026-10-02  接上了<br>🔴 **2026-10-04：新增 `record_from_response()` —— 【取用量的唯一实现】** —— 962 → **1027 行**。改前"从响应取 usage"这件小事**在每条链里各写一遍**，于是三条链里有的**写错了属性名**（`.usage` 恒假）⇒ **静默不记账**。现在**三张图 9 个调用点**统一调它，⛔ 不许再各写各的。<br>⚠️ **它只做「取+记」，⛔ 不做「拦」** —— 拦是 `check_token_budget` 的事，由**调用方在 `.stream()` 之前**自己调 |
-| **对外提供** | `record_usage()`（`:71`）· 🆕 **`record_from_response()`（`:159`）** · `record_cost()`（`:216`）· `check_multilevel_budget()`（`:789`）· `check_token_budget_detail()`（`:440`）· `get_token_budget_info()`（`:477`）· **10 个汇总函数**（2026-10-03 起 +`get_user_overview`）· 🆕 常量 `BUDGET_EXCEEDED_MSG`（`:156`）<br>🔵 **2026-10-03 起**：`get_token_budget_info()` 还被 **`main.QuotaMiddleware`** 消费（全路径按用户日级 = `R1.3`）—— **它不再只是"记账/看板"用的** |
-| **谁在用** | `permission`（取角色）· `agent_graph_advanced.py:239`（唯一调多级预算的地方）· `cost_dashboard.py` · 各 `api_v1_*.py`<br>🔴 **2026-10-04 起新增 3 个图模块**：`agent_graph.py` · `agent_checkpointer.py` · `agent_graph_advanced_learning.py`（都是 `check_token_budget` + `record_from_response` 成对）<br>✅ **2026-10-05 又 +3**：`rag_pipeline.py` · `answer_with_citations.py` · `query_rewriter.py`（**`query_rewriter` 用 `record_usage`** —— 它是裸 `openai.OpenAI`，响应只有 `.usage`）<br>✅ **2026-10-06 再 +1**：**`api_v1_rag.py`**（`/rag/stream_search` 的流式答案 —— `_StreamUsageTap` 在收尾出口调 `record_from_response`）<br>⚠️ **判据**：`grep -rn "record_from_response" app/*.py \| grep -v "^app/test_"` ⇒ **9 个文件**（⚠️ **含注释里的提及** —— `query_rewriter.py` 是**反面**那个：它**必须**用 `record_usage`，注释里写着"⛔ 不能用 `record_from_response`"，⛔ 别把它读成记账点） |
-| **规模** | **1027 行**（2026-10-04  重取；此前 962） |
+| **状态** | 🟡 **可用** —— ⚠️ **它不再是"三套口径"之一**（次数那套已删）<br>🟢 ** 已落地**：额度常量已收口到 `app/billing/token_config.py`（本文件**只剩同名别名**）· 本文件下方 **实施计划 ** 已执行完<br>🔵 ： ✅ / ✅（B7 接线）/ / / / （改写后只做构造收口，⛔ 自动兜底【推迟】—— 见该 Task 的修订块） / / <br>⚠️ ** 曾一度"有函数没接线"—— 那句话已作废**，接上了<br>🔴 **：新增 `record_from_response()` —— 【取用量的唯一实现】** ——**。改前"从响应取 usage"这件小事**在每条链里各写一遍**，于是三条链里有的**写错了属性名**（`.usage` 恒假）⇒ **静默不记账**。现在**三张图 9 个调用点**统一调它，⛔ 不许再各写各的。<br>⚠️ **它只做「取+记」，⛔ 不做「拦」** —— 拦是 `check_token_budget` 的事，由**调用方在 `.stream()` 之前**自己调 |
+| **对外提供** | `record_usage()`（`:71`）· 🆕 **`record_from_response()`（`:159`）** · `record_cost()`（`:216`）· `check_multilevel_budget()`（`:789`）· `check_token_budget_detail()`（`:440`）· `get_token_budget_info()`（`:477`）· **10 个汇总函数**· 🆕 常量 `BUDGET_EXCEEDED_MSG`（`:156`）<br>🔵 ：`get_token_budget_info()` 还被 **`main.QuotaMiddleware`** 消费（全路径按用户日级 = `R1.3`）—— **它不再只是"记账/看板"用的** |
+| **谁在用** | `permission`（取角色）· `agent_graph_advanced.py:239`（唯一调多级预算的地方）· `cost_dashboard.py` · 各 `api_v1_*.py`<br>🔴 **新增 3 个图模块**：`agent_graph.py` · `agent_checkpointer.py` · `agent_graph_advanced_learning.py`（都是 `check_token_budget` + `record_from_response` 成对）<br>✅ **又 +3**：`rag_pipeline.py` · `answer_with_citations.py` · `query_rewriter.py`（**`query_rewriter` 用 `record_usage`** —— 它是裸 `openai.OpenAI`，响应只有 `.usage`）<br>✅ **再 +1**：**`api_v1_rag.py`**（`/rag/stream_search` 的流式答案 —— `_StreamUsageTap` 在收尾出口调 `record_from_response`）<br>⚠️ **判据**：`grep -rn "record_from_response" app/*.py \| grep -v "^app/test_"` ⇒ **9 个文件**（⚠️ **含注释里的提及** —— `query_rewriter.py` 是**反面**那个：它**必须**用 `record_usage`，注释里写着"⛔ 不能用 `record_from_response`"，⛔ 别把它读成记账点） |
+| **规模** | **1027 行** |
 
 ## ✅ 做了什么
 
@@ -587,7 +587,7 @@ git commit -m "feat(额度): B7 —— 建 token_config.py 把散在 4 文件的
 
 > ### 🔴 **2026-10-03：本节【已作废】，⛔ 别照它执行**
 >
-> 它通篇假设「`ROLE_QUOTA` **降级成字符串哨兵**（`"deprecated-见-）」，** 推翻了这个做法** ——
+> 它通篇假设「`ROLE_QUOTA` **降级成字符串哨兵**（`"deprecated-见-"`）」，** 推翻了这个做法** ——
 > 实际是**直接删**（连 `get_user_quota` 一起），判定改为**原位置换成 token 口径**。
 > ⚠️ **下面那个 Step 1 的测试代码是【错的示范】**：`from permission import get_user_quota, ROLE_QUOTA`
 > 现在是 **ImportError**（两个名字都已不存在）。
@@ -623,7 +623,7 @@ def test_request_quota_is_no_longer_a_second_accounting_system():
     它保留下来只作**接口权重**（哪些端点更"贵"），⛔ 不再是"每天 100 次"那种口径。
     """
     from permission import get_user_quota, ROLE_QUOTA
-    assert ROLE_QUOTA == "deprecated-见- (
+    assert ROLE_QUOTA == "deprecated-见-", (
         "次数配额应已降级 —— 若这里还是数字，说明决策一没落地"
     )
 ```
@@ -655,7 +655,7 @@ class UserRole(str, Enum):
 # ⇒ 决策一（作者 2026-09-30）裁：**统一到 token 一套**。
 #    本常量**降级为「接口权重」** —— 用来表达"哪些端点更贵"，⛔ **不再当日限额用**。
 #    ⚠️ 具体怎么用（或者干脆删掉）**还没定** —— 见  的遗留一节。
-ROLE_QUOTA = "deprecated-见-
+ROLE_QUOTA = "deprecated-见-"
 
 
 def get_user_role(user_name: str) -> UserRole:
@@ -1090,7 +1090,7 @@ sqlite> CURRENT_DATE = 2026-10-01
 #### ✅ 2026-10-01 已补跑（那 7 条 `needs_db` 真过了一遍）
 
 前置：当天 Docker 的 Linux VM 卡死（`dockerAPI: stopped`，`/ping` 一直超时）⇒ 杀掉**重启前遗留的
-僵尸 `com.docker.backend`** 后重拉才恢复；`postgres-rag` 起来并 `healthy`。
+僵尸 `com.docker.backend`** 后重拉才恢复；`qingyun-rag-agent-postgres-1` 起来并 `healthy`。
 
 ```bash
 POSTGRES_DB=rag_test POSTGRES_HOST=localhost POSTGRES_PORT=5432 \

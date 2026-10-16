@@ -9,10 +9,10 @@
 
 - **6 处产品代码引用 · 3 个测试文件提到**。
 - 🔴 **有两条执行路径**，由环境变量切换：
-  | 条件 | 走哪 |
-  |---|---|
-  | `EXECUTOR_URL` **有值** | **远端执行器容器**（`app/tools/executor_server.py`） |
-  | 无值（**默认**） | **回落本地子进程** ⇒ 本机开发 / 离线 CI **不受影响** |
+ | 条件 | 走哪 |
+ |---|---|
+ | `EXECUTOR_URL` **有值** | **远端执行器容器**（`app/tools/executor_server.py`） |
+ | 无值（**默认**） | **回落本地子进程** ⇒ 本机开发 / 离线 CI **不受影响** |
 - ⚠️ 容器里由 `docker-compose.yml` 的 `api` 服务注入 `EXECUTOR_URL=http://executor:8000`。
 - 🔴 **依赖方向单向**：本模块**只 import 标准库**；`code_executor.py` 引用本模块，⛔ 不反向。
 

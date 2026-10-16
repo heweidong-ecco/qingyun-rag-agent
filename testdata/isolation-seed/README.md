@@ -97,7 +97,7 @@ threads 清那三个 `thread_id` 当天的行。⛔ 都不 `TRUNCATE`、⛔ 都�
 手查：
 
 ```bash
-docker exec postgres-rag psql -U postgres -d rag_db -c \
+docker exec qingyun-rag-agent-postgres-1 psql -U postgres -d rag_db -c \
   "SELECT id, requested_by, source, length(content) FROM documents
    WHERE source LIKE 'isolation-seed/%' ORDER BY requested_by, source, id;"
 ```
@@ -160,7 +160,7 @@ docker exec postgres-rag psql -U postgres -d rag_db -c \
 **① documents 轴**（9 篇 → 17 chunk）
 
 ```bash
-docker exec postgres-rag psql -U postgres -d rag_db -c \
+docker exec qingyun-rag-agent-postgres-1 psql -U postgres -d rag_db -c \
   "DELETE FROM documents WHERE source LIKE 'isolation-seed/%';"
 ```
 
@@ -169,7 +169,7 @@ docker exec postgres-rag psql -U postgres -d rag_db -c \
 **② thread_id 轴**（那三个 `thread_id` 的记账）
 
 ```bash
-docker exec postgres-rag psql -U postgres -d rag_db -c \
+docker exec qingyun-rag-agent-postgres-1 psql -U postgres -d rag_db -c \
   "DELETE FROM cost_records      WHERE thread_id IN ('A-thread-001','B-thread-001','C-thread-001');
    DELETE FROM token_usage_logs  WHERE thread_id IN ('A-thread-001','B-thread-001','C-thread-001');"
 ```

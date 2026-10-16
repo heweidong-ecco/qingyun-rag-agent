@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **新建并已接上全部 6 条流式端点（2026-10-04 · 剩余 4 条链）** —— 本仓**所有流式端点的骨架**<br>⚠️ **它收的不是"重复代码"，是 5 条实测出来的顺序约束**<br>✅ 批 2 建层 + 单测 · 批 3 两条旧端点改用它（**逐帧等价**）· 批 5 的 4 条新链**一开始就建在它上面** |
+| **状态** | 🟢 **新建并已接上全部 6 条流式端点** —— 本仓**所有流式端点的骨架**<br>⚠️ **它收的不是"重复代码"，是 5 条实测出来的顺序约束**<br>✅ 批 2 建层 + 单测 · 批 3 两条旧端点改用它（**逐帧等价**）· 批 5 的 4 条新链**一开始就建在它上面** |
 | **对外提供** | `SSE_HEADERS` · `DONE_FRAME` · `sse_frame(payload, *, ensure_ascii)` · `sse_response(source)`<br>· `graph_message_text(item, *, nodes)`（LangGraph `messages` 模式）· `llm_chunk_text(chunk)`（裸 LLM）<br>· `sse_stream(open_upstream, *, endpoint, extract, on_complete, on_incomplete, on_error, ensure_ascii, chunk_delay)` |
 | **谁在用** | **6 条，全部**（`grep -rn "sse_stream(" app/routing/api_v1_*.py`）：<br>`api_v1_agent.py` —— `langgraph_chat_stream` · `advanced_agent_chat_stream` · `memory_chat_stream` · `mcp_agent_chat_stream` · `agent_plan_execute_stream`（**5 条**）<br>`api_v1_rag.py` —— `stream_search`（**1 条**） |
 | **用例** | `app/tests/test_sse_layer.py`（**17 条**，⛔ 不碰端点 —— 端点的等价性由既有两份用例"全绿且不改"来证）<br>+ `app/tests/test_agent_stream_chains.py`（**60 条**）用**同一个骨架**驱动 4 条新链 |

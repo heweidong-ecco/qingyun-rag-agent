@@ -4,7 +4,7 @@
 |---|---|
 | **状态** | ✅ **可用（生产）** —— 两条并行的认证：**API Key**（查库）与**登录口令**（比环境变量） |
 | **对外提供** | `generate_api_key()` · `hash_api_key(k)` · `ACTIVE_PREDICATE` · `create_user_api_key(user_name, expire_days=30)` · `ensure_admin_exists(logger=None)` · `verify_api_key(api_key)` · `authenticate_user(user_name, password)` · `_get_users_db()` · `_is_expired()` |
-| **谁在用** | 🔴 **`verify_api_key` 有 3 个消费口**：`app/routing/deps.py:13` · **`app/main.py:163`** · **`app/main.py:204`**。另：`app/routing/api_v1.py:21`（`:71` `authenticate_user` 登录 · `:156` `create_user_api_key`）· `app/main.py:16 → :712` `ensure_admin_exists` ·  |
+| **谁在用** | 🔴 **`verify_api_key` 有 3 个消费口**：`app/routing/deps.py:13` · **`app/main.py:163`** · **`app/main.py:204`**。另：`app/routing/api_v1.py:21`（`:71` `authenticate_user` 登录 · `:156` `create_user_api_key`）· `app/main.py:16 → :712` `ensure_admin_exists` · |
 | **测试** | ✅ `app/tests/test_auth.py`（5）· `app/tests/test_auth_db_unavailable.py`（**22**）· `app/tests/test_auth_api_key_active.py`（5）· `app/tests/test_auth_ensure_admin_exists.py`（8） |
 
 ## ✅ 做了什么

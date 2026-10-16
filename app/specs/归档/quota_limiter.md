@@ -35,8 +35,8 @@
 - ✅ **R2.2 恢复条件【已实测】（2026-10-02 补 · `①b` 清陈旧锚点）** —— `EXPIRE 86400` **确实设上了**：
 
   ```bash
-  docker exec redis-rag redis-cli --scan --pattern 'quota:*' | head -5 | while read k
-  do echo "$k $(docker exec redis-rag redis-cli TTL "$k")"; done
+  docker exec qingyun-rag-agent-redis-1 redis-cli --scan --pattern 'quota:*' | head -5 | while read k
+  do echo "$k $(docker exec qingyun-rag-agent-redis-1 redis-cli TTL "$k")"; done
   # 实测：共 85 个 quota:* 键；抽 5 个 ⇒ TTL = 82559 / 82581 / 83912 / 83048 / 83048
   #      全部 ∈ (0, 86400)，**没有一个是 `-1`**（`-1` = 没设 TTL）
   ```

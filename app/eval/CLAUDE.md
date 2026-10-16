@@ -7,7 +7,7 @@
 |---|---|
 | `evaluate_with_ragas.py` | RAGAS 评测脚本（**有 `__main__`**）· ⚠️ 它**不 import 任何本仓模块**（纯 HTTP + 第三方） |
 | `eval_dataset.json` | 评测集 |
-| `bad_cases.md` | **2026-06-28 的评测快照** —— ⛔ **不是待办清单** |
+| `bad_cases.md` | **的评测快照** —— ⛔ **不是待办清单** |
 | `ragas_report.json` · `ragas_detailed_report.json` | 两份历史报告 |
 
 ## 🔴 本层特有的规矩

@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **新建（2026-10-02 · `①b`）** —— LLM 客户端的**唯一构造落点**<br>✅ 15 个调用点**已全部改走它**（`app/tests/test_max_tokens_wiring.py` 钉着）<br>⬜ **自动兜底没做**（评估后**故意推迟**，见下）—— ⛔ 别以为它能"兜底" |
+| **状态** | 🟢 **新建** —— LLM 客户端的**唯一构造落点**<br>✅ 15 个调用点**已全部改走它**（`app/tests/test_max_tokens_wiring.py` 钉着）<br>⬜ **自动兜底没做**（评估后**故意推迟**，见下）—— ⛔ 别以为它能"兜底" |
 | **对外提供** | `make_llm(model_role, token_role, *, temperature=0.0, streaming=False, **extra) -> ChatOpenAI` |
 | **谁在用** | `api_v1_rag.py`（2）· `rag_pipeline.py`（1）· `evaluate_with_ragas.py`（1）· `agent_checkpointer.py`（1）· `agent_graph.py`（1）· `agent_graph_advanced.py`（1）· `agent_graph_advanced_learning.py`（5）· `plan_execute.py`（3）—— **合计 15 处** |
 

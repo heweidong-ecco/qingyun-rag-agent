@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | **状态** | 🟡 **后端可用 · 但【默认不启用】—— 且零测试** |
-| **对外提供** | `generate_answer_with_citations(contexts, question, llm, *, user_name, thread_id)` —— ⚠️ **`thread_id` 2026-10-16起必填**（原先默认 `"default"`，那正是缺陷） |
+| **对外提供** | `generate_answer_with_citations(contexts, question, llm, *, user_name, thread_id)` —— ⚠️ **`thread_id` 必填**（原先默认 `"default"`，那正是缺陷） |
 | **谁在用** | `rag_pipeline.py:182`（仅当 `generate_answer=True` **且** `citations=True`） |
 
 ## ✅ 做了什么

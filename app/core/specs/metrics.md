@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **可用** —— 4 个指标，全部走 `prometheus_client` 默认 REGISTRY<br>✅ **2026-10-03**：新增 **`stream_cancelled_total`** —— 它是判据③**唯一可执行的观测对象** |
+| **状态** | ✅ **可用** —— 4 个指标，全部走 `prometheus_client` 默认 REGISTRY<br>✅ ：新增 **`stream_cancelled_total`** —— 它是判据**唯一可执行的观测对象** |
 | **对外提供** | **`GET /metrics`**（`app/main.py:450`，Prometheus text format）· 4 个模块级函数/对象 |
 | **谁在用** | `app/main.py`（中间件 `log_and_track_request` 记 `track_request` / `REQUEST_IN_PROGRESS`）·<br>`app/routing/api_v1_rag.py:737` · `app/routing/api_v1_agent.py:244`（各一条流式端点调 `track_stream_cancel`） |
 

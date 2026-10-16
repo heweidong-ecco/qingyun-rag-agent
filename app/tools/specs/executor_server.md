@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **上线（2026-10-08）** —— 服务本体 + compose 硬化 + 应用接线 + 并发上限，**全部已实测** |
+| **状态** | ✅ **上线** —— 服务本体 + compose 硬化 + 应用接线 + 并发上限，**全部已实测** |
 | **对外提供** | `POST /execute` —— 入 `{"code": str}`，出 `{"ok": bool, "out": str}`；<br>⚠️ **排队超时 ⇒ `503`**（形状**故意不同**：`{ok,out}` 表示"代码跑完了"，`503` 表示"忙不过来"）<br>`GET /health` —— 容器的 `healthcheck` 用<br>⚠️ **⛔ 不提供 `/docs`**（`docs_url=None`）：内部机制，少一个面就少一个面 |
-| **谁在用** | 🔴 **应用侧**（`code_executor_impl` 的远端路径，走 `EXECUTOR_URL`）—— 2026-10-08  接上<br>· `docker-compose.yml` 的 `executor` 服务起它 |
+| **谁在用** | 🔴 **应用侧**（`code_executor_impl` 的远端路径，走 `EXECUTOR_URL`）—— 接上<br>· `docker-compose.yml` 的 `executor` 服务起它 |
 | **测试** | `app/tests/test_executor_server.py`（**7**）· ⚠️ 数字会变，判据：`cd app && ../venv/bin/python -m pytest test_executor_server.py --collect-only -q \| tail -1` |
 
 ## ✅ 做了什么

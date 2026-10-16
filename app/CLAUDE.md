@@ -18,7 +18,6 @@
 | `eval/` | 离线评估（RAGAS 那套，⛔ 不在服务路径上） | `eval/CLAUDE.md` |
 | `specs/` | **不归属任何组的 spec**（`main.md`）+ 模板 + 退役归档 | `specs/CLAUDE.md` |
 | `static/` | **真前端**（22 个：`web/*.html` · `js/*.js`） | `static/CLAUDE.md` |
-| `alembic/` | 迁移脚本（6 个） | `alembic/CLAUDE.md` |
 
 **留在 `app/` 根的 2 个 `.py`**（⛔ 别挪）：
 - **`main.py`** —— 服务入口。`uvicorn main:app` 与 Docker `CMD` **都绑它** · spec ⇒ `specs/main.md`
@@ -26,7 +25,7 @@
   `tests/` 里的用例才能用**裸导入**（`from main import app`）
 
 其余非 `.py`：`Dockerfile` · `executor.Dockerfile` · `.dockerignore` · `requirements.txt`
-`pytest.ini` · `alembic.ini` · `schema.sql`。
+`pytest.ini` · `schema.sql`。
 
 ## 🔴 本层特有的规矩
 

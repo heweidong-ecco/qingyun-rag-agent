@@ -8,7 +8,7 @@
 
 | 模块 | 它的 spec |
 |---|---|
-| 🆕 **`quota_pools.py`** | `specs/quota_pools.md` —— **两个额度池 · 按路径归池**（2026-10-11 批 6 ·） |
+| 🆕 **`quota_pools.py`** | `specs/quota_pools.md` —— **两个额度池 · 按路径归池** |
 | `breaker.py` | `specs/breaker.md` |
 | `cost_dashboard.py` | `specs/cost_dashboard.md` |
 | `token_config.py` | `specs/token_config.md` |

@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 连接池 + 建表 + 向量检索；**2026-10-03 起它同时是「多用户隔离」的两个承重层之一**（决策 5）。<br>🔴 **2026-10-15：只剩 PG 一条路** —— 原先那条 SQLite 通道整个删了 |
+| **状态** | 🟡 **可用** —— 连接池 + 建表 + 向量检索；**它同时是「多用户隔离」的两个承重层之一**（决策 5）。<br>🔴 **：只剩 PG 一条路** —— 原先那条 SQLite 通道整个删了 |
 | **对外提供** | 连接池：`init_pool()` · `close_pool()` · `get_db()`<br>建表：`create_table()`<br>写入：`insert_document()` · `insert_batch_documents()`<br>检索：`search_similar()` · `bm25_search()` · `search_similar_async()` · `bm25_search_async()` · `invalidate_bm25_cache()` |
 | **谁在用** | ⚠️ **几乎是全仓** —— `auth.py` · `deps.py` · `cost_dashboard.py` · `main.py` · `api_v1*.py` … 都 `from db import get_db` |
 

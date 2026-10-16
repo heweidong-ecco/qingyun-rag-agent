@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用**（2026-10-11 建 · 批 6） |
+| **状态** | 🟡 **可用** |
 | **对应模块** | `app/billing/quota_pools.py` |
 | **裁定** | （拆两个池 · 按路径归池）· （落地口径：总上限 = 两池相加） |
 | **用例** | `app/tests/test_quota_pools.py`（归池表本身）· `app/tests/test_pool_quota_wiring.py`（接线） |

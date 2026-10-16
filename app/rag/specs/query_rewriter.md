@@ -2,8 +2,8 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **可用；2026-10-05 起它真记账了**（此前 `record_usage` **import 在、调用 0 次**） |
-| **对外提供** | `expand_query(original_query, num_variants=3, *, user_name, thread_id)` · `rewrite_query(original_query, conversation_history=None, *, user_name, thread_id)`<br>🔴 **2026-10-16：两个函数各多一个同样【必填】的 `thread_id`** —— 它落到两处 `record_usage` 的 `thread_id=` 上 |
+| **状态** | 🟢 **可用；它真记账了**（此前 `record_usage` **import 在、调用 0 次**） |
+| **对外提供** | `expand_query(original_query, num_variants=3, *, user_name, thread_id)` · `rewrite_query(original_query, conversation_history=None, *, user_name, thread_id)`<br>🔴 **：两个函数各多一个同样【必填】的 `thread_id`** —— 它落到两处 `record_usage` 的 `thread_id=` 上 |
 | **谁在用** | `rag_pipeline.py:99,105`（`/rag/search`）· `hybrid_search.py:128,131`（`/rag/rewrite_search`） |
 | **依赖** | **裸 `openai.OpenAI`**（不是一个 `ChatOpenAI`）· Redis（改写缓存，`CACHE_TTL = 3600`） |
 

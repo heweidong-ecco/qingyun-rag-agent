@@ -10,10 +10,10 @@
 | 🆕 **`authbar.js`** | 🔴 **共用（登录层）**：**页头那块登录态控件的唯一一份** —— 「已登录」（+ 今日额度 + 退出）⇄「去登录」（带 `next=` 回本页）。⚠️ 它替的是 `cred.js` | 🆕 `authbar.test.js`（**13 条**） |
 | `rag.js` | **内部RAG知识库检索及问答**（`/rag`）· 接口切换器 + 四档 mode + 引用/资料两种格子 | `rag.test.js` |
 | `kb.js` | **知识入库**（`/kb`）· 三种入库 + 「库里有什么」· ⚠️ `DOC_TYPES` 是**跨语言**钉住的那份 | `kb.test.js` |
-| 🆕 `ops.js` | **系统观测**（`/ops`）· 🔴 **判决三态**（取不到 ⇒ 掉出 ok）+ 七处假正常的处置 + Prometheus 文本只摘不解析 ·  | 🆕 `ops.test.js`（**24 条**） |
-| 🆕 `agent.js` | **外部检索与工具Agent编排**（`/agent`）· 🔴 **链列表**（三条链的 `has` 表）+ SSE 分帧 + 人工接管（批/拒/代填）·  | 🆕 `agent.test.js`（**23 条**） |
-| 🆕 `index.js` | **总览 / 首页**（`/`）· 🔴 **真数当场算**（接口条数 ← `/openapi.json`；缺值画「—」⛔ 不画 0）+ 真返回 → 格子的映射 ·  | 🆕 `index.test.js`（**21 条**） |
-| 🆕 **`login.js`** | **登录**（`/login`）· 🔴 **`?next=` 那个判定**（`safeNext` —— **防开放重定向**：只收站内路径，`//host` / `https://` / `javascript:` / `/\host` 一律回 `/`）·  §七·1 | 🆕 `login.test.js`（**13 条**） |
+| 🆕 `ops.js` | **系统观测**（`/ops`）· 🔴 **判决三态**（取不到 ⇒ 掉出 ok）+ 七处假正常的处置 + Prometheus 文本只摘不解析 · | 🆕 `ops.test.js`（**24 条**） |
+| 🆕 `agent.js` | **外部检索与工具Agent编排**（`/agent`）· 🔴 **链列表**（三条链的 `has` 表）+ SSE 分帧 + 人工接管（批/拒/代填）· | 🆕 `agent.test.js`（**23 条**） |
+| 🆕 `index.js` | **总览 / 首页**（`/`）· 🔴 **真数当场算**（接口条数 ← `/openapi.json`；缺值画「—」⛔ 不画 0）+ 真返回 → 格子的映射 · | 🆕 `index.test.js`（**21 条**） |
+| 🆕 **`login.js`** | **登录**（`/login`）· 🔴 **`?next=` 那个判定**（`safeNext` —— **防开放重定向**：只收站内路径，`//host` / `https://` / `javascript:` / `/\host` 一律回 `/`）· §七·1 | 🆕 `login.test.js`（**13 条**） |
 
 > ⚠️ **共用层那四份**（`auth` · `login` · `authbar` · `app-reveal`）**每页都引**；**一页一 JS** 那几份只有本页引。
 > 🔴 **`login.js` 也在共用层** —— 它那对 `safeNext` / `loginHref`（`?next=` 的**解**与**编**）

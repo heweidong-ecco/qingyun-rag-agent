@@ -193,7 +193,7 @@ async def mcp_session():
         #    而**下面这个子进程是我们自己的脚本**（`app/tools/mcp_server.py`），
         #    它本来就要读同一份配置 —— ⛔ 不是"绕过安全设计"。
         #    （MCP 的语义是 `get_default_environment() | server.env` ⇒ 这里等于**全覆盖**。）
-        # 📌 判据（可打印）：进容器 `docker logs rag-api | grep 'localhost:6379'` ⇒ **0 条**
+        # 📌 判据（可打印）：进容器 `docker logs qingyun-rag-agent-api-1 | grep 'localhost:6379'` ⇒ **0 条**
         env={**os.environ},
     )
     async with stdio_client(server_params) as (read, write):

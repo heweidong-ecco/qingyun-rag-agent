@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 部分可用 —— **HTTP 侧完整**；**WebSocket 侧 2026-10-05 才补上**（此前 WS 整条裸奔） |
+| **状态** | 🟡 部分可用 —— **HTTP 侧完整**；**WebSocket 侧 才补上**（此前 WS 整条裸奔） |
 | **对外提供** | **HTTP 认证**：`get_current_user`（API Key）· `get_current_user_jwt`（JWT）· `get_current_user_hybrid`（两者皆可）· `require_admin`（管理员）· `verify_jwt_token`（纯函数）· `oauth2_scheme`<br>**WebSocket 认证**（🆕）：`require_ws_user`（依赖）· `resolve_ws_identity`（**纯函数**）· 常量 `WS_AUTH_TIMEOUT_SECONDS` / `WS_CLOSE_POLICY_VIOLATION`(1008) / `WS_CLOSE_INTERNAL_ERROR`(1011) |
-| **谁在用** | `app/routing/api_v1.py` · `app/routing/api_v1_agent.py` · `app/routing/api_v1_rag.py`（含 WS 那两条路由）· `app/main.py` —— ⚠️ 见  的 `AUTH_NAMES`**就是靠本文件的函数名认人的** |
+| **谁在用** | `app/routing/api_v1.py` · `app/routing/api_v1_agent.py` · `app/routing/api_v1_rag.py`（含 WS 那两条路由）· `app/main.py` —— ⚠️ 见 的 `AUTH_NAMES`**就是靠本文件的函数名认人的** |
 
 ## ✅ 做了什么
 
