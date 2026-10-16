@@ -450,7 +450,7 @@ def test_query_rewriter_uses_record_usage_not_record_from_response():
 #   骨架只把**通过 `llm_chunk_text` 过滤的块**攒进 `collected`；而本仓 provider 把
 #   `usage_metadata` 挂在**最后一帧、且那帧 `content=''`** 上 ⇒ `llm_chunk_text` 返回
 #   `chunk.content or None` = `None` ⇒ **恰好被丢掉**。
-#   判据（可打印）⇒  §结论 1/2
+#   判据（可打印）⇒ `qingyun-rag-agent-TODO待办/探针-流式与记账.py` §结论 1/2
 #
 # 本节的用例**驱动真实端点函数**（含真实 `sse.sse_stream` 骨架）—— 不是只测 tap 类。
 #    理由：tap 挂在骨架**逐块调用 `extract`** 这个性质上；只测 tap 会漏掉

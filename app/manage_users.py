@@ -3,7 +3,7 @@
 ## 怎么跑（**在服务器上、容器里**）
 
 ```bash
-cd ~/fastapi-rag-agent
+cd ~/qingyun-rag-agent
 sudo docker compose -f docker-compose.yml -f docker-compose.deploy.yml exec api \
     python manage_users.py add hr001
 ```

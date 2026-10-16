@@ -53,6 +53,7 @@
 | `app/billing/specs/token_tracker.md` | `check_budget_before_call` / `record_usage` 的本尊；✅ ** 的 3 处已在 2026-10-01 接完**（现于 `:92` / `:279` / `:486`），2026-10-02 起**又收进 `app/core/llm_factory.py`** |
 | `app/specs/main.md` | ⚠️ **中间件抛的异常接不住**（`:186` 那条警告）—— 本文件在**路由层**抛，安全 |
 | `后端补齐清单`  | ✅ 三个 `ChatOpenAI` **已接 `MAX_TOKENS_AGENT`**（2026-10-01）· **2026-10-02 起收进 `llm_factory`** |
+| `qingyun-rag-agent-TODO待办/探针-流式与记账.py` | 🆕 ⚠️ ** 的依据**：链路改 `.stream()` 后 `usage_metadata` **还在不在**（🔴 会花钱）—— 结论：在，但**挂在最后一块**上 |
 
 > ### ✅ 要不要做 —— **2026-09-30 作者全部同意（三条都做）**
 >

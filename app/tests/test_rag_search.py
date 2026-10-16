@@ -339,7 +339,7 @@ def test_search_fast_against_real_stack(client):
 
         cd app && POSTGRES_DB=rag_test pytest test_rag_search.py -m integration -v
 
-    `POSTGRES_DB=rag_test` **不能省** —— `rag_db` 是 `agent-eval-gate` 的评测知识库。
+    `POSTGRES_DB=rag_test` **不能省** —— `rag_db` 里是**真数据**，跑用例不许碰它。
     本用例只读，但 `embedding_client` 会**记账**（`record_usage` 真写库）——
     这正是 2026-09-17 切开点 2 那次污染的形状。
     """

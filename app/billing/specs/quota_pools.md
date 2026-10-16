@@ -12,7 +12,7 @@
 ## ✅ 做了什么
 
 - **归池表** `PATH_POOLS`（**74 条**路由模板 → `llm` / `embedding` / `none`）。
-  逐条依据 ⇒ （作者 2026-10-11 逐条裁过）。
+  逐条依据 ⇒ `qingyun-rag-agent-TODO待办/批6-归池表-20261011.md`（作者 2026-10-11 逐条裁过）。
 - **纯函数** `pool_for_path(path)` —— 按**分段**匹配模板（`{thread_id}` 那种是通配）。
 - **每池的日额度** `pool_daily_limit(pool, role)` · **总额** `total_daily_limit(role)`。
 
@@ -90,5 +90,5 @@
 - 🔴 **「总额 vs 两池」**：⛔ 别把它读成"两套打架的口径" —— 那**两个端点报的是同一个数的两种看法**
   （`/agent/token/budget` 的 `daily_budget` 与 `/debug/quota` 的 `daily_limit` **同源**，
   它**另外**才给两池）⇒ **对外口径的权威在 `docs/契约/接口契约.md` §一「角色与配额」**（2026-10-13 写清）
-- 归池表逐条依据
+- 归池表逐条依据 ⇒ `qingyun-rag-agent-TODO待办/批6-归池表-20261011.md`
 - 用它的地方 ⇒ `app/main.py` 的 `QuotaMiddleware` · `app/billing/token_tracker.py` 的 `get_pool_budget_info`

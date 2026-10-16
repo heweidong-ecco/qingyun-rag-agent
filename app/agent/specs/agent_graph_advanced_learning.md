@@ -82,7 +82,7 @@
 | 🔴 **① 这是"进阶示例"** | ⛔ **它是 `POST /agent/advanced_chat` 的图本体** —— 模块 docstring 第 1 行写着「LangGraph **进阶示例**」。<br>**判据**：看谁 import 它（`api_v1_agent.py:34`）⇒ 名字与自述都不可信（同 `agent_graph_advanced.py` 的 ⚠️①）。 |
 | 🔴 **② 「调 LLM 的节点都能流」** | ⛔ **6 个调 LLM 的节点里只有 4 个该流** —— 见下表。**这张表就是本 spec 存在的理由**：<br>它**⛔ 读代码推不出来**（要同时知道「这个节点的 LLM 输出是什么角色」+「答案最终从哪来」）。 |
 | ⚠️ **③ 「流式失败 ⇒ 一个字都流不出来」** | ⛔ **反了**：`calc_dept` / `date_dept` **两条分支本来就无字可流** —— 它们的答案来自**工具返回值**，不来自 LLM。<br>⇒ 用户会**一直等到最后一帧**才看到 `answer`。**这是设计如此，⛔ 不是 bug。** |
-| ⚠️ **④ 子图节点的名字** | **父图里**它们叫 `search_dept` / `react_dept`…，而 `stream_mode="messages"` 的 `meta["langgraph_node"]`<br>报的是**子图内层**名（`search_summarize` / `agent`…）—— ⚠️ **前提是开了 `subgraphs=True`**；<br>不开，要么只拿到子图的**返回值**（1 块整段 · 外层名），要么**一块都没有**。<br>📄 实测六剧本表 ⇒  · 勘察 §8.3 |
+| ⚠️ **④ 子图节点的名字** | **父图里**它们叫 `search_dept` / `react_dept`…，而 `stream_mode="messages"` 的 `meta["langgraph_node"]`<br>报的是**子图内层**名（`search_summarize` / `agent`…）—— ⚠️ **前提是开了 `subgraphs=True`**；<br>不开，要么只拿到子图的**返回值**（1 块整段 · 外层名），要么**一块都没有**。<br>📄 实测六剧本表 ⇒ `qingyun-rag-agent-TODO待办/探针-真流式与子图.py` · 勘察 §8.3 |
 | ⚠️ **⑤ `should_continue` 是本仓唯一那个** | ⛔ **不是** —— 本文件 `:278` 那个是**局部函数**，返回 **`"tools"` / `END`**；<br>`agent_graph.py:195` 那个返回 **`"approval"` / `"tools"` / END**；`agent_graph_advanced.py:430` 那个返回 **`"tools"` / `"chat"`**。<br>**同名 · 三个语义 · 三个作用域。** |
 | ⚠️ **⑥ 路由是"容错"的** | ⛔ **是【精确匹配】的**（`:513`）：`intent.content.strip()` 与 `"SEARCH"` 等**逐字相等**才命中，<br>**否则一律落 `chat`**（兜底）。⇒ 模型多吐一个句号（`REACT。`）就**静默走错分支**、且**不报错**。<br>⚠️ 这是**真实风险**，不是理论 —— 提示词（`:430`）只写「只返回一个单词」，**没有输出约束**。<br>🔵 ** 之后这条更值得注意**：`chat_node` 是兜底 ⇒ **大多数请求走的其实是这条分支**（其 docstring 已写明） |
 | 🔴 **⑦ 「超预算了，6 个节点都 `return {"final_output": …}` 就完事」** | ⛔ **`supervisor` 那处必须【同时】返回 `intent`**（`:469`：`{"intent": "CHAT", "final_output": BUDGET_EXCEEDED_MSG, "budget_intercept": BUDGET_EXCEEDED_MSG}`）—— <br>因为它的下游是 `route_by_intent`（`:513`），**读 `state["intent"]`**：只给 `final_output` ⇒ 当场 `KeyError`。<br>⚠️ **其余 5 处出口不同**：`chat_node` / `search_summarize` / `calc_execute` / `translate_execute` 的出口是 `final_output`；<br>REACT 的 `agent_decide`（`:311`）出口是 `messages`（`{"messages": [AIMessage(...)]}`）—— 它的下游 `should_continue` 读 `messages[-1].tool_calls`。<br>⇒ **同一件事（拦），返回形状按【节点在图里的位置】定，⛔ 不能一刀切。**<br>🔴 **批 7 追加**：**6 处都还要加 `budget_intercept`**—— 但 **`intent` 照样一个都不能少**。 |
@@ -131,4 +131,4 @@
 | `app/agent/specs/agent_checkpointer.md` · `app/agent/specs/agent_graph.md` | 另外两套图的 `agent/tools/approval` 节点（**同名碰撞**，见 ⚠️⑤） |
 | `app/billing/specs/token_tracker.md` | 🔴 **本模块现在【调用】它了**（2026-10-04：`check_token_budget` + `record_from_response`）—— 改前一条都不调，见 §🟡 第一条 |
 | `app/tools/specs/safe_math.md` | `calculator` 的求值实现 |
-|  §8.1 | ⭐ **「6 个只有 4 个该流」那张表最早落在这里** |
+| `qingyun-rag-agent-TODO待办/硬门A-Agent端流式勘察-20261003.md` §8.1 | ⭐ **「6 个只有 4 个该流」那张表最早落在这里** |

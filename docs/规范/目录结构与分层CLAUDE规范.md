@@ -6,7 +6,7 @@
 
 ## 一 · 适用范围
 
-本仓（`fastapi-rag-agent`）的源码目录组织、模块归属、spec 位置、`CLAUDE.md` 分层方式。
+本仓（`qingyun-rag-agent`）的源码目录组织、模块归属、spec 位置、`CLAUDE.md` 分层方式。
 不涉及：接口契约（见 `docs/契约/`）、部署（见 `docs/说明/部署.md`）。
 
 ## 二 · 容器与层级

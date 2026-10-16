@@ -1,7 +1,7 @@
 import pytest
 
 # **整篇标记 `needs_db`** —— 这些用例会**真往 `documents` 表写**，而且**没有 cleanup**，
-# 而那张表是 `agent-eval-gate` 评测用的知识库（历史上已被污染 29 行）。
+# 而那张表里是**真数据**（历史上被污染过 29 行）。
 # ⇒ **不进 CI**（CI 只有 redis service，没有 postgres）；本机跑时**必须**带库名隔离：
 #       cd app && POSTGRES_DB=rag_test pytest app/ -m "not integration"
 pytestmark = pytest.mark.needs_db

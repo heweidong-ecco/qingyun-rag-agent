@@ -8,7 +8,7 @@ from main import app
 from core.config import LOGIN_USER_NAME, LOGIN_PASSWORD
 
 # **整篇标记 `needs_db`** —— 端到端流程会**真写 `documents` 表**（且无 cleanup），
-# 而那是 `agent-eval-gate` 评测用的知识库。⇒ **不进 CI**；
+# 而那是**真数据**。⇒ **不进 CI**；
 # 本机跑时**必须**带库名隔离：`cd app && POSTGRES_DB=rag_test pytest app/ -m "not integration"`。
 pytestmark = pytest.mark.needs_db
 

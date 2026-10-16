@@ -1,15 +1,9 @@
 version: '3.8'
-name: fastapi-rag-agent   # 2026-09-15 由 `my-fixed-name` 改名：与旧构建及其他项目彻底分开
-                          # ⚠️ 改名会连带改掉网络名（<项目名>_app-net）；已存在的容器仍带旧项目标签，
-                          #    见文末「改名后遗症」注释。
+name: qingyun-rag-agent
 services:
   # ==================== API 服务 ====================
   api:
-    # 显式镜像名。历史上叫 `my-fixed-name-api`（由旧顶层 name 派生），
-    # 那个名字被 agent-eval-gate 的评测 harness 依赖
-    # （tools/sut-harness/run_sut.sh:16），而它只 docker run、**从不 build**
-    # ⇒ 那个名字上的镜像停留在 2026-07-01 的旧构建（缺整个 Agent 子系统）。
-    image: fastapi-rag-agent:latest
+    image: qingyun-rag-agent:latest
     build:
       context: ./app
       dockerfile: Dockerfile
@@ -112,9 +106,6 @@ services:
       # 🔴 只绑回环地址（2026-09-17 凭据③「端口收窄」）—— 原先写 `"5432:5432"`，
       # 等于**绑在 0.0.0.0**：局域网内任何机器都能连到这个库。
       # ⚠️ **改这里不改变正在运行的容器** —— 需重建才生效。
-      #    **本次有意不重建**：理由与连带影响见**本文件末尾「改名后遗症」§2/§3** ——
-      #    重建会让容器落到 `fastapi-rag-agent_app-net`，而 `agent-eval-gate` 的
-      #    `sut-harness/run_sut.sh` 默认网络名还写着旧名 ⇒ 会打断评测。
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -212,37 +203,7 @@ networks:
     internal: true
 
 volumes:
-  # ⚠️ 显式钉住卷名 —— 这是改项目名时最容易踩的坑。
-  # compose 默认按 `<项目名>_<卷名>` 生成卷名。项目名从 my-fixed-name 改成
-  # fastapi-rag-agent 后，若不加 `name:`，compose 会去找
-  # `fastapi-rag-agent_postgres_data`（不存在）⇒ **新建一个空卷**
-  # 知识库看起来"丢了"（实际仍躺在 my-fixed-name_postgres_data 里，只是没被挂上）。
-  # 钉住名字即可：项目名改了，数据仍指向原来的卷。
   postgres_data:
-    name: my-fixed-name_postgres_data
   redis_data:
-    name: my-fixed-name_redis_data
   prometheus_data:
-    name: my-fixed-name_prometheus_data
   grafana_data:
-    name: my-fixed-name_grafana_data
-
-# ==================== 改名后遗症（2026-09-15 · my-fixed-name → fastapi-rag-agent）====================
-# 本次只改了本文件，**没有执行任何 docker compose 命令** —— 下面是"还带着旧名字、
-# 需要时手动处理"的东西，动之前先看这里，否则会打断正在跑的评测或造成数据误判：
-#
-# 1. 【数据卷】已按上面的 `name:` 钉住，数据安全。但卷名仍带旧前缀 ——
-#    这是有意的：Docker 没有 rename volume，改名要 create+copy+delete，对在跑的库不划算。
-#
-# 2. 【已存在的容器】postgres-rag / redis-rag / rag-api-eval 的项目标签仍是
-#    `com.docker.compose.project=my-fixed-name`，且 **rag-api-eval 正被 agent-eval-gate 的评测使用**。
-#    ⇒ 有评测在跑时**不要执行 `docker compose up`**：项目名变了，compose 会认为这些容器
-#      属于"别的项目"，而 container_name 是写死的 ⇒ 直接 up 会撞名/尝试重建，打断评测。
-#
-# 3. 【网络】旧的 `my-fixed-name_app-net` 仍在（三个容器挂着）；新项目名会创建
-#    `fastapi-rag-agent_app-net`。
-#    ⇒ ⚠️ `agent-eval-gate/tools/sut-harness/run_sut.sh:18` 的 NETWORK 默认值写的是旧名，
-#      **改名后那个脚本需要同步更新**（或跑的时候设 `EVAL_SUT_NETWORK=my-fixed-name_app-net`）。
-#
-# 4. 【旧镜像】`my-fixed-name-api`（2026-07-01 构建，缺整个 Agent 子系统）**保留不动** ——
-#    agent-eval-gate 的 harness 仍指向它。本项目改用 `fastapi-rag-agent:latest`。

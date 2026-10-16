@@ -46,6 +46,7 @@
 2. **聚合与发帧是两件事**：本模块只管**发帧**。节点内部要把流**聚合成一条完整消息**去记账时，
    **必须对【所有】块做 `+`，不许跳过 `content` 为空的块** ——
    实测本仓 provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上，跳过它**账就没了**
+   （判据见 `qingyun-rag-agent-TODO待办/探针-流式与记账.py`）。
 """
 
 from __future__ import annotations

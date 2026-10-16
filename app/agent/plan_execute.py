@@ -187,7 +187,7 @@ def _invoke_llm(llm, messages, purpose: str, user_name: str = "unknown",
           **聚合循环必须遍历【所有】块**，不许跳过 `content` 为空的块：
           实测本仓 provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上
           ⇒ 跳过它，**下面的 `record_usage` 就静默不执行了**，而接口一切正常。
-          判据（可打印）
+          判据（可打印）⇒ `qingyun-rag-agent-TODO待办/探针-流式与记账.py`
     """
     allowed, reason = check_budget_before_call(user_name, purpose=purpose)
     if not allowed:

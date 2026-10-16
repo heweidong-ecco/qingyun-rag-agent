@@ -123,6 +123,7 @@
 **技术栈**：Python 3.10 · FastAPI · pytest（marker：`needs_db` / `integration`）
 
 **Spec**：本文件（`app/billing/specs/token_tracker.md`）·
+`qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md`（B12 · B7 · 决策一）
 
 ## 全局约束（**每个任务都适用**）
 

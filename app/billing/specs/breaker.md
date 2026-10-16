@@ -96,4 +96,4 @@
 | `app/billing/specs/token_tracker.md` | `check_global_daily_budget()` / `get_global_daily_token_usage()` 的出处 |
 | `app/billing/specs/token_config.md` | `GLOBAL_DAILY_TOKEN_LIMIT` 的值与改法 |
 | `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴 **2026-10-03**：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
-|  §B11 | 四要素原文 + 我方建议 |
+| `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` §B11 | 四要素原文 + 我方建议 |

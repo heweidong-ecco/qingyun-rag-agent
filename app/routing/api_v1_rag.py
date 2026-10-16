@@ -884,7 +884,7 @@ class _StreamUsageTap:
 
     `sse.sse_stream` 只把**通过 `text` 过滤的块**攒进 `collected` ——
     而本仓 provider 把 `usage_metadata` 挂在**最后一帧、且那帧 `content=''`** 上
-    （实测 ⇒  §结论 1/2）
+    （实测 ⇒ `qingyun-rag-agent-TODO待办/探针-流式与记账.py` §结论 1/2）
     ⇒ 它**必然**被 `llm_chunk_text`（`return chunk.content or None`）滤掉。
     ⇒ 累积必须发生在**过滤之前**。骨架里唯一看到**每一块**的钩子就是 `extract`
       （`sse.py`：`text = extract(item) if extract is not None else item` 排在
@@ -1384,7 +1384,7 @@ async def agent_websocket(websocket: WebSocket, ws_user_name: str = Depends(requ
 #    删的理由（三条，与  删那 4 条**同一套标准**，不是另立一套）：
 #      ① **消费者 = 0** —— 本仓没有任何东西连它（`app/static/websocket_test.html` 连的是
 #         `/api/v1/ws/agent`）；`git log -S 'ws/test' -- 'app/test_*.py'` 在  之前
-#         **零命中**；仓外（`agent-eval-gate` 等 5 个项目）也全 0。
+#         **零命中**；仓外（任何别的项目）也全 0。
 #      ② **它本来就是「测试桩」** ——  的流式出口普查表里就是这么记的。
 #      ③ **连「探活」这个唯一可能的用途也没了** ——  给它补上首帧认证之后，
 #         它自己也要凭据 ⇒ 留着的唯一理由（免鉴权的 WS 探活口子）已经不成立。

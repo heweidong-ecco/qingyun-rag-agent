@@ -79,7 +79,7 @@ llm_with_tools = llm.bind_tools(tools)
 #  `"search_tool"`（那是**变量名**，不是工具名）**
 #    与 `{t.name for t in tools}` 的**交集恒空** ⇒ 审批永不触发，且**没有任何报错**。
 #    现在写**真工具名** `web_search`（= `tools` 里那个，见上面 `TOOLS_BY_NAME`）。
-# 裁定 ⇒  B4 · 判据 ⇒ `app/tests/test_approval_trigger.py`
+# 裁定 ⇒ `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` B4 · 判据 ⇒ `app/tests/test_approval_trigger.py`
 SENSITIVE_TOOLS: frozenset[str] = frozenset(
     n.strip() for n in os.getenv("SENSITIVE_TOOLS", "web_search").split(",") if n.strip()
 )

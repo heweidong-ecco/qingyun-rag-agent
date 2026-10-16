@@ -100,7 +100,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
         #    ⇒ `should_continue` 判不出 `"approval"` / `"tools"` ⇒ **审批门静默失效**。
         # 并且**必须遍历【所有】块**，不许跳过 `content` 为空的块 ——
         #    provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上（实测，
-        #）⇒ 跳过它，下面那段记账就没了，
+        #    `qingyun-rag-agent-TODO待办/探针-流式与记账.py`）⇒ 跳过它，下面那段记账就没了，
         #    而接口一切正常。
         response = chunk if response is None else response + chunk
     # 统计 Token

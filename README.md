@@ -117,9 +117,17 @@ flowchart LR
 ```bash
 git clone https://github.com/heweidong-ecco/qingyun-rag-agent.git
 cd qingyun-rag-agent
-cp .env.example .env          # 填上 DASHSCOPE_API_KEY 等 —— 见 docs/契约/环境变量.md
+cp .env.example .env          # 填上你自己的 key —— 见下面那一段
 docker compose up -d
 ```
+
+> 🔴 **四件必填**：`DASHSCOPE_API_KEY`（向量与改写）· `LLM_API_KEY`（生成）·
+> `JWT_SECRET_KEY` · `POSTGRES_PASSWORD` —— **留空会直接拒绝启动**。
+> `.env.example` 里那几个 `sk-your-...-here` 是**占位值**，⛔ 不是能用的 key。
+>
+> ⚠️ **没有 key 的话，不必卡在这一步** —— 直接点上面的 **🔗 在线演示**看效果，
+> 那台是我自己起的、不用你配。
+> 📄 每个变量的含义 ⇒ `docs/契约/环境变量.md`
 
 起来之后打开 <http://localhost:8000/>：
 

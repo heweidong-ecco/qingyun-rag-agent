@@ -1,46 +1,40 @@
 <!--
-PR 模板 · fastapi-rag-agent
-合并纪律见  PR 先问作者「可以合吗」，拿到那句话才合；
-Agent 自己开的 PR 不许自合**（依 agent-eval-gate 的 D-23：单人仓里「点合并」是唯一的人工审核位）。
-
 写法：不适用的条目直接删掉，**不要留空模板**；每节都要有实际内容或明确的「不适用」。
 -->
 
 ## 这个 PR 做了什么
 
-<!-- 一句话说清变更。有对应 DEC / 复盘 / issue 的，把编号写上（本仓 DEC 在）。 -->
+<!-- 一句话说清变更。关联到某个 issue 的把编号写上。 -->
 
 -
 
-## 一、评估回归
+## 一、测试
 
-> 本仓是 `agent-eval-gate` 的**被测系统（SUT）**。凡触及 `/rag/*`、`/agent/*` 的
-> **响应结构 / 检索模式 / 拒答行为 / 重排序 / 查询改写**，都会改变评测口径。
+- [ ] **CI 通过**（`.github/workflows/ci.yml`：`python -m pytest . -m "not integration and not needs_db"`）
+- [ ] **本机复跑过**：<命令 + 实际输出；没跑就不勾>
 
-- [ ] **不影响**评测口径（纯文档 / CI / 测试资产改动）
-- [ ] **影响**评测口径 —— 已复跑：<命令 + 结果 + 与基线的对比>
-- [ ] 未复跑，原因：<…>（⚠️ 影响口径却不复跑，请在此写清风险与补偿措施）
+> ⚠️ **带库的用例不进 CI**（CI 里没有 Postgres）。凡触及检索 / 入库 / 记账的改动，
+> 请在**本机**跑一遍带库的那部分，并把命令与输出贴上来。
 
 ## 二、是否改 Prompt / 工具 / 记忆
 
-| 类别 | 是否改动 | 位置 |
-|---|---|---|
-| **Prompt** | 是 / 否 | `app/rag/answer_with_citations.py` · `app/rag/rag_pipeline.py` · `app/rag/query_rewriter.py` |
-| **工具** | 是 / 否 | `app/tools/mcp_server.py` · `app/tools/mcp_tool_factory.py` · `app/tools/simple_tools.py` · `app/tools/search_tools.py` |
-| **记忆** | 是 / 否 | `app/agent/memory_store.py`（Mem0） |
+| 类别 | 位置 |
+|---|---|
+| **Prompt** | `app/rag/answer_with_citations.py` · `app/rag/rag_pipeline.py` · `app/rag/query_rewriter.py` |
+| **工具** | `app/tools/` 下的 `mcp_server.py` · `mcp_tool_factory.py` · `simple_tools.py` · `search_tools.py` |
+| **记忆** | `app/agent/memory_store.py` |
 
-> **任一为「是」时必须写明改了什么、为什么改。** 这三类直接改变系统对外行为，
-> 是评测与线上表现最敏感的面 —— 改而不说，等于让下一个人对着行为变化猜原因。
+> **任一改了就写清改了什么、为什么改。** 这三类直接改变系统对外行为 —— 改而不说，
+> 等于让下一个人对着行为变化猜原因。
+>
+> ⚠️ 这三类改动**都要连带跑一轮检索/问答**再贴结果（只跑单测盖不住它们）。
 
-## 三、观测证据
+## 三、接口 / 契约
 
-- [ ] **CI 通过**（`.github/workflows/ci.yml` 只跑 `compileall`，是本仓唯一的自动门槛）
-- [ ] **实机验证**：<命令 + 实际输出；没实机跑就不勾>
-- [ ] **本机预检**：`python3.10 -m compileall app/ -q` 已过
-
-> ⚠️ 改动涉及 `locust/locustfile*.py` 时注意：**CI 不编译 `locust/`**（它只 `compileall app/`），
-> 漏跑 `py_compile` 则语法错了 CI 照样绿。
+- [ ] **不改对外接口**（纯内部重构 / 文档 / 测试）
+- [ ] **改了** —— 已同步更新 `docs/契约/`（接口 · 环境变量 · 表结构）
+- [ ] 改了 `app/schema.sql` 或建表逻辑 —— <怎么迁；老库怎么办>
 
 ## 四、回滚
 
-<!-- 怎么退回去？有无数据/契约副作用（改了 API 契约、有 DB 迁移、动过存量数据）？ -->
+<怎么退回去；有没有不可逆的部分（数据 / 索引 / 已发出的凭据）>
