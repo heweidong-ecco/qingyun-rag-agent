@@ -36,20 +36,20 @@
   🔴 **2026-10-05 由 `PUBLIC_PATHS` 改名**：旧名说"公开"，而它的真实语义是
   「**跳过限流 / 配额两个中间件**」，与"该端点要不要鉴权"**无关**。
   ⚠️ 现成反例就写在名单里：`/api/v1/admin/create_user` **在名单内，却要 `require_admin`**（`api_v1.py:161`）。
-  ⛔ 判断一条端点"公不公开"，**别读这个名单** —— 跑 `scripts/check_route_auth.py`。
+  ⛔ 判断一条端点"公不公开"，**别读这个名单** —— 跑。
 - **全局异常处理器**（`:476` / `:495`）
 - 🔵 **2026-10-06（裁定 #10）：新增 `GET /chat` → 302 `/static/web/chat.html`**（`:538`）
   —— 本仓**第一条面向人的页面路由**（此前 `/` 返回的是 JSON 服务索引，不是页面）。
   ⚠️ `include_in_schema=False`（它不是 API，⛔ 不进 openapi）· ⚠️ 302 而**不是**直接返回文件
   （页面本体由已挂的 `/static` 托管：零 CORS、零新服务、零构建）。
-  🔴 **它是一条【新的公开路由】** ⇒ 会让 `scripts/check_route_auth.py --baseline` 报"多了一条"
-  ⇒ **已显式写进 `scripts/route-auth-baseline.txt`**（一次有意识的操作，⛔ 不是顺手刷基线）。
+  🔴 **它是一条【新的公开路由】** ⇒ 会让  报"多了一条"
+  ⇒ **已显式写进 **（一次有意识的操作，⛔ 不是顺手刷基线）。
   📌 守卫：`app/tests/test_chat_page.py` **3 条**（跳转目标正确 / 目标文件真在磁盘上且是 `text/html` / **不在 openapi 里**）
   —— ⚠️ 最后那条是必需的：`check_route_auth.py --baseline` **抓不到"路由被删"**
   （它会把少掉的那条报成"少了 1 条（修好了）"并 `exit 0`）。
 - 🔵 **2026-10-06（§3.3）：新增 `GET /approvals` → 302 `/static/web/approvals.html`**（`:547`）
   —— **第二条页面路由**，形状与 `/chat` **逐条同构**（`include_in_schema=False` · 302 而非直接返回文件
-  **显式写进 `scripts/route-auth-baseline.txt`**）。
+  **显式写进 **）。
   📌 守卫：`app/tests/test_approvals_page.py` **3 条**（同 `/chat` 那三条）。
 - 🔵 **2026-10-06：新增 `GET /trace` → 302 `/static/web/trace.html`**（`:559`）
   —— **第三条页面路由**，形状仍与 `/chat` 同构（`include_in_schema=False` · 302 · 显式进基线）。
@@ -98,11 +98,11 @@
 
 | 看代码会以为 | 实际 |
 |---|---|
-| 🔴 **「`/static/` 就是普通地挂了个 `StaticFiles`，缓存行为是默认的」** | ⛔ **2026-10-16 起是 `_VersionedStaticFiles`，按后缀发【两种】缓存头**：`*.js`/`*.css` ⇒ `max-age=31536000, immutable`；**其余（尤其 `*.html`）⇒ `no-cache`**。<br>🔴 **为什么非分不可**：页面引 JS/CSS 时**带着内容哈希**（`?v=…`）⇒ 内容一变 URL 就变 ⇒ 长缓存安全；而 **HTML 的 URL 不带哈希、且它里面写着那些版本号** ⇒ 把 HTML 也钉成 immutable ⇒ **用户永远拿不到新版本号，比不加还糟**。<br>⚠️ `no-cache` ⛔ **不是** `no-store`：是"用之前先来问一句"，没变回 304、内容仍缓存着。<br>📄 起因是一次真事故（线上「登录后按钮没变、额度行不见」= 浏览器拿了旧 `authbar.js`）⇒ `scripts/stamp_static_version.py` + 门 `test_static_asset_references_are_versioned_and_real`。<br>📌 判据：`curl -sI .../static/js/index.js \| grep -i cache-control` |
+| 🔴 **「`/static/` 就是普通地挂了个 `StaticFiles`，缓存行为是默认的」** | ⛔ **2026-10-16 起是 `_VersionedStaticFiles`，按后缀发【两种】缓存头**：`*.js`/`*.css` ⇒ `max-age=31536000, immutable`；**其余（尤其 `*.html`）⇒ `no-cache`**。<br>🔴 **为什么非分不可**：页面引 JS/CSS 时**带着内容哈希**（`?v=…`）⇒ 内容一变 URL 就变 ⇒ 长缓存安全；而 **HTML 的 URL 不带哈希、且它里面写着那些版本号** ⇒ 把 HTML 也钉成 immutable ⇒ **用户永远拿不到新版本号，比不加还糟**。<br>⚠️ `no-cache` ⛔ **不是** `no-store`：是"用之前先来问一句"，没变回 304、内容仍缓存着。<br>📄 起因是一次真事故（线上「登录后按钮没变、额度行不见」= 浏览器拿了旧 `authbar.js`）⇒  + 门 `test_static_asset_references_are_versioned_and_real`。<br>📌 判据：`curl -sI .../static/js/index.js \| grep -i cache-control` |
 | 🔴 **「`QuotaMiddleware` 只管【这一个用户】的日额度」** | ⛔ **2026-10-14 起它还管一条【全站】的** ——  §二·8 需求方裁「甲」：**全站 embedding 的滚动窗口**（`check_global_embedding_budget()`），**只对 `POOL_EMBEDDING` 的路径生效**。<br>🔴 **两条不是一回事**：前者是"你个人还剩多少"，后者是"**全站加起来**烧了多少 embedding token"（约束它的是 DashScope 那把 key 的免费额度 = 100 万总量/90 天）。<br>⚠️ **⛔ 别把这条闸挪进 `embedding_client.get_embedding()`** —— 那个函数在**启动预热**里也会被调 ⇒ 额度用完后**应用起不来**。落在这里是因为：① 按池覆盖所有 embedding 路径 ② **handler 之前**（拒绝时一个 token 都没花）③ **预热不走 HTTP**。<br>📌 判据 ⇒ `app/tests/test_global_embedding_gate.py`（含正控：⛔ 不许拦到 LLM 池） |
 | 🔴 **「`resolve_rate_limit_identity()` 是在鉴权」** | ⛔ **不是**。它**只算【限流桶名】** —— 验签失败**不拦请求**，只是**让它落匿名桶**。<br>**真正的鉴权在 `app/routing/deps.py`**（那里才会抛 `AUTH_EXPIRED`）。<br>⚠️ **两者混起来看会得出"验了签就安全了"的错误结论。**<br>🔴 **2026-10-05它多了一种返回值 `None`** —— 含义是「**判不了**」（认证服务不可用），⛔ **不是 `"anonymous"`**（「判了，就是匿名」）。中间件见 `None` 会**跳过用户级限流**。 |
 | 🔴 **「`resolve_quota_identity()` 和限流那个应该长得一样」** | ⛔ **故意不一样** —— 两者在"库挂了"时的**出口不同**：<br>· 限流那个返回 `None` ⇒ 中间件**跳过用户级限流**（不落匿名桶）；<br>· 额度那个返回 `None` ⇒ 走 `QuotaMiddleware` **本来就有**的"未识别身份 ⇒ 原样放行"。<br>⚠️ **两边都是 fail-open**，但**落点不同**；⛔ 别为"看着统一"把它们的返回类型合并。<br>📄 四层分工（含 `deps.py` 的 fail-closed）⇒  |
-| 🔴 **「`MIDDLEWARE_EXEMPT_PATHS` 里的路径 = 不需要登录」** | ⛔ **不是**。它只表示**跳过两条中间件**（限流 + 配额）。<br>**该端点要不要鉴权，由它自己的依赖（`Depends(get_current_user)`）决定** —— **两回事**。<br>📌 **2026-10-05 前它叫 `PUBLIC_PATHS`** —— 那个名字**正是在犯这个错**。<br>📌 判据：`scripts/check_route_auth.py`（跑它，⛔ 别读名单）。 |
+| 🔴 **「`MIDDLEWARE_EXEMPT_PATHS` 里的路径 = 不需要登录」** | ⛔ **不是**。它只表示**跳过两条中间件**（限流 + 配额）。<br>**该端点要不要鉴权，由它自己的依赖（`Depends(get_current_user)`）决定** —— **两回事**。<br>📌 **2026-10-05 前它叫 `PUBLIC_PATHS`** —— 那个名字**正是在犯这个错**。<br>📌 判据：（跑它，⛔ 别读名单）。 |
 | 🔴 **「两条中间件拦得住匿名」** | ⛔ **拦不住，也不该由它们拦**。<br>① 中间件拿到 key 也**得查库**才知道有没有效 ⇒ 让它们"拒绝匿名" = **把鉴权抄第二份**（那一族）；<br>② 且**匿名口子是开着的**—— 在这里拒会把匿名入口一起关掉，那是另一个决定。<br>⇒ **鉴权与错误码在路由依赖那一层**：`AUTH_MISSING`（`deps.py:65`）· `AUTH_EXPIRED`（`deps.py:38/:50`）。<br>⚠️ 实测（`httpx.ASGITransport`，不带凭据打 4 条非豁免端点）⇒ **一律 `401 AUTH_MISSING`**，干净。 |
 | 🔴 **「`check_route_auth.py` 覆盖了所有路由」** | ⛔ **2026-10-05 前它只认 `APIRoute`** ⇒ `/api/v1/ws/agent`（**真花钱、真没鉴权**）**零输出**。<br>⇒ 本轮补上：WS 也进清单，标签是 `WS`。基线 **1 → 3 条**。<br>⚠️ 但**中间件仍然管不到 WS**（`BaseHTTPMiddleware` 只处理 `scope["type"]=="http"`）——<br>「进清单」≠「被保护」，它只是**从看不见变成看得见**。 |
 | 🔴 **「中间件按代码里 `add_middleware` 的顺序执行」** | ⛔ **正好相反**。Starlette 里**后加的在外层** ⇒ **最后写的先跑**。<br>**实测（`app.user_middleware` 索引 0 = 最外层）**：<br>`TextNormalizationMiddleware` → `QuotaMiddleware` → `RateLimitMiddleware`<br>⛔ 而代码里的**书写**顺序是 RateLimit（`:305`）→ Quota（`:416`）→ TextNormalization（`:473`）。<br>⚠️ 这些行号**随每次编辑漂** —— 权威判据是打印式的：`grep -n '^app.add_middleware' app/main.py` |
@@ -162,7 +162,7 @@
 | 🆕 `app/tests/test_static_exempt.py` | **8 条** ——  的判据（静态资源豁免）。🔴 **含两侧变异自证**：拆掉前缀 ⇒ **2 条红**；去掉边界 ⇒ **1 条红**。<br>⚠️ **⛔ 别改用 `TestClient` 判** —— 限流器连不上 Redis 时是 fail-open ⇒ 那种"绿"是**假的**（理由同 `resolve_rate_limit_identity` 抽出时那条）。 |
 | 🆕 `app/tests/test_rate_limit_ip.py` | **15 条** —— 按 IP 限流的判据。**纯函数 10 条 + 真调中间件 3 条**（把两个 limiter 换成假的，只记下收到的桶名）+ 开关默认值/收口各 1 条。<br>🔴 **变异自证两侧都跑过**：改成"总是信代理头" ⇒ **2 条红**；退回共用桶 ⇒ **4 条红**。<br>⚠️ 中间件那三条**不连 Redis**（假 limiter），所以它测的是**桶名**而不是"会不会 429"。 |
 | `app/tests/test_route_auth_scan.py` | **改名与接线那一轮的判据**—— 9 条：扫描口径必须**看得见 WS**、纯函数**不许 `chdir`**、**自证**旧口径扫不到 WS |
-| `scripts/check_route_auth.py` | ⭐ **「哪些路由没鉴权」的权威判据** —— ⛔ **别读名单、读它**（现含 WS） |
+|  | ⭐ **「哪些路由没鉴权」的权威判据** —— ⛔ **别读名单、读它**（现含 WS） |
 |  | 改名 + **把上面那个脚本真的接进 CI 与提交门**（此前它**哪都没跑**） |
 | 🔴 本仓的决策记录（⛔ 不随产品仓提供） | **第二条页面路由 `/approvals` 的依据**（§3.3 —— 硬门 D 的反例原文是「界面上找不到」，所以那一栏**只能靠页面**）· 消费它的接口在 `app/routing/specs/api_v1_agent.md` |
 | 🆕 本仓的决策记录（⛔ 不随产品仓提供） | **第三条页面路由 `/trace` 的依据** —— ⭐ 同时是**「302 对 ≠ 页面能用」那个事故**（`approvals.html` 4 条 URL 少 `/api/v1`）的**首次记录处** |

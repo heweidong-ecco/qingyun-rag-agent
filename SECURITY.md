@@ -43,10 +43,10 @@
 | `.env` 不入库，凭据运行时注入 | `.gitignore` |
 | API Key 只存 SHA256 哈希，不存明文 | `app/access/auth.py` |
 | 敏感配置不设默认值：缺了拒绝启动 | `app/core/config.py` |
-| 凭据门：扫描暂存区的新增行 | `scripts/check_secrets.sh` |
+| 凭据门：扫描暂存区的新增行 |  |
 | 历史密钥扫描（gitleaks，扫全历史） | `.github/workflows/ci.yml` |
 | 静态分析（CodeQL） | `.github/workflows/codeql.yml` |
-| 依赖漏洞扫描（本地 `pip-audit`） | `scripts/check_dep_vulns.sh` |
+| 依赖漏洞扫描（本地 `pip-audit`） |  |
 | 依赖版本就地钉死 | `app/requirements.txt` |
 | PostgreSQL 与 Redis 只绑 `127.0.0.1` | `docker-compose.yml` |
 | 四层配额：单次 / 会话 / 用户日级 / 全站日级 | 本仓的决策记录（⛔ 不随产品仓提供） |

@@ -9,7 +9,7 @@ app/access/auth.py:46   SELECT COUNT(*) FROM api_keys WHERE user_name = 'admin'
 ```
 
 而认证侧 `verify_api_key` 要的是 `COALESCE(is_active, 1) = 1` **且**未过期。
-⇒ **两个门量的不是同一件事**。真库里跑 `scripts/issue_api_key.py admin --revoke`
+⇒ **两个门量的不是同一件事**。真库里跑
 （它按用户名撤，撤的是**该用户名下的全部行**）之后：
 
 ```

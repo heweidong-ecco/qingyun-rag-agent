@@ -51,11 +51,16 @@ isolation-seed/A-01-产品手册.md
 **两条轴，两个脚本**（⛔ **docs 脚本不会自动跑 threads 脚本** —— 见 §六·2 末）：
 
 ```bash
-bash scripts/seed_isolation_docs.sh          # ① documents 轴：清旧种子 → 经真接口重新灌 → 打印复核
-bash scripts/seed_isolation_docs.sh --check  #    只查，不动任何数据
+# ⚠️ 本仓**不带灌库脚本** —— 那两步请手工做（用的是公开接口，见下）：
 
-bash scripts/seed_isolation_threads.sh          # ② thread_id 轴：⚠️ 花真钱（三家合计 10,374 token）
-bash scripts/seed_isolation_threads.sh --check  #    只查
+# ① documents 轴：把这三家（A/B/C）各当一篇文档，用各自那三把 API Key 上传
+curl -sS -X POST https://<你的地址>/api/v1/rag/upload_document \
+     -H "X-API-Key: <A 家的 key>" -F "file=@A-01-产品手册.md"
+
+# ② thread_id 轴：让这三家各真跑一次 agent（会真花钱 —— 三家合计约 10,374 token）
+curl -sS -X POST "https://<你的地址>/api/v1/agent/mcp_chat?thread_id=<各家自己的 id>" \
+     -H "X-API-Key: <A 家的 key>" -H 'Content-Type: application/json' \
+     -d '{"message":"你好"}'
 ```
 
 **docs 脚本做的事**：`POST /api/v1/rag/upload_document`（带各自 `X-API-Key`）
@@ -79,7 +84,7 @@ threads 清那三个 `thread_id` 当天的行。⛔ 都不 `TRUNCATE`、⛔ 都�
 | ④ | 每家 `source` 清单 | 只有自己那三篇 |
 | ⑤ | 拿 A 的 key 搜 B/C 的主题词（`mode=fast`） | 返回里**只有 A 的来源** |
 
-`threads` 脚本另有一组（`bash scripts/seed_isolation_threads.sh --check`）：
+`threads` 脚本另有一组：
 
 | # | 判据 | 期望 |
 |---|---|---|
@@ -129,7 +134,7 @@ docker exec postgres-rag psql -U postgres -d rag_db -c \
 2026-10-04 那一次探针就把 `isolation_a` 的当日额度用光了（第二次调用直接 429）。
 ⇒ **它又贵、`thread_id` 又是常量**，两头都不占。
 
-⇒ **正确做法**：`bash scripts/seed_isolation_threads.sh`（三家各 2 轮真对话，`thread_id` 由我们指定）。
+⇒ **正确做法**：（三家各 2 轮真对话，`thread_id` 由我们指定）。
 ⚠️ **它会花真钱**（实测每家 2 轮 ≈ 3,200–3,800 token · 三家合计 **10,374**）：这正是它**不被 `seed_isolation_docs.sh` 自动触发**的原因。
 
 **另两条替代**（都**不落真库 / 不 durable**，⛔ 别拿它们当长期证据）：
@@ -179,7 +184,7 @@ docker exec postgres-rag psql -U postgres -d rag_db -c \
 | 文档 | 说明 |
 |---|---|
 | 本仓的决策记录（⛔ 不随产品仓提供） | 口径裁定（含与  的关系 · 五条链路对照 · ⚠️ 那个计费口子） |
-| `scripts/seed_isolation_docs.sh` | ① documents 轴 |
-| `scripts/seed_isolation_threads.sh` | ② thread_id 轴（⚠️ 花真钱） |
+|  | ① documents 轴 |
+|  | ② thread_id 轴（⚠️ 花真钱） |
 | `app/tests/test_isolation.py` | 另一条轴：跑完就删的探针 |
 | `docs/契约/环境变量.md` | 三个 `ISOLATION_*_API_KEY` 在哪 |

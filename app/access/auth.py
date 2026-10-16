@@ -24,7 +24,7 @@ def hash_api_key(api_key: str) -> str:
 #:    **必须共用这一句** —— 别在两处各写一遍。
 #:
 #:    **2026-10-06 的缺陷就是这么来的**：自检只 `COUNT(*)` **行数**，不看 `is_active`
-#:    ⇒ `scripts/issue_api_key.py admin --revoke`（按用户名撤，撤的是该用户名下的**全部行**）
+#:    ⇒ （按用户名撤，撤的是该用户名下的**全部行**）
 #:    之后，自检照样报「管理员账户已存在，跳过自动创建」，而认证侧一把都过不去
 #:    ⇒ **admin 锁死，而日志说一切正常**。裁定见 本仓的决策记录（⛔ 不随产品仓提供）。
 #:    守卫 ⇒ `app/tests/test_auth_ensure_admin_exists.py::test_两条路径的_is_active_口径是同一句`
@@ -110,7 +110,7 @@ def ensure_admin_exists(logger=None):
     | 2 | 名下**一行都没有** | 首次启动：自动建一把、打印明文（仅此一次） |
     | 3 | **有行，但没有一行能用** | **不自动补发**，只打**响亮告警**（`error`） |
 
-    **为什么第 3 种不能自动补发**：`scripts/issue_api_key.py <user> --revoke` 是
+    **为什么第 3 种不能自动补发**： 是
        **按用户名撤**的，撤的是该用户名下的**全部行**。若这里自动补发，
        操作员那次「撤销」就会被**下一次重启静默还原**，而且新 key 的**明文会打进日志**
        （正是我们花力气清掉的那类残渣）。⇒ **决定权留给人**，告警里给出可照做的命令。
@@ -149,7 +149,7 @@ def ensure_admin_exists(logger=None):
             )
             logger.error("⇒ 不会自动补发：那会把你的撤销决定静默还原，并把新 key 明文打进日志。")
             logger.error("⇒ 要恢复，请显式发一把（明文只显示这一次，接着存好）：")
-            logger.error("     python scripts/issue_api_key.py admin --days 3650")
+            logger.error("     admin --days 3650")
             logger.error("=" * 60)
         return None
 

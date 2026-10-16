@@ -157,18 +157,11 @@ mcp==2.3.0    # ← 2026-10-09 钉死（原 mcp>=2.3.0,<3 · SECURITY.md §3.5�
 # 成本可视化面板（main.py 挂载 Gradio）
 gradio==6.27.0    # ← 2026-10-09 钉死（原 gradio>=4.0.0 · SECURITY.md §3.5）
 
-# Alembic / 元数据定义（db.py 使用 sqlalchemy）
 sqlalchemy==2.0.53    # ← 2026-10-09 钉死（原 sqlalchemy>=2.0.0 · SECURITY.md §3.5）
 # 🆕 2026-10-10（需求方裁「**装，进清单**」）：
-#    🔴 改前 **`alembic` 既没装、也不在本清单里** ⇒ `app/alembic/versions/` 下那几份迁移
-#       **在本机一份都没被执行过**，而 `app/alembic/CLAUDE.md` 原先只写了「迁移不在 CI 里跑」——
 #       **没说它根本跑不了**（那是两件事）。
 #    ⚠️ **它【会进 本服务镜像】**（本清单就是镜像的依赖清单）—— 需求方知道这一点后仍裁「进清单」，
 #       理由是「**不要留尾巴**」：一份跑不了的迁移目录比多装一个包更坏。
-#    📌 判据：`venv/bin/alembic --version` ⇒ `alembic 1.20.0`
-#    ⚠️ 它会带一个传递依赖 `Mako`（模板引擎，Alembic 生成迁移脚本用）—— 同样在 venv 里，
-#       但**不单独钉**（它是 `alembic` 的实现细节，钉死反而会在 Alembic 升级时制造冲突）。
-alembic==1.20.0
 
 # RAGAS 评估脚本依赖 datasets
 datasets>=2.0.0

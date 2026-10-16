@@ -100,7 +100,7 @@ from billing.token_tracker import record_usage
 | `app/static/`（非 `.py` 子系统） | `app/static/specs/static_frontend.md` |
 
 - 模板与写作规范：`app/specs/README.md`
-- 对账：`bash scripts/spec_status.sh`（**递归**扫 `app/**/specs/*.md`，自带防空跑）
+- 对账：（**递归**扫 `app/**/specs/*.md`，自带防空跑）
 - 新增模块必须同时建 spec（`pre-commit-gates.py` 第 ④ 道门**硬拦**）
 
 ## 六 · 分层 CLAUDE.md
@@ -127,7 +127,7 @@ from billing.token_tracker import record_usage
 > 因为它是**要整份拷到新项目**的成品：**拷过去当天就得是绿的**（⛔ 不是「让新项目自己补」）。
 
 > 🔴 **上面这份【就是】门的豁免名单，⛔ 别在别处再造一份。**
-> 判据 ⇒ **`bash scripts/check_layered_claude_md.sh`**（**第 ⑧ 道提交门**，2026-10-10 加）。
+> 判据 ⇒ ****（**第 ⑧ 道提交门**，2026-10-10 加）。
 > ⚠️ **两处不一致的表现是"门放行了规范不许放的东西"（或反之），而不报错** —— 本仓明文教训：
 > **一个名单两个来源必然漂移**⇒ **改这条就同批改脚本里的 `NAME_EXEMPT` / `PATH_EXEMPT`**。
 
@@ -158,10 +158,10 @@ from billing.token_tracker import record_usage
 ```bash
 ls app/main.py app/conftest.py                 # 两个入口留在 app/ 根
 ls app/*/specs/*.md | wc -l                    # spec 分散在各组
-bash scripts/spec_status.sh                    # 模块 ↔ spec 对账（56 有 / 0 缺）
-bash scripts/check_doc_links.sh                # 断链门
-bash scripts/check_layered_claude_md.sh        # 🆕 分层 CLAUDE.md 门（每个目录层都得有它）
-bash scripts/check_layered_claude_md.sh --self-test   # 🆕 它的自测（5 条）
+# 模块 ↔ spec 对账（56 有 / 0 缺）
+# 断链门
+# 🆕 分层 CLAUDE.md 门（每个目录层都得有它）
+--self-test   # 🆕 它的自测（5 条）
 ./venv/bin/python -m pytest app/ -m "not integration and not needs_db" -q
 grep -rn "api/" --include='*.py' app | grep -v "/api/v1"   # 应只剩 URL 前缀
 ```
@@ -171,6 +171,6 @@ grep -rn "api/" --include='*.py' app | grep -v "/api/v1"   # 应只剩 URL 前�
 | 日期 | 变更 |
 |---|---|
 | 2026-10-09 | 建立本规范。`api/` 拆七组 + 容器改名 `app/`（`#123`）· spec 拆进模块 · 分层 `CLAUDE.md` 全覆盖 |
-| 2026-10-10 | §六 **补上第 ⑧ 道提交门**（`scripts/check_layered_claude_md.sh`）—— 在此之前这套机制**只有文字、没有门**；§六 的「边界」那句随需求方裁「甲」修正 |
+| 2026-10-10 | §六 **补上第 ⑧ 道提交门**—— 在此之前这套机制**只有文字、没有门**；§六 的「边界」那句随需求方裁「甲」修正 |
 
 详细过程与当时的备选方案见 本仓的历史归档（⛔ 不随产品仓提供）。

@@ -233,7 +233,7 @@ def create_table():
                         --    ⚠️ 故意**可空**（⛔ 别加 NOT NULL）：`COALESCE` 就是为了让
                         --    那批"加列之前写进去的老行（NULL）"照样能通过认证。
                         -- 🔴 **类型必须是 INTEGER（0/1），⛔ 别改成 BOOLEAN** ——
-                        --    写入侧写的是整数：`scripts/issue_api_key.py:55` 的
+                        --    写入侧写的是整数： 的
                         --    `UPDATE api_keys SET is_active = 0` ⇒ 建成 boolean 那句直接报
                         --    "column is of type boolean but expression is of type integer"。
                         --    ⚠️ 全仓另外两处也是**整数**口径，别只改这里：

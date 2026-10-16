@@ -15,7 +15,7 @@
 * **离线**（12 条里 11 条）：把 `rate_limiter.redis_client` 换成一个**按需抛异常**的替身。
 * **真 Redis**（`test_新桶在真Redis里真的带上了TTL`）：它要问 Redis **`TTL` 是多少**。
   没有别的办法能证明「`EXPIRE` 真的生效」—— 读脚本文本只能证明「**写了这句**」。
-  CI 有 redis service（`.github/workflows/ci.yml:66`），`scripts/ci-local.sh` 复用 `redis-rag`。
+  CI 有 redis service（`.github/workflows/ci.yml:66`）， 复用 `redis-rag`。
   **本仓已有同一取舍**：`app/tests/test_rag_search.py` 的 L1/L2 同样**必须真连 Redis**。
 """
 import math

@@ -8,7 +8,7 @@
 |---|---|
 | `app/tests/test_approvals_page.py`（3 条） | 只看 `GET /approvals` 的 **302 与跳转目标**，不看页面脚本里的 URL |
 | `app/static/js/approvals.test.js`（14 条） | 全是**纯函数** —— `buildContextQuery` 只回 query string，前缀根本不经过它 |
-| `scripts/check_route_auth.py` | 管的是「后端有没有多余的无鉴权路由」，与页面打什么 URL 无关 |
+|  | 管的是「后端有没有多余的无鉴权路由」，与页面打什么 URL 无关 |
 
 ⇒ **URL 前缀硬编码在那一行 HTML 里，而那一行没有任何判据。**
 
@@ -811,7 +811,7 @@ def test_kb_row_delete_asks_first_and_only_in_my_library():
 #    ⇒ 浏览器走**启发式缓存** ⇒ **每次发布都可能有人拿到「新 HTML + 旧 JS」**。
 #
 # ⇒ 治法是**把内容哈希写进 URL**（`?v=…`），配套 `app/main.py` 给 `.js`/`.css` 发长缓存。
-#    版本号由 `scripts/stamp_static_version.py` **从文件内容算**（⛔ 不是手写 —— 手写必忘），
+#    版本号由  **从文件内容算**（⛔ 不是手写 —— 手写必忘），
 #    而**这条门就是"忘了"的兜底**。
 #
 # ⚠️ **这条门第一次跑就抓到了另一件事**：`guide.html` 引着 `session.js` 与 `cred.js`
@@ -821,10 +821,10 @@ def test_kb_row_delete_asks_first_and_only_in_my_library():
 
 
 def _stamp_script():
-    """把 `scripts/stamp_static_version.py` 当模块拿进来 —— ⛔ **别在这儿再抄一份正则**。
+    """把  当模块拿进来 —— ⛔ **别在这儿再抄一份正则**。
 
     ⚠️ 抄一份 = 两处真相 ⇒ 脚本刷的和门查的**迟早会不一致**（本仓反复栽过的那一族）。
-    同款先例：`探针-能力清单` 直接 import `scripts/check_route_auth.py`。
+    同款先例：`探针-能力清单` 直接 import。
     """
     import importlib.util
     import pathlib
@@ -857,6 +857,6 @@ def test_static_asset_references_are_versioned_and_real():
     assert not bad_all, (
         "这些静态资源引用有问题：\n" + "\n".join(bad_all) + "\n"
         "⇒ 「文件不存在」 ⇒ **要么删掉那行引用、要么把文件找回来**（⛔ 别留着 404）。\n"
-        "⇒ 「版本号对不上」⇒ 跑 `venv/bin/python scripts/stamp_static_version.py` 刷一遍。\n"
+        "⇒ 「版本号对不上」⇒ 跑  刷一遍。\n"
         "⚠️ 忘了刷的后果**不是报错、是线上有人看到半新半旧的页面**（2026-10-15 真发生过）。"
     )

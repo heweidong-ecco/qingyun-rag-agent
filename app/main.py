@@ -107,7 +107,7 @@ async def log_and_track_request(request: Request, call_next):
 #
 # **这个名单与"该端点要不要鉴权"【完全无关】** ——
 #    要不要身份，由**该端点自己的依赖**决定（`Depends(get_current_user*)` / `require_admin`）。
-#    ⇒ 判断一条端点"公不公开"，别读这个名单，去跑 `scripts/check_route_auth.py`。
+#    ⇒ 判断一条端点"公不公开"，别读这个名单，去跑。
 #
 # 2026-09-16 修正：原名单写的是 `/auth/login`、`/auth/refresh`、`/admin/create_user`，
 #    但三个 router **都带 `/api/v1` 前缀**（api_v1.py:53 / api_v1_rag.py:44 / api_v1_agent.py:37），
@@ -123,7 +123,7 @@ MIDDLEWARE_EXEMPT_PATHS = frozenset({
     #    ⇒ 两者【同待遇】—— `/` 早就在本名单里（静态入口，不参与限流与配额），
     #      一个豁免、一个记成"债"，读的人只会问"为什么同一个东西两种待遇"。
     #    它**零成本**（一个静态 dict，不碰库、不碰 Redis），没有限流的理由。
-    #    副作用：它因此**不进** `scripts/route-auth-baseline.txt` 的无鉴权盘点
+    #    副作用：它因此**不进**  的无鉴权盘点
     #       （那道门跳过本名单里的路径）⇒ 盘点数仍是 **5 条**（2026-10-09 实测）。
     "/api/v1/info",
     "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/admin/create_user",
@@ -717,7 +717,7 @@ app.include_router(agent_router)
 #    302 而不是 301（同 `/chat` 那族的理由）：页面将来换位置时，
 #       被永久缓存的 301 会把老用户钉在 404 上。
 #    公开面**没变**：`/` 本来就在 `MIDDLEWARE_EXEMPT_PATHS` 里（静态入口，不参与限流配额）
-#       ⇒ 本条**不需要**动 `scripts/route-auth-baseline.txt`（2026-10-09 实测确认）。
+#       ⇒ 本条**不需要**动 （2026-10-09 实测确认）。
 @app.get("/", include_in_schema=False)
 async def overview_page():
     """把人送到**总览首页**。`include_in_schema=False`：它是页面，不是 API。"""
@@ -733,7 +733,7 @@ async def overview_page():
 #   302 而不是 301（沿旧理由）：页面将来换位置时，被永久缓存的 301 会把老用户钉在 404 上。
 #   `/`（总览）在上面那一条，不动它。
 #   代价已认：这些都是**新公开路由** ⇒ `check_route_auth.py --baseline` 会 exit 1
-#      ⇒ **已显式写进 `scripts/route-auth-baseline.txt`**（一次有意识的操作）。
+#      ⇒ **已显式写进 **（一次有意识的操作）。
 #      页面本身**不含数据**：真正的边界在它们调的接口上，那些都带鉴权。
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -1056,7 +1056,7 @@ class _VersionedStaticFiles(StaticFiles):
 
     | 后缀 | 头 | 为什么 |
     |---|---|---|
-    | `.js` / `.css` | `max-age=31536000, immutable` | 页面引它们时**带着内容哈希**（`?v=…`，见 `scripts/stamp_static_version.py`）⇒ **内容一变 URL 就变** ⇒ 可以放心长缓存 |
+    | `.js` / `.css` | `max-age=31536000, immutable` | 页面引它们时**带着内容哈希**（`?v=…`，）⇒ **内容一变 URL 就变** ⇒ 可以放心长缓存 |
     | **其余**（`.html` · `.md` · …） | `no-cache` | 它们的 URL **不带哈希**，⛔ 不能长缓存 |
 
     🔴 **`.html` 为什么必须每次都问**：**它里面写着 JS/CSS 的版本号** ——

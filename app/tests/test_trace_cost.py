@@ -262,7 +262,7 @@ def test_does_not_delegate_to_get_thread_cost():
 def test_endpoint_declares_auth_dependency():
     """端点必须带 `get_current_user_hybrid` —— 否则它会**变成一条公开路由**。
 
-    这一条与 `scripts/check_route_auth.py --baseline`（CI 里的那道门）**是两把尺子**：
+    这一条与 （CI 里的那道门）**是两把尺子**：
        那道门在 CI 里读真实路由表（强），本条只读源码（弱、但失败信息更直白）。
        ⇒ **以那道门为准**，本条只是把原因写在近处。
     """

@@ -23,7 +23,7 @@
 
 ## 豁免
 
-无界面消费者的端点**不投入**（YAGNI），但**必须在 `scripts/truncation-exempt.txt` 里登记**，
+无界面消费者的端点**不投入**（YAGNI），但**必须在  里登记**，
 并写明"为什么现在不算缺陷" —— 那个文件是**给人审阅的**，
 "懒得改"不是理由；「**当前没有任何页面在用它，且它是只读的**」才是。
 
@@ -88,7 +88,7 @@ def _returned_keys(fn_node) -> set:
 
 
 def _load_exempt() -> dict:
-    """`scripts/truncation-exempt.txt` —— 每行 `<端点名>  <理由>`；`#` 开头是注释。"""
+    """ —— 每行 `<端点名>  <理由>`；`#` 开头是注释。"""
     if not EXEMPT_FILE.exists():
         return {}
     out = {}
@@ -147,7 +147,7 @@ def test_every_limit_endpoint_declares_truncation():
         "   ⚠️ 它**不报错**，所以除了本文件**没有任何门会红**。\n"
         "   ✅ 两种改法都行：① 回 `truncated`（+ 服务端算合计，照 `/agent/trace/{id}/cost` 的先例）\n"
         "                    ② 回 `has_more`（+ `offset`，照 `/agent/approvals/history` 的先例）\n"
-        "   ⚠️ 真要豁免 ⇒ 登记进 `scripts/truncation-exempt.txt` 并**写明理由**（那个文件是给人审阅的）。"
+        "   ⚠️ 真要豁免 ⇒ 登记进  并**写明理由**（那个文件是给人审阅的）。"
     )
 
 

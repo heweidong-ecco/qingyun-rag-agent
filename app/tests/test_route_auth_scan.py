@@ -1,8 +1,8 @@
-"""`scripts/check_route_auth.py` 的**扫描覆盖**守卫 —— 补 WebSocket 的结构盲区。
+""" 的**扫描覆盖**守卫 —— 补 WebSocket 的结构盲区。
 
 ## 这条测试为什么存在（2026-10-05）
 
-`scripts/check_route_auth.py` 是本仓"新端点必须带鉴权依赖"的机械判据
+ 是本仓"新端点必须带鉴权依赖"的机械判据
 （`docs/规范/开发规范.md` §1.5）。但它**结构上看不见 WebSocket** ——
 它的收集函数只认 `APIRoute`（`_collect_apiroutes`）。
 

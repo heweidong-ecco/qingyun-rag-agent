@@ -558,7 +558,7 @@ python -m pytest app/ -m "not integration and not needs_db" -q     # → 应仍�
 - [ ] **Step 8: 更新模块表并提交**
 
 ```bash
-bash scripts/spec_status.sh --write
+--write
 git add app/billing/token_config.py app/tests/test_token_config.py app/billing/specs/token_config.md \
         app/specs/README.md app/billing/token_tracker.py
 git commit -m "feat(额度): B7 —— 建 token_config.py 把散在 4 文件的额度常量收口（行为不变）"

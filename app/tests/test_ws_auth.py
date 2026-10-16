@@ -4,7 +4,7 @@
 
 `/api/v1/ws/agent` **整条没有鉴权**（遗留·1）：它**真花钱**（跑 LangChain Agent、
 调 chat LLM、还能 `web_search`），却是全站唯一一个**匿名可达、又真的花钱**的入口。
- 只是把它**从看不见变成看得见**（补进 `scripts/check_route_auth.py` 的扫描口径），
+ 只是把它**从看不见变成看得见**（补进  的扫描口径），
 没有修它 —— 那是"把灯打开"，不是"把门装上"。
 
 ## 浏览器为什么不能照抄 HTTP 那套
@@ -30,7 +30,7 @@
 
 ```bash
 venv/bin/python -m pytest app/tests/test_ws_auth.py -q -p no:warnings
-venv/bin/python scripts/check_route_auth.py        # ⇒ 无鉴权路由 1 条（只剩 /api/v1）
+venv/bin/# ⇒ 无鉴权路由 1 条（只剩 /api/v1）
 ```
 """
 import asyncio
@@ -300,7 +300,7 @@ def test_ws_agent_body_never_runs_before_auth(deps_mod, monkeypatch):
 def test_the_ws_route_carries_the_auth_dependency():
     """结构守卫：**路由表里**那条 WS 必须挂着 `require_ws_user`。
 
-    它与 `scripts/check_route_auth.py` **不是重复**：那个脚本靠 `AUTH_NAMES` 名单认人
+    它与  **不是重复**：那个脚本靠 `AUTH_NAMES` 名单认人
     （名单漂了它就静默失效），这条直接钉**具体那一条依赖**。
 
     **2026-10-05 起是 1 条不是 2 条** —— `/ws/test` 已删（§十）。

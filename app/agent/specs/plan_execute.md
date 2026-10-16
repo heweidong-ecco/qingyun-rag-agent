@@ -84,7 +84,7 @@
 
 把 `app/agent/plan_execute.py` 上**已核实的**三条收掉：**成败判定读中文文案**· **重规划漏传 `user_name`**· **`max_replans` 是函数里的魔法数**。
 
-**验收 = 三条各有一条【会真的红】的用例** —— 跑 `bash scripts/ci-local.sh` 全绿，且**把修复回退掉时它会红**（见每个 Task 的「变异自证」）。
+**验收 = 三条各有一条【会真的红】的用例** —— 跑  全绿，且**把修复回退掉时它会红**（见每个 Task 的「变异自证」）。
 
 ## 架构
 
@@ -99,7 +99,7 @@ Python 3.10 · `pytest` · `monkeypatch` · 全**离线**（⛔ 不连真 LLM、
 
 | # | 约束 | 出处 / 判据 |
 |---|---|---|
-| **C1** | **测试一律 `bash scripts/ci-local.sh`** —— ⛔ 不许拿裸 `pytest app/ -m "not integration and not needs_db" -q` 顶替 | `scripts/ci-local.sh` 文件头；**同款命令 ≠ 同款环境**（`.env` / Redis 两轴） |
+| **C1** | **测试一律 ** —— ⛔ 不许拿裸 `pytest app/ -m "not integration and not needs_db" -q` 顶替 |  文件头；**同款命令 ≠ 同款环境**（`.env` / Redis 两轴） |
 | **C2** | 🔴 **⛔ 不改任何用户可见文案** ——  **只换判定依据**，`:587` 那句 `执行失败（已重试{N}次）：…` **必须逐字不动** | 本仓「一份内容只在一处」+  的定义就是**换依据不换话**； 有专门一条用例钉它 |
 | **C3** | **⛔ 不碰 本仓的工程配置（⛔ 不随产品仓提供）** —— 扫描类判据要把它排除 | 需求方 2026-10-01：「worktree 在做的事情，不要动它」 |
 | **C4** | **本计划的 `:NNN` 行号是 2026-10-05 实测** —— 动手前用 `grep -n` **复核**，⛔ 别照着行号直接跳 | 本仓「拿动作成功当结果正确」族；`spec` 顶部那条「行号口径」已预警 |
@@ -257,7 +257,7 @@ def test_重试耗尽返回结构化结果且文案不含异常原文(monkeypatc
 
 - [ ] **Step 2: 跑，确认【红】—— 且红的理由是「文案被当判据」，不是别的**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 Expected: **红**，且**摘要**必须是 `1 failed, 1 passed, …` 里那 1 条失败是
 `test_工具正常返回里恰好含那句失败文案时不许触发重规划`，报错是断言
 `replans == []`（实际 `[1]`）。
@@ -358,10 +358,10 @@ def execute_step_with_quality_check(step: Dict, context: str, user_goal: str,
 
 - [ ] **Step 4: 跑，确认【绿】**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 Expected: **绿**。⚠️ **判据是条数**：`plan_execute` 相关用例 `+3`（本 Task 新增的），
 且**其余条数一条不少** —— ⛔ 别只看 "passed"。
-📌 复核命令：`bash scripts/ci-local.sh | tail -5` 对比改动前后那一行摘要。
+📌 复核命令： 对比改动前后那一行摘要。
 
 - [ ] **Step 5: 🔴 变异自证 —— 证明用例【真的】在管这件事**
 
@@ -460,7 +460,7 @@ def test_重规划把真实发起人传下去(monkeypatch):
 
 - [ ] **Step 2: 跑，确认【红】**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 Expected: **红**，且失败的是 `test_重规划把真实发起人传下去`，断言信息里 `seen == ['unknown']`。
 ⚠️ 若它**绿** ⇒ **先别继续**：说明 `Step 1` 里那条失败路径没被驱动到
 （检查 `execute_step_with_quality_check` 的替身有没有返回 `ok=False`）。
@@ -557,7 +557,7 @@ def test_每个_plan_task_调用点都传了_user_name():
 
 - [ ] **Step 5: 跑 —— 全部绿；并【自证这道门会红】**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 Expected: **绿**。
 
 🔴 **然后手动自证这道门不是摆设**（⛔ 别跳）：把 `:383` 改回 `plan_task(replan_context)`，再跑。
@@ -646,7 +646,7 @@ def test_重规划次数上限是可配的模块级常量(monkeypatch):
 
 - [ ] **Step 2: 跑，确认【红】**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 Expected: **红** —— `AttributeError: module 'plan_execute' has no attribute 'MAX_REPLANS'`
 （`monkeypatch.setattr` 对不存在的属性默认 `raising=True`）。
 ✅ 这个错**正是**「它还不是模块级常量」的证明。
@@ -676,7 +676,7 @@ MAX_REPLANS = 5
 
 - [ ] **Step 4: 跑，确认【绿】**
 
-Run: `bash scripts/ci-local.sh`
+Run:
 
 - [ ] **Step 5: 🔴 两半自证 —— ① 没有残留的硬编码 ② 用例真的在管这件事**
 
@@ -709,7 +709,7 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 
 ## 收尾（三个 Task 都绿之后）
 
-- [ ] **Step 1: 全量复核** —— `bash scripts/ci-local.sh` 绿，且**条数**与改动前对比 `+5`
+- [ ] **Step 1: 全量复核** ——  绿，且**条数**与改动前对比 `+5`
 - [ ] **Step 2: spec 顶部状态栏** —— `:5` 那句「🔴 **但查出 1 处真缺陷 + 5 处"看代码会误判"**」要改（`⚠️①②` 两条已消）· `:7` 的用例数（`22 条`）要跟着数
 - [ ] **Step 3: `docs/待办总表.md`** —— 🅗 里  /  /  三条标 ✅
 - [ ] **Step 4: `CHANGELOG.md`** —— 按仓里现有格式记三条（⚠️ **别照抄上份 commits 的「不用写 CHANGELOG」理由**）

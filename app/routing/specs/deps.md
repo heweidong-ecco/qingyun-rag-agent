@@ -4,7 +4,7 @@
 |---|---|
 | **状态** | 🟡 部分可用 —— **HTTP 侧完整**；**WebSocket 侧 2026-10-05 才补上**（此前 WS 整条裸奔） |
 | **对外提供** | **HTTP 认证**：`get_current_user`（API Key）· `get_current_user_jwt`（JWT）· `get_current_user_hybrid`（两者皆可）· `require_admin`（管理员）· `verify_jwt_token`（纯函数）· `oauth2_scheme`<br>**WebSocket 认证**（🆕）：`require_ws_user`（依赖）· `resolve_ws_identity`（**纯函数**）· 常量 `WS_AUTH_TIMEOUT_SECONDS` / `WS_CLOSE_POLICY_VIOLATION`(1008) / `WS_CLOSE_INTERNAL_ERROR`(1011) |
-| **谁在用** | `app/routing/api_v1.py` · `app/routing/api_v1_agent.py` · `app/routing/api_v1_rag.py`（含 WS 那两条路由）· `app/main.py` —— ⚠️ 见 `scripts/check_route_auth.py` 的 `AUTH_NAMES`**就是靠本文件的函数名认人的** |
+| **谁在用** | `app/routing/api_v1.py` · `app/routing/api_v1_agent.py` · `app/routing/api_v1_rag.py`（含 WS 那两条路由）· `app/main.py` —— ⚠️ 见  的 `AUTH_NAMES`**就是靠本文件的函数名认人的** |
 
 ## ✅ 做了什么
 
@@ -16,10 +16,10 @@
 
 ## 🟡 做到哪 / 缺什么
 
-- ✅ ：`scripts/check_route_auth.py` 已**接线进 CI + 提交门**（此前只是"有脚本"）。
+- ✅ ： 已**接线进 CI + 提交门**（此前只是"有脚本"）。
 - ✅ ：`/api/v1/ws/agent` 挂上 `require_ws_user`；
   ⚰️ `/api/v1/ws/test` **同日已删**（§十 · 纯回声测试桩 · 消费者 = 0）。
-  ⇒ 基线里那条 WS **已消掉**（`scripts/route-auth-baseline.txt` 现只剩 HTTP 的 `/api/v1/`）。
+  ⇒ 基线里那条 WS **已消掉**（现只剩 HTTP 的 `/api/v1/`）。
 - ⬜ **WS 的会话桶仍是"每连接"** —— `thread_id = f"ws-{uuid4}"`，重连 = 换桶。
   见  遗留·2（全局日级熔断 B11 仍罩着，故未失控）。
 - ✅ ~~**`verify_api_key` 的 `get_db()` 没有 try**~~（遗留·4 ⇒ 本表 ****）
@@ -39,7 +39,7 @@
 | 🔴 **「1008 和 1011 都是失败，随便报一个」** | ⛔ **对客户端是相反的处置**：1008 = 你的凭据不行（**换 key**）；1011 = 我这边不行（**重试，别换 key**）。<br>把库抖动报成 1008，等于**告诉用户去换一把没问题的 key** —— 他换了还是连不上，且**永远查不到原因**。 |
 | 🔴 **「`deps.py` 里鉴权 fail-closed，那 `token_tracker` 怎么 fail-open，统一一下」** | ⛔ **故意相反，别统一**：这里是**安全边界**（放错了 = 匿名进门）；那边是**成本控制**（挡错了 = 全站停摆）。`token_tracker.get_session_token_usage` 的 docstring 里写着同一条。 |
 | 🔴 **「中间件不是已经挡过了吗」** | ⛔ **挡不到 WS** —— `app/main.py` 那两个是 `BaseHTTPMiddleware`，**只看 `scope["type"] == "http"`**。⇒ WS 的鉴权**只能挂在路由自己的依赖上**，这也是它曾经整条裸奔的原因。 |
-| 🔴 **「改了个鉴权函数名而已，跑一下测试就行」** | ⛔ **还要改 `scripts/check_route_auth.py` 的 `AUTH_NAMES`** —— 那个门是靠**函数名字符串**认人的，**名单漂了它会静默放过**（实测：把 `require_ws_user` 从名单里拿掉，两条 WS 立刻被判为"无鉴权"）。 |
+| 🔴 **「改了个鉴权函数名而已，跑一下测试就行」** | ⛔ **还要改  的 `AUTH_NAMES`** —— 那个门是靠**函数名字符串**认人的，**名单漂了它会静默放过**（实测：把 `require_ws_user` 从名单里拿掉，两条 WS 立刻被判为"无鉴权"）。 |
 
 # ✅ 实施计划 · 批 3 · （2026-10-05 立 · **同日做完**）
 

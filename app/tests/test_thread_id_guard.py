@@ -11,7 +11,7 @@
 ① **不能直接遍历 `app.routes`**：FastAPI 0.141 起 `include_router` 的结果被包成
    `_IncludedRouter` ⇒ 直接遍历只能看到 **5 条**（实测），
    而真 app 有 **58 条 HTTP + 1 条 WS**。
-   ⇒ 复用本仓**已有**的那把遍历器 `scripts/check_route_auth.py::_collect`
+   ⇒ 复用本仓**已有**的那把遍历器
    （`app/tests/test_route_auth_scan.py:143` 也是这么用的）—— 不另写一份。
 
 ② **不能读 `field_info.min_length`**：在 FastAPI 0.141.1 + Pydantic v2 上，

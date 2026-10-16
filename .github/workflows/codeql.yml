@@ -3,7 +3,7 @@
 # ⚠️ **为什么加它**：`SECURITY.md` §五 原先写着「**SAST：无**」。
 #    它是 GitHub 自带的静态分析，**只扫描、⛔ 不开 PR** ⇒ 与「**PR 别频繁开**」不冲突。
 #
-# ⚠️ **它跑在 GitHub 的 runner 上**（本机不跑）⇒ ⛔ 不影响 `scripts/ci-local.sh` 的"CI 等价"。
+# ⚠️ **它跑在 GitHub 的 runner 上**（本机不跑）⇒ ⛔ 不影响  的"CI 等价"。
 # 🔴 **2026-10-14 修：本仓已转 private ⇒ CodeQL 在【私有仓】上跑不了。**
 #    实测报错原文：`Code scanning is not enabled for this repository.`
 #    ⇒ 代码扫描（CodeQL / secret scanning）在**私有仓**上要付费的 GitHub Advanced Security；
@@ -33,7 +33,7 @@ jobs:
     # 🔴 只在【公开仓】跑 —— 私有仓的代码扫描要付费（见文件头 2026-10-14 那条）
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
-    # 🔴 本仓纪律：**每个 job 必须带 `timeout-minutes`**（`scripts/check_ci_job_timeouts.py` 会核）
+    # 🔴 本仓纪律：**每个 job 必须带 `timeout-minutes`**（会核）
     timeout-minutes: 20
     permissions:
       security-events: write
@@ -44,7 +44,7 @@ jobs:
       - uses: github/codeql-action/init@v3
         with:
           languages: python
-          # 🔴 2026-10-10：**只豁免一个文件** —— `scripts/issue_api_key.py`。
+          # 🔴 2026-10-10：**只豁免一个文件** ——。
           #
           # **为什么**：它是那把「**把新发的 API key 交给操作员**」的 CLI。CodeQL 的
           # `py/clear-text-logging-sensitive-data` 与 `py/clear-text-storage-sensitive-data`
@@ -69,5 +69,5 @@ jobs:
           # 🔴 **真风险仍然存在，处置在代码里**：非交互调用请用 `--out <文件>`（权限 600），
           #    ⛔ 别把 key 打进 stdout —— **2026-10-10 实测栽过一次**（key 进了会话记录）。
           paths-ignore: |
-            scripts/issue_api_key.py
+            
       - uses: github/codeql-action/analyze@v3

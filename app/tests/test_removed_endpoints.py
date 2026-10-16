@@ -56,7 +56,7 @@ def test_rag_ask_stays_removed():
 
     **别把这里改成 `with TestClient(app) as client:`** —— 那样会**触发 lifespan 的 startup**
     ⇒ `init_pool` **真去连 Postgres** ⇒ **CI 没有 Postgres ⇒ `psycopg2.OperationalError`**
-    （2026-10-03 实测：`bash scripts/ci-local.sh` ⇒ `1 failed, 411 passed`）。
+    （2026-10-03 实测： ⇒ `1 failed, 411 passed`）。
     **本机看不出来**：本机 Postgres 真开着 ⇒ 连得上 ⇒ 照样绿。
     **本仓判据**：本用例只断**路由存不存在**，**不需要任何 startup** ⇒ 用**裸 `TestClient(app)`**
     （全仓不连库的用例都是这么写的；`with … as` 全仓**只有这一处**，就是它把自己坑了）。

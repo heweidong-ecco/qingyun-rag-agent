@@ -52,7 +52,7 @@ for l in pathlib.Path(".env").read_text().splitlines():
         print(l.split("=", 1)[1].strip().strip('"').strip("'")); break
 PY
 )"
-# 或者新发一把：venv/bin/python scripts/issue_api_key.py bench --days 7
+# 或者新发一把：venv/bin/bench --days 7
 ```
 
 ⚠️ **鉴权头是 `X-API-Key`**（见 `app/main.py`）。

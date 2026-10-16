@@ -31,7 +31,7 @@
 ⛔ **别为了消告警去删 spec** —— 那会连「⚠️ 看代码会误判的地方」一起丢。
 
 ```bash
-bash scripts/spec_status.sh          # 看现在还有没有 extra
+# 看现在还有没有 extra
 ```
 
 ## 关联

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 REPO_ROOT = str(Path(__file__).resolve().parents[2])
 
 # 在子进程里**掐掉 `.env` 加载** —— 逐字复现「CI / 新鲜检出没有 `.env`」那条路
-# （`scripts/ci-local.sh` 就是 rsync 掉 `.env` 再跑；`ci.yml` 靠塞 dummy key 绕开的就是这件事）。
+# （就是 rsync 掉 `.env` 再跑；`ci.yml` 靠塞 dummy key 绕开的就是这件事）。
 # 补丁必须在 `import config` **之前**打：`config.py` 是 `from dotenv import load_dotenv`，
 #    `from X import Y` 在 import 期查 `X.Y` ⇒ 先改 `dotenv.load_dotenv` 才拦得住。
 NO_DOTENV = "import dotenv; dotenv.load_dotenv = lambda *a, **k: None;"

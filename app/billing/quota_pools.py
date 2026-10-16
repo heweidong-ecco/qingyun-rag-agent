@@ -116,7 +116,7 @@ PATH_POOLS = {
     # 🆕 2026-10-15（§七·1）：**登录页**。与上面那一族同形 ——
     #    🔴 **它公开是必须的**（它就是"拿凭据"那一步，要凭据才能开 = 死循环），
     #    而它自己**一个 token 都不花**（表单打的是 `/api/v1/auth/login`，那条就在下面）。
-    #    📌 路由鉴权基线里同样有它 ⇒ `scripts/route-auth-baseline.txt`。
+    #    📌 路由鉴权基线里同样有它。
     "/login": POOL_NONE,
     "/ops": POOL_NONE,
     "/rag": POOL_NONE,

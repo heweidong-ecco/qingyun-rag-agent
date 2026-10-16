@@ -51,7 +51,7 @@ _PREFIX = "n12-approval-"
 #:    而那时你分不清"是坏了"还是"是脏了"（本次就白查了一轮）。
 #:
 #: 清理范围**只限本文件自己的行**（`owner LIKE 'n12-approval-%'`），
-#: 不 `TRUNCATE`、不碰别人的数据（同 `scripts/seed_isolation_docs.sh` 的纪律）。
+#: 不 `TRUNCATE`、不碰别人的数据（同  的纪律）。
 @pytest.fixture(autouse=True)
 def _clean_own_rows():
     from core.db import get_db
