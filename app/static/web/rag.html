@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内部RAG知识库检索及问答 · 青云精工</title>
+<!--
+  ============================================================================
+  真页面 · 原地替换掉旧 `/lab` 那一页
+  ----------------------------------------------------------------------------
+  · 语言全部取自 `/3`：styles.css 整份（同目录，copy 过来的）+ 它的类
+  · ⛔ 页内没有一个"编的"数 —— 所有数值位一律「—」+ 空态说明（.empty）
+    ⇒ 真数据在 ⑥ 实施那一步接上（硬约束①：每个数都来自那次真调用）
+  · 交互脚本：本稿只保留 /3 的 reveal（滚动揭示，需求方 2026-10-12 裁定照搬）
+    ⛔ 没有 console.js（那是本地四阶段模拟 = 假数据层，移植口径 §二 明令丢掉）
+  ============================================================================
+-->
+<meta name="description" content="内部资料线：只查本厂的文档库，不联网、不调外部工具。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag" aria-current="page">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明（需求方 2026-10-12 要求「上方把用意和意图写清楚」）═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">内部资料线 · 只查本库</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      一句话进来，走<b>固定管线</b>（改写 → 向量 + BM25 → RRF → 生成），
+      出去的是<b>带引用的答案</b>和<b>各阶段真实耗时</b>。
+      <b>不联网，不调外部工具。</b>
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>知识来源：本厂文档库</span><span class="sep">|</span>
+      <span>只查内部资料 —— 这一页没有"要不要查"这个判断。</span><span class="sep">|</span>
+      <span>答案可点回原文</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>这一页为什么和「外部检索与工具Agent编排」分成两页</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          本系统的知识来源被<b>有意分成两条独立的线</b>：
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>线</th><th>注定查什么</th><th>编排</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">内部线（本页）</td>
+              <td>我们自己的文档库 —— <b>没有"要不要查"这个判断</b></td>
+              <td>固定管线（改写 → 向量+BM25 → RRF → 生成）</td>
+            </tr>
+            <tr>
+              <td class="fld">外部线</td>
+              <td>模型自身 + 记忆 + 通用工具（含联网）—— <b>不接本库</b></td>
+              <td>模型自主决定调不调工具、调哪个</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          分成两条线的原因：<b>意图分流做不到 100% 准</b>。判错一次，外部场景就会被内部资料污染，
+          而页面上看不出它判错了。与其赌分类，不如让每条线<b>没有判断，也就没有判错</b>。
+          ⇒ 所以本站<b>不在一个页面上让你"选走哪条线"</b>，两条线各有各的页面。
+        </p>
+      </div>
+    </div>
+
+    <div class="pane rv" style="margin-top:1.25rem">
+      <div class="pane-h"><span>本页还空着的位置</span><span class="r"><span class="tag">⬜ 待补</span></span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          「<b>内部检索 + 编排</b>合起来服务于<b>一个固定业务流</b>」的那种形态 ——
+          目前<b>尚未实现</b>（施工单已写、未开工）。这里先占位；
+          那个模块做完之后，会把具体内容回写到本节。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 本页用到的接口（需求方 2026-10-12 要求：这一行要说清「不止一个接口」）═════════ -->
+  <!-- ═════════ 这一页能打哪些接口（需求方 2026-10-12 定）═════════
+       🔴 **一行 = 一个接口**，行首一个可点的键；点它 ⇒ **下面左右两块同时换**。
+       🔴 **列不列，先判覆盖**（判据见 frontend/finally-定稿/页面-Agent自验收标准.md §五之一）：
+          `hybrid_search` / `rewrite_search` / `rerank_search` **被 `/rag/search` 的 mode 覆盖** ⇒ ⛔ 不列。
+       第三行是**跳转键**，⛔ 不是可切接口 —— 流式那一页放不下（这里没法呈现流式输出）。
+  ═════════ -->
+  <div class="wrap" style="margin-top:1.25rem">
+    <div class="pane">
+      <div class="pane-h"><span>「链」展示列表：点击行首的切换按钮，下方左右两个面板将同步更新。</span></div>
+      <div class="pane-b" style="padding:.4rem .5rem" id="eps">
+        <button class="rail" type="button" data-ep="search" aria-pressed="true"
+                style="border:0;background:transparent;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:.35rem .3rem">
+          <span class="ri">1</span><span class="rn">POST /api/v1/rag/search：四档 mode（向量 / +BM25 / +改写 / +重排）</span>
+        </button>
+        <button class="rail" type="button" data-ep="pg" aria-pressed="false"
+                style="border:0;background:transparent;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:.35rem .3rem">
+          <span class="ri">2</span><span class="rn">POST /api/v1/rag/pg_search：只走向量（没有 BM25、没有 RRF、不改写）</span>
+        </button>
+        <a class="rail" href="/stream" style="text-decoration:none;color:inherit;padding:.35rem .3rem">
+          <span class="ri">3</span><span class="rn">POST /api/v1/rag/stream_search：流式输出 ⇒ 单独一页（这里放不下）· 点这一行过去</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左输入 / 右结果（结构思路①：输入与结果同屏）═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：请求 ─────────── -->
+    <div class="form">
+      <div class="pane">
+        <div class="pane-h">
+          <span id="ep-title">POST&nbsp;/api/v1/rag/search</span>
+          <span class="r"><span class="dot dot--sig">就绪</span></span>
+        </div>
+        <div class="pane-b">
+
+          <div class="f">
+            <label for="q">question</label>
+            <textarea class="in" id="q" rows="2" spellcheck="false"
+              placeholder="问一件本厂业务上的事 —— 例如某个机型在保内怎么走"></textarea>
+            <div class="chips" style="margin-top:.4rem" id="presets">
+              <button class="chip" type="button">在保内上门收不收工时费</button>
+              <button class="chip" type="button">备件调拨要走哪几级审批</button>
+              <button class="chip" type="button">投诉升级到二级要多久响应</button>
+              <button class="chip" type="button">保修期外换件怎么计价</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              预设问题取自本库的真实主题（售后与保修 / 备件调拨 / 上门作业 / 投诉升级）。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="topk">top_k</label>
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) 52px; gap:.7rem; align-items:center">
+              <input type="range" id="topk" min="4" max="16" step="1" value="8">
+              <output id="topkOut" class="mono" style="font-size:var(--fs-xs); text-align:right">8</output>
+            </div>
+          </div>
+
+          <!-- 这两个 .f 只在 /rag/search 下有意义 —— 切到 pg_search 时由 JS 收起 -->
+          <div id="only-search">
+            <p class="dim" id="only-search-note" hidden style="font-size:var(--fs-2xs)">
+              ⚠️ <b>这条接口不收这几项</b> —— <code>/rag/pg_search</code> 的签名是
+              <code>(req, user_name)</code>：没有 mode、没有 thread_id、也没有那三个开关。
+              它只做一件事：<b>拿你的问题去做一次向量检索</b>。</p>
+          <div class="f">
+            <label>mode（四档 · 选一档 · 🔴 它走 <code>query</code>，⛔ 不在 body 里）</label>
+            <div class="chips" id="modes">
+              <button class="chip" type="button" data-mode="accurate_norerank" aria-pressed="true"
+                      style="color:var(--sig); border-color:var(--sig-dim)">accurate_norerank</button>
+              <button class="chip" type="button" data-mode="fast" aria-pressed="false">fast</button>
+              <button class="chip" type="button" data-mode="accurate" disabled aria-pressed="false"
+                      style="opacity:.4; cursor:not-allowed" title="需要重排模型 —— 本服务镜像不装">accurate</button>
+              <button class="chip" type="button" data-mode="full" disabled aria-pressed="false"
+                      style="opacity:.4; cursor:not-allowed" title="需要重排模型 —— 本服务镜像不装">full</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              默认 <code>accurate_norerank</code>（改写 + 向量 + BM25 + RRF，<b>不含重排</b>）。
+              <b><code>accurate</code> 与 <code>full</code> 需要重排模型，本环境没有</b> ⇒ 这里不给入口。
+            </p>
+          </div>
+
+          <div class="f">
+            <label>开关</label>
+            <label class="sw"><input type="checkbox" id="sw-citations" checked><span>citations <small>不打开就<span style="color:var(--fg-3)">没有引用</span> —— 本接口默认 <code>false</code></small></span></label>
+            <label class="sw"><input type="checkbox" id="sw-strict"><span>strict_mode <small>开了：模型<b>只许照资料答</b>，资料里没有就说「无法回答」（⛔ 不许拿自己的常识补）；关着：允许它补。<br>⚠️ <b>只在「勾了 generate_answer」且「没勾 citations」时才起作用</b> —— 走「带引用」那条路时它被忽略。</small></span></label>
+            <label class="sw"><input type="checkbox" id="sw-generate"><span>generate_answer <small>要不要让模型成文（<b>不勾则只回检索结果、<code>answer</code> 是空的</b>）</small></span></label>
+          </div>
+
+          </div>
+          <div class="f">
+            <button class="btn btn--sig btn--block" type="button" id="ask">提问</button>
+            <p class="dim" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center" id="ask-status">
+              点一下会真调 <code>POST /api/v1/rag/search</code>（⛔ 不是本地模拟）。
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：结果 ─────────── -->
+    <div>
+
+      <!-- 阶段轨（结构思路②：阶段轨，且标出有副作用的那一步） -->
+      <div class="pane rv" id="pane-rail">
+        <div class="pane-h">
+          <span>阶段</span>
+          <span class="r"><span class="mono">accurate_norerank</span></span>
+        </div>
+        <div class="pane-b" style="padding:.55rem .5rem">
+          <!-- 🔴 这几段【由 JS 渲染】—— 它们与返回体 timing 的字段一一对应（见 rag.js 的 STAGES）。
+               ⚠️ 2026-10-12：这里原先留着我【自己的工作笔记】（讲形态稿那四段与 timing 对不上、
+                  以及为什么把"生成答案"那段删了）—— ⛔ 访客不需要读我的设计过程 ⇒ 挪进本注释。
+                  要读那段推理 ⇒ `app/static/js/rag.js` 的 STAGES 上面那段。 -->
+          <div id="rail">
+            <div class="rail"><span class="ri">1</span><span class="rn">查询改写</span><span class="rt">—</span></div>
+            <div class="rail"><span class="ri">2</span><span class="rn">检索（向量 + BM25 + RRF 融合）</span><span class="rt">—</span></div>
+            <div class="rail"><span class="ri">3</span><span class="rn">重排</span><span class="rt">—</span></div>
+          </div>
+          <p class="dim" id="rail-note" style="margin:.6rem .35rem 0; font-size:var(--fs-2xs); line-height:1.8">
+            这三段是接口返回的 <code>timing</code>（<b>真实毫秒</b>）。
+            <b>重排在 线上恒为 0</b> —— 镜像不装重排依赖（<code>）。<br>
+            🔴 <b>「生成答案」那一段【这里没有】</b> —— 实测 <code>total_ms</code>
+            <b>只等于上面三段之和</b>（它是<b>检索管线</b>的总时长，⛔ 不含生成）。
+            ⛔ 拿它倒推生成耗时会在页面上印出一个<b>假的 0</b>。本页<b>只读</b>，不改动任何数据。
+          </p>
+        </div>
+      </div>
+
+      <!-- 答案 -->
+      <div class="pane rv" id="pane-answer">
+        <div class="pane-h"><span>answer</span><span class="r"><span class="mono" id="answer-meta">—</span></span></div>
+        <div class="pane-b">
+          <div class="empty" id="answer-body"><span class="mono">answer</span>还没有跑过。提问之后，这里出现带 <b>[来源 n]</b> 标记的答案。<br>
+            ⚠️ 「<b>根据现有资料，无法回答。</b>」也是<b>正常</b>返回，说明库里确实没有那条资料，不是页面坏了。</div>
+        </div>
+      </div>
+
+      <!-- 引用（带序号导航） -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span id="refs-title">引用</span>
+          <span class="r"><span class="mono" id="sources-count">—</span></span>
+        </div>
+        <div class="pane-b">
+          <div class="empty" id="sources-body"><span class="mono">sources[]</span>跑一次之后，这里逐条列出每条结论绑到的原文区间。</div>
+        </div>
+      </div>
+
+      <!-- ───── 嵌套层（默认收起 · 编排 §〇.五） ───── -->
+
+      <details class="pane rv" style="margin-top:1.25rem">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>端点级（这一步打的是哪条接口）</span><span class="r dim"><b id="n-eps2">—</b> 条 · 默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <table class="tbl" id="eps-tbl">
+            <thead><tr><th>端点</th><th>它做什么</th><th class="r">本环境</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">POST /rag/pg_search</td><td>只走向量检索</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/hybrid_search</td><td>向量 + BM25 + RRF</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/rewrite_search</td><td>先让模型改写问题再检索</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/rerank_search</td><td>交叉编码器重排</td><td class="r" style="color:var(--bad)">缺重排模型</td></tr>
+              <tr><td class="fld">POST /rag/search</td><td>本页用的那条（按 mode 组装）</td><td class="r re">可用</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>两组参数并排对比</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="cmp">
+            <div class="cmp-col is-empty" id="cmp-a">
+              <h3>配置 <b>A</b> · <span id="cmp-a-name">—</span></h3>
+              <dl>
+                <div class="metric"><dt>命中条数</dt><dd id="cmp-a-hits">—</dd></div>
+                <div class="metric"><dt>引用 / 结论</dt><dd id="cmp-a-cited">—</dd></div>
+                <div class="metric"><dt>端到端</dt><dd id="cmp-a-total">—</dd></div>
+                <div class="metric"><dt>本次费用</dt><dd id="cmp-a-cost">—</dd></div>
+              </dl>
+            </div>
+            <div class="cmp-col is-empty" id="cmp-b">
+              <h3>配置 <b>B</b> · <span id="cmp-b-name">—</span></h3>
+              <dl>
+                <div class="metric"><dt>命中条数</dt><dd id="cmp-b-hits">—</dd></div>
+                <div class="metric"><dt>引用 / 结论</dt><dd id="cmp-b-cited">—</dd></div>
+                <div class="metric"><dt>端到端</dt><dd id="cmp-b-total">—</dd></div>
+                <div class="metric"><dt>本次费用</dt><dd id="cmp-b-cost">—</dd></div>
+              </dl>
+            </div>
+          </div>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            🔴 <b>点一次「提问」会跑【两次】</b>：一次是你选的档（= 配置 A），另一次是最下面那档里【另一个可用档】（= 配置 B）—— 因为要真比出差异，就必须两个都真跑，⛔ 不能拿一次的结果编两次。<br>⚠️ 两次都按你当前那三个开关跑；<code>generate_answer</code> 打开时，两次都会花 LLM 的钱。<br>⛔ <b>两边一样</b>的时候这个对比就是摆设 —— 真一样了它也会如实显示两边一样。</p>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次花费 / 我的额度</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <dl>
+            <div class="metric"><dt>本用户累计 LLM tokens</dt><dd id="cost-llm">—</dd></div>
+            <div class="metric"><dt>本用户累计 embedding tokens</dt><dd id="cost-emb">—</dd></div>
+            <div class="metric"><dt>本用户累计费用</dt><dd id="cost-money">—</dd></div>
+            <div class="metric"><dt>今日剩余额度</dt><dd id="cost-quota">—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⚠️ 缺值一律显示「取不到」，⛔ <b>不显示 0</b>（0 会被读成"没花钱"）。<br>
+            前三格来自 <code>GET /api/v1/agent/cost/records</code>，<b>按本页这次的 <code>thread_id</code> 筛</b>
+            （那个端点⛔ 没有 thread 过滤，所以是在客户端筛最近一批）。第四格来自 <code>token/budget</code>。
+          </p>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>检索历史（本会话）</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty" id="history-body"><span class="mono">chat_history</span>这一格读的是 <code>GET /api/v1/rag/chat_history</code>。<br>🔴 <b>而本页用的那条接口【不写会话历史】</b> —— 全仓只有 <b>6 条【流式】端点</b>会写（<code>persist_turn</code>），非流式的 <code>/rag/search</code> <b>一行都不写</b>。<br>⇒ 所以这里<b>通常是空的</b>，而那<b>不是坏了</b>：只有你在这个 <code>thread_id</code> 上用过<b>流式</b>接口，这里才会有东西。</div>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>服务边界（登录与有效期 · 额度 · 限流 · 真调用）⇒ <a href="/">见首页「这套服务的边界」</a></span>
+      <span class="st"><span class="dot dot--sig">内部资料线 · 主链已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script src="/static/js/rag.js?v=16a761e0a9"></script>
+  <script>
+  /* 本页的**装配层**（DOM / fetch / 渲染）—— 纯逻辑全在 /static/js/rag.js（那边有 node 用例）。
+     🔴 整段包在 IIFE 里：⛔ 别在顶层写 `const key` / `function el` ——
+        那会与 session.js / cred.js 或页面自己的绑定撞车，而**语法错会让整段一行都不跑**。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var R = window.RagRag;
+
+    /* 🔴 `thread_id` 按【本页会话】固定 —— ⚠️ 不是每次提问换一个新的：
+       后端那条**会话预算**闸就是按它算的，每问一次换一个 thread = 把那条闸变成摆设。
+       ⇒ 代价：下面「本会话花费」是**这个 TAB 里问过的累计**，⛔ 不是"这一次"（标签已如实写）。 */
+    var threadId = R.newThreadId();
+    var mode = R.MODES.filter(function (m) { return m.ok; })[0].id;
+
+    /* ---------- 左栏：预设 / 档位 / 滑块 ---------- */
+    var list = document.querySelectorAll('#presets button');
+    for (var i = 0; i < list.length; i++) {
+      (function (b) {
+        b.addEventListener('click', function () { $('q').value = b.textContent.trim(); });
+      })(list[i]);
+    }
+
+    function paintModes() {
+      var bs = document.querySelectorAll('#modes button[data-mode]');
+      for (var j = 0; j < bs.length; j++) {
+        var on = bs[j].getAttribute('data-mode') === mode;
+        bs[j].setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (!bs[j].disabled) {
+          bs[j].style.color = on ? 'var(--sig)' : '';
+          bs[j].style.borderColor = on ? 'var(--sig-dim)' : '';
+        }
+      }
+    }
+    var mbs = document.querySelectorAll('#modes button[data-mode]');
+    for (var k = 0; k < mbs.length; k++) {
+      (function (b) {
+        if (b.disabled) { return; }
+        b.addEventListener('click', function () { mode = b.getAttribute('data-mode'); paintModes(); });
+      })(mbs[k]);
+    }
+    paintModes();
+
+    /* ---------- 🔴 接口切换器（点行首那个键 ⇒ 左右两块一起换） ---------- */
+    var ep = R.ENDPOINTS[0];
+    function paintEps() {
+      var bs = document.querySelectorAll('#eps [data-ep]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-ep') === ep.id;
+        bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        bs[i].style.background = on ? 'var(--ink-200)' : 'transparent';
+      }
+      $('ep-title').textContent = ep.title;
+      // ⚠️ 这条接口不收的控件**收起**（⛔ 不是灰着摆那儿装还能用）
+      $('only-search').hidden = !ep.has.mode;
+      $('only-search-note').hidden = ep.has.mode;
+      // 🔴 2026-10-13（需求方）：这条接口**不产出**那两块 ⇒ **整块去掉**，
+      //    ⛔ 不是留一个空壳写着「这条接口不产出…」（他明说「不要阶段，不要 answer」）。
+      $('pane-rail').hidden = !ep.has.timing;
+      $('pane-answer').hidden = !ep.has.answer;
+    }
+    (function () {
+      var bs = document.querySelectorAll('#eps [data-ep]');
+      for (var i = 0; i < bs.length; i++) {
+        (function (b) {
+          b.addEventListener('click', function () { ep = R.endpointOf(b.getAttribute('data-ep')); paintEps(); });
+        })(bs[i]);
+      }
+    })();
+    paintEps();
+
+    $('topk').addEventListener('input', function () { $('topkOut').textContent = $('topk').value; });
+
+    /* 🔴 那一格「N 条」**从表里数出来**（⛔ 不写死 —— 写死会漂，端点加一个就错）。
+       ⚠️ 2026-10-12 修：这一段原来还设一个 `#n-eps` —— 而那个挂点**随上面那一行一起被换掉了**
+          ⇒ `$('n-eps').textContent` 在**初始化时就抛** ⇒ **它后面那段（含 `#ask` 的点击处理）
+          一行都没绑上** ⇒ 表现是"点提问没反应"，而控制台只有一句 `Cannot set properties of null`。
+       ⇒ 两处教训：① 挂点没了要让这里**跳过**（不是崩）；② **换了一处结构，要回头看谁在引用它**。 */
+    (function () {
+      var n = document.querySelectorAll('#eps-tbl tbody tr').length;
+      var e = $('n-eps2');
+      if (e) { e.textContent = String(n); }
+    })();
+
+    /* ---------- 右栏渲染 ---------- */
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+    function auth() { return window.RagAuth.authHeader(); }
+
+    function renderRail(stages) {
+      var box = $('rail');
+      box.textContent = '';
+      stages.forEach(function (s, n) {
+        var d = document.createElement('div');
+        d.className = 'rail';
+        var a = document.createElement('span'); a.className = 'ri'; a.textContent = String(n + 1);
+        var b = document.createElement('span'); b.className = 'rn'; b.textContent = s.name;
+        var c = document.createElement('span'); c.className = 'rt'; c.textContent = R.fmtMs(s.ms);
+        d.appendChild(a); d.appendChild(b); d.appendChild(c);
+        box.appendChild(d);
+      });
+    }
+
+    function renderAnswer(resp, genAnswer) {
+      $('answer-meta').textContent = resp.mode || '—';
+      var box = $('answer-body');
+      var text = (resp.answer == null ? '' : String(resp.answer)).trim();
+      if (!text) {
+        box.className = 'empty';
+        box.innerHTML = '';
+        var m = document.createElement('span'); m.className = 'mono'; m.textContent = 'answer';
+        box.appendChild(m);
+        box.appendChild(document.createTextNode(
+          genAnswer
+            ? '这次返回里 answer 是空的 —— 本库没给出成文的答案（可能所有命中都被 strict_mode 丢了）。'
+            : '你没勾 generate_answer ⇒ 本接口【只回检索结果】、⛔ 不成文。要看答案就把那个开关打开。'));
+        return;
+      }
+      box.className = '';
+      box.textContent = text;
+    }
+
+    function renderRailNoTiming() {
+      renderRail(R.stagesOf({}));            // 三段全 `—`（⛔ 不编 0）
+      $('rail-note').textContent =
+        '这条接口（rag/pg_search）只做一次向量检索 —— 它不产出分段耗时。要分段耗时请切回上面那条。';
+    }
+
+    function renderAnswerFor(e, resp, genAnswer) {
+      if (e.has.answer) { renderAnswer(resp, genAnswer); return; }
+      $('answer-meta').textContent = '—';
+      var box = $('answer-body');
+      box.className = 'empty';
+      box.textContent = '';
+      var m = document.createElement('span'); m.className = 'mono'; m.textContent = 'answer';
+      box.appendChild(m);
+      box.appendChild(document.createTextNode(
+        '这条接口不成文 —— 它只回检索结果。要看带引用的答案，请切回上面那条 /rag/search。'));
+    }
+
+    function renderRefs(resp) {
+      var R2 = R.referenceRows(resp);
+      $('refs-title').textContent = R2.title;
+      $('sources-count').textContent = R2.label;
+      var box = $('sources-body');
+      box.textContent = '';
+      box.className = '';
+      if (!R2.rows.length) {
+        box.className = 'empty';
+        var s2 = document.createElement('span'); s2.className = 'mono'; s2.textContent = 'sources[]';
+        box.appendChild(s2);
+        box.appendChild(document.createTextNode(
+          '这次一条都没召回 —— 库里确实没有对得上的资料（⛔ 不是页面坏了）。'));
+        return;
+      }
+      R2.rows.forEach(function (x) {
+        var d = document.createElement('div');
+        d.style.cssText = 'border-top:1px solid var(--rule); padding:.5rem 0';
+        var h = document.createElement('div');
+        h.className = 'dim';
+        h.style.cssText = 'font-family:var(--mono); font-size:var(--fs-2xs)';
+        h.textContent = x.head;
+        var b = document.createElement('div');
+        b.style.cssText = 'margin-top:.25rem; line-height:1.75';
+        b.textContent = x.body;
+        d.appendChild(h); d.appendChild(b);
+        box.appendChild(d);
+      });
+    }
+
+    function renderCost(cost, budget) {
+      var num = function (v) { return (typeof v === 'number' && isFinite(v)) ? String(v) : '—'; };
+      $('cost-llm').textContent = num(cost.llm);
+      $('cost-emb').textContent = num(cost.embedding);
+      $('cost-money').textContent = R.fmtCost(cost.cost);
+      var rem = budget && budget.llm_remaining_today;
+      $('cost-quota').textContent = (typeof rem === 'number' && isFinite(rem))
+        ? 'LLM 今日还剩 ' + rem + ' tokens' : '—';
+    }
+
+    /* ---------- 对比用的第二档 ---------- */
+    function otherMode(m) {
+      var ok = R.MODES.filter(function (x) { return x.ok; });
+      for (var i = 0; i < ok.length; i++) { if (ok[i].id !== m) { return ok[i].id; } }
+      return m;
+    }
+
+    function runOne(m, body) {
+      return RagAuth.apiFetch(R.buildSearchPath(m, threadId), {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, auth()),
+        body: JSON.stringify(body),
+      }).then(function (r) { return r.ok ? r.json() : null; });
+    }
+
+    function renderCmp(cid, modeName, resp) {
+      $('cmp-' + cid + '-name').textContent = modeName;
+      var m = R.metricsOf(resp || {});
+      $('cmp-' + cid + '-hits').textContent = m.hits;
+      $('cmp-' + cid + '-cited').textContent = m.cited;
+      $('cmp-' + cid + '-total').textContent = m.total;
+      // 🔴 「本次费用」这一格**留空是有意的**：后端**不分次记账** ——
+      //    一次提问的两次调用混在同一条账里，切不开）。
+      //    ⛔ 拿"合计/2"或者"只填 A"都是**编数**。
+      $('cmp-' + cid + '-cost').textContent = '—';
+      $('cmp-' + cid).classList.remove('is-empty');
+    }
+
+    /* ---------- 提问：真调 ---------- */
+    var busy = false;
+    $('ask').addEventListener('click', function () {
+      if (busy) { return; }
+      var q = $('q').value.trim();
+      if (!q) { $('ask-status').textContent = '⚠️ 先写一个问题。'; return; }
+      if (!key()) {
+        // 🔴 **没登录就说清楚**，⛔ 别让它发出去撞一句 `HTTP 401` —— 那句话对访客毫无信息量。
+        $('ask-status').textContent = '⚠️ 还没有登录 —— 先在页头那块点「去登录」。';
+        return;
+      }
+      busy = true;
+      $('ask-status').textContent = '正在跑 ' + mode + ' …';
+      var body = R.buildBody({
+        question: q,
+        topK: $('topk').value,
+        citations: $('sw-citations').checked,
+        strictMode: $('sw-strict').checked,
+        generateAnswer: $('sw-generate').checked,
+      });
+      RagAuth.apiFetch(R.pathFor(ep, mode, threadId), {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, auth()),
+        body: JSON.stringify(body),
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.json();
+      }).then(function (resp) {
+        if (ep.has.timing) { renderRail(R.stagesOf(resp.timing)); } else { renderRailNoTiming(); }
+        renderAnswerFor(ep, resp, body.generate_answer);
+        renderRefs(resp);
+        $('ask-status').textContent = '✅ 这是真返回（' + new Date().toLocaleTimeString() + '）';
+        renderCmp('a', mode, resp);
+        var other = otherMode(mode);
+        renderCmp('b', other, null);          // 先占位：另一档还在跑
+        return runOne(other, body).then(function (resp2) {
+          renderCmp('b', other, resp2);
+          $('ask-status').textContent = ep.has.mode
+            ? ('✅ 两档都跑完了（' + new Date().toLocaleTimeString() + '）')
+            : ('✅ 跑完了（' + new Date().toLocaleTimeString() + '）—— 这条接口只有一档');
+        }).then(refreshCost);
+      }).catch(function (e) {
+        $('ask-status').textContent = '🔴 调用失败：' + e.message;
+      }).then(function () { busy = false; });
+    });
+
+    /* ---------- 花费 / 额度 / 历史 ---------- */
+    /* 🔴 没有登录就**一个请求都不发** —— ⚠️ 否则控制台会刷 3 条 401（2026-10-12 实测到过）。
+       这时访客还没填 key ⇒ 发出去必然 401，而**那三条红与他无关**，只会误导。 */
+    function refreshCost() {
+      if (!key()) { return Promise.resolve(); }
+      return RagAuth.apiFetch(R.COST_PATH + '?limit=50', { headers: auth() })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { return R.costOf(d && d.records); })
+        .then(function (c) {
+          return RagAuth.apiFetch('/api/v1/agent/token/budget', { headers: auth() })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (b) { renderCost(c, b); });
+        }).catch(function () { /* 取不到 ⇒ 保持 —（⛔ 不编 0） */ });
+    }
+
+    function loadHistory() {
+      if (!key()) { return; }
+      RagAuth.apiFetch('/api/v1/rag/chat_history?thread_id=' + encodeURIComponent(threadId), { headers: auth() })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var box = $('history-body');
+          var arr = (d && (d.history || d.entries || d.messages)) || [];
+          if (!arr.length) { return; }   // 空 ⇒ 保持那句空态说明（它本来就写清了"会逐条列出"）
+          box.className = '';
+          box.textContent = '';
+          arr.forEach(function (m) {
+            var d2 = document.createElement('div');
+            d2.className = 'dim';
+            d2.style.cssText = 'border-top:1px solid var(--rule); padding:.4rem 0; font-size:var(--fs-2xs)';
+            d2.textContent = '[' + (m.role || '?') + '] ' + (m.content || '');
+            box.appendChild(d2);
+          });
+        }).catch(function () {});
+    }
+
+    // ⭐ 登录态就位之后再起页面（没登录时先发请求会一片 401 —— 而那不是用户的错）
+    window.RagAuthBar.mount(function () {
+      loadHistory();
+      refreshCost();
+    });
+  })();
+  </script>
+</body>
+</html>

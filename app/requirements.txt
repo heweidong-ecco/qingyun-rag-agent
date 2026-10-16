@@ -1,0 +1,174 @@
+# 🔴 2026-10-09（安全收口 · SECURITY.md §3.5）：**版本改为【就地钉死】**
+#    原先是全部 `>=` ⇒ 每次 build 可能拉到不同版本。
+#    ⚠️ ⛔ 没有新增约束文件 ——  裁的是「不另建约束文件」，这里是**在原地钉**，不冲突。
+#    ⬜ 下面这 6 个【故意仍是 >=】：它们**不在本机 venv 里**（构建期被裁，见 app/Dockerfile）
+#       ⇒ 本机取不到实测版本 ⇒ 钉了就是**编一个数**：
+#       sentence-transformers · transformers · ragas · opencv-python · datasets · camelot-py[cv]
+#    📌 判据（⚠️ **两条都得排除 `#` 之后的注释** ——
+#       钉死行的行尾注释里都写着原来的 `>=`，而**本段注释自己**也在演示这两个符号
+#       ⇒ 不排除注释的 `grep -c '=='` / `grep -c '>='` 数出来的是**假数**，
+#       且**那个假数还随本段文字自己变化** ⇒ ⛔ 别把裸 `grep -c` 当判据）：
+#         grep -cE '^[A-Za-z][^#]*==' app/requirements.txt   ⇒ 42
+#         grep -cE '^[A-Za-z][^#]*>=' app/requirements.txt   ⇒ 6
+#         grep -nE '^[A-Za-z].*==\s*(#|$)' app/requirements.txt ⇒ 空（**无空版本行**）
+#    ✅ **另有 3 个原先【完全无约束】的裸名**（`langgraph-checkpoint` / `langgraph-checkpoint-sqlite` /
+#       `matplotlib`）—— **2026-10-09 一并钉死**（它们装在本机 venv 里，取得到实测版本）。
+#       ⇒ 现在 **48 个包行 = 42 个 `==` + 6 个 `>=` + 0 个裸名**
+#       ⚠️ **两个数当天变过**（⛔ 别拿旧数去核对）：`+langchain-classic` ⇒ 41
+#          `-langchain-community` `+langgraph-sdk` `+langgraph-prebuilt` ⇒ **42**。
+#
+# Web 框架与服务器
+fastapi==0.141.1    # ← 2026-10-09 钉死（原 fastapi>=0.115.0 · SECURITY.md §3.5）
+uvicorn[standard]==0.53.0    # ← 2026-10-09 钉死（原 >=0.30.0 · SECURITY.md §3.5）
+pydantic==2.13.5    # ← 2026-10-09 钉死（原 pydantic>=2.0.0 · SECURITY.md §3.5）
+
+# 环境变量
+python-dotenv==1.2.3    # ← 2026-10-09 钉死（原 python-dotenv>=1.0.0 · SECURITY.md §3.5）
+
+# 大模型与 AI 框架
+# 🔴 2026-10-09：**下面那条 2026-09-15 的警告，今天【一字不差地应验了】** —— 留档，⛔ 别删。
+#    ⚠️ 原文：必须加上界：本仓代码是按 langchain **0.3.x** 写的。原先只写 `>=0.3.13`（无上界），
+#       pip 会装到 **1.x**，而 1.x 把 classic agent 移到了 `langchain_classic`，导致
+#       api_v1_rag.py 的 `from langchain.agents import create_tool_calling_agent, AgentExecutor`
+#       → `ImportError: cannot import name 'create_tool_calling_agent' from 'langchain.agents'`
+#       ⇒ 应用在 **import 阶段**就崩（2026-09-15 实测）。
+#    ✅ **2026-10-09 真跳上 1.x，报错与上面那行【逐字一致】**；修法也正是它指的
+#       **改用 `langchain_classic`**（📄 本仓的决策记录（⛔ 不随产品仓提供） §2.4）。
+#    ⚠️ **教训**：这条警告躺在文件里 **24 天**，而真跳时**没人先读它** ——
+#       发现顺序是「测试全绿 → 我手工调真身 → ImportError」，**不是**「先读注释」。
+#    ⇒ 现在本仓 **`langchain` 就是 1.x**（代码按 1.x 写）；全局只剩**一处**仍走 legacy：
+#      `app/routing/api_v1_rag.py` 的 agent executor（它上方的注释记了判据）。
+openai==2.54.0    # ← 2026-10-09 **大版本跳**（原 1.109.1 · `langchain-openai` 1.x 硬要 `>=2.26.0`）
+                  #    🔴 本仓【直接】用它 ⇒ `app/rag/embedding_client.py:4` · `app/rag/query_rewriter.py:9`
+                  #    ⚠️ 选了 **2.x** 而不是 resolver 默认的 3.x ⇒ 见 本仓的决策记录（⛔ 不随产品仓提供）
+langchain==1.4.4    # ← 2026-10-09 **大版本跳**（原 0.3.30）· 总闸是 `langchain-core` 0.3→1.x
+langchain-openai==1.7.0    # ← 2026-10-09 **大版本跳**（原 0.2.14）·
+#    ⚠️ 判据（三条，都实测过）：① 全仓**零 import**（`grep -rn langchain_community app/` ⇒ 空）；
+#    ② 所有声明它的包（`langchain` · `langchain-classic` · `mem0ai` · `posthog`）
+#       **全都写在 `extra` 里** ⇒ **没有任何包硬依赖它**；
+#    ③ **卸掉它之后** `app/routing/api_v1_rag.py::get_agent_executor()` **真身照常建出来**
+#       （工具仍是 `['calculator','date_today','web_search']`）⇒ ⛔ 不是"以为没用到"。
+#    ⚠️ **加回来的条件**：若哪天用到 `langchain_classic` 那些**懒加载**工具
+#       （`create_sql_agent` / `load_tools` 之类，映射表在 `langchain_classic/agents/__init__.py:85-93`）
+#       ⇒ 那时缺的就是它，**加回一行即可**。
+langchain-core==1.6.9    # ← 2026-10-09 **大版本跳**（原 0.3.86）· 🔴 **这条链的【总闸】**
+langchain-classic==1.0.8    # ← 2026-10-09 🆕 —— **langchain 1.x 把 legacy agent API 搬来了这里**
+                            #    🔴 没有它，`app/routing/api_v1_rag.py` 的 `/ws/agent` **整条活路径起不来**
+                            #    （`create_tool_calling_agent` / `AgentExecutor` 在 `langchain` 1.x 里已删）
+                            #    📌 选它的理由（vs 换 `create_agent`、vs 自己手搓）⇒  §2.4
+langchain-text-splitters==1.1.3    # ← 2026-10-09（原 0.3.11）· ⚠️ **分块默认参数可能变** ⇒ 影响检索口径
+langgraph==1.2.14    # ← 2026-10-09（原 1.0.1）·
+
+# 文档处理
+pymupdf==1.28.2    # ← 2026-10-09 钉死（原 pymupdf>=1.24.0 · SECURITY.md §3.5）
+docx2txt==0.9    # ← 2026-10-09 钉死（原 docx2txt>=0.8 · SECURITY.md §3.5）
+
+# 工具与搜索
+# ⚠️ `duckduckgo-search` 已**改名为 `ddgs`**，新版 langchain_community 要的是后者。
+#    旧名留着会导致**模块级**调 `DuckDuckGoSearchRun()` 的文件
+#    → ImportError: Could not import ddgs python package（2026-09-15 实测）。
+# 🔴 **2026-10-03锚点更正**：原注释锚的是 `app/agent/agent_graph.py:43`，
+#    但那个文件**已改用 `search_tools.web_search`（Bing 版）** ⇒ ⛔ 别再拿它当判据。
+#    ⚠️ **`ddgs` 仍然不能删** —— `app/routing/api_v1_rag.py:746` 还在惰性 import `DuckDuckGoSearchRun`
+#    （RAG 侧 `/ws/agent`；见  遗留·1）。
+ddgs==9.16.0    # ← 2026-10-09 钉死（原 ddgs>=9.0.0 · SECURITY.md §3.5）
+
+# 数据库
+psycopg2-binary==2.9.13    # ← 2026-10-09 钉死（原 psycopg2-binary>=2.9.0 · SECURITY.md §3.5）
+
+# 缓存
+redis==8.1.0    # ← 2026-10-09 钉死（原 redis>=5.0.0 · SECURITY.md §3.5）
+
+# 认证
+pyjwt==2.15.0    # ← 2026-10-09 升级（先钉 2.14.0 ⇒ 升到**修好版**；`SECURITY.md` §3.4 · `PYSEC-2026-4141/4183`）
+                 #    ⚠️ 它是那 7 个漏洞包里【唯一】能【单独】升的 —— 其余 6 个都要先动
+                 #    `langchain-core` 0.3→1.x（详见 `SECURITY.md` §3.4 的依赖闭包那节）
+
+# 日志
+loguru==0.7.3    # ← 2026-10-09 钉死（原 loguru>=0.7.0 · SECURITY.md §3.5）
+
+# 监控
+prometheus-client==0.26.0    # ← 2026-10-09 钉死（原 prometheus-client>=0.20.0 · SECURITY.md §3.5）
+
+# WebSocket
+websockets==16.1.1    # ← 2026-10-09 钉死（原 websockets>=12.0 · SECURITY.md §3.5）
+
+# 测试与压测（后续用到）
+httpx==0.28.1    # ← 2026-10-09 钉死（原 httpx>=0.27.0 · SECURITY.md §3.5）
+pytest==9.1.1    # ← 2026-10-09 钉死（原 pytest>=8.0.0 · SECURITY.md §3.5）
+locust==2.46.0    # ← 2026-10-09 钉死（原 locust>=2.30.0 · SECURITY.md §3.5）
+
+# RAG深度优化
+rank-bm25==0.2.2    # ← 2026-10-09 钉死（原 rank-bm25>=0.2.2 · SECURITY.md §3.5）
+jieba==0.42.1    # ← 2026-10-09 钉死（原 jieba>=0.42.1 · SECURITY.md §3.5）
+sentence-transformers>=3.0.0
+# 重排序兼容性约束：transformers 5.x 与 torch 2.2 不兼容（已实测）
+transformers>=4.41,<5
+numpy==1.26.4    # ← 2026-10-09 钉死（原 numpy>=1.24,<2 · SECURITY.md §3.5）
+ragas>=0.1.18
+
+# RAG
+pdfplumber==0.11.10    # ← 2026-10-09 钉死（原 pdfplumber>=0.11.0 · SECURITY.md §3.5）
+camelot-py[cv]>=0.11.0
+opencv-python>=4.8.0
+python-docx==1.2.0    # ← 2026-10-09 钉死（原 python-docx>=1.1.0 · SECURITY.md §3.5）
+markdown==3.10.3    # ← 2026-10-09 钉死（原 markdown>=3.7.0 · SECURITY.md §3.5）
+beautifulsoup4==4.15.0    # ← 2026-10-09 钉死（原 beautifulsoup4>=4.12.0 · SECURITY.md §3.5）
+lxml==6.1.3    # ← 2026-10-09 钉死（原 lxml>=5.3.0 · SECURITY.md §3.5）
+python-multipart==0.0.32    # ← 2026-10-09 钉死（原 python-multipart>=0.0.9 · SECURITY.md §3.5）
+
+# Agent langGraph
+# 注：langgraph 与 langchain-core 已在上方「大模型与 AI 框架」段声明**带约束**的版本，
+#     此处原先又裸名重复了一次（无约束）。重复条目会掩盖版本漂移，已删除。
+langgraph-checkpoint==4.2.0    # ← 2026-10-09 **大版本跳**（原 3.0.1；它原先还是**裸名**）·
+langgraph-checkpoint-sqlite==3.1.1    # ← 2026-10-09（原 3.0.3）· ⚠️ 它逼着 `langgraph-checkpoint` 上 4.x
+# 🔴 2026-10-09 **新登记**（需求方当天裁「补进去」，⛔ 不是我在代码里用到了它们）——
+#    `langgraph-sdk` / `langgraph-prebuilt` 是 `langgraph` 的**传递依赖**，
+#    原先**不在本清单里**（只由 `langgraph` 的区间约束）。
+#    ⚠️ **补的理由**：本仓「**依赖清单单一化**」的口径 —— 凡会进 本服务镜像的包，
+#       **版本要在这一份里看得见**（清单外的东西 = 没人盯）。
+#       📌 顺带：`langgraph-sdk` **曾是漏洞包**（`PYSEC-2026-2194/2575` · `CVE-2026-104873`），
+#       现在这一版是干净的 —— 但"干净"这件事只有**看得见版本**才说得出。
+#    ⚠️ **代价（写清楚，⛔ 别只记好处）**：这两行会**跟着 `langgraph` 一起动** ——
+#       下次升 `langgraph` 时，若新版本要的区间与这两行冲突，**解析会直接报错**
+#       （实测过这种形态：`langgraph-sdk 0.4.4` 与 `langgraph 1.0.10` 互斥）。
+#       ⇒ 那时先改这两行，⛔ 别怀疑是网络问题。
+langgraph-sdk==0.4.6    # ← 2026-10-09 新登记（原地钉 · 取本机 venv 实测版本）
+langgraph-prebuilt==1.1.0    # ← 2026-10-09 新登记（同上）
+# mem0 2.x 起 Memory.__init__ 不再接受 dict，代码使用 Memory.from_config(dict)，需 >=2.0
+mem0ai==2.0.20    # ← 2026-10-09 钉死（原 mem0ai>=2.0.0 · SECURITY.md §3.5）
+
+# Gradio
+matplotlib==3.10.9    # ← 2026-10-09 钉死（原为**裸名 · 完全无约束** · SECURITY.md §3.5）
+# 工具
+playwright==1.62.0    # ← 2026-10-09 钉死（原 playwright>=1.48.0 · SECURITY.md §3.5）
+
+# MCP Server
+# 🔴 2026-10-08：**上界从 `<2` 解到 `<3`** —— 原锁的理由（2.x 的 `Server` 去掉
+#    `list_tools()`）**属实**（解包 mcp 2.3.0 核实：`grep -n "def list_tools" ` 在
+#    `mcp/server/lowlevel/server.py` **0 命中**），而 `app/tools/mcp_server.py` **已同一提交迁移**
+#    到 2.x 的**构造器回调**（`on_list_tools=` / `on_call_tool=`）。
+# ⚠️ **为什么留 `<3` 而不是完全不加界**：本仓对重依赖的既有惯例就是**大版本上界**
+#    （`langchain>=0.3.13,<0.4` · `langgraph>=1.0,<2`）。
+#    ⇒ 3.x 那天，升级是**一次显式动作**，⛔ 不是被 `pip install` 静默拉上去炸在运行时。
+#    下界钉 `2.3.0` = **本批实测过的版本**。
+mcp==2.3.0    # ← 2026-10-09 钉死（原 mcp>=2.3.0,<3 · SECURITY.md §3.5）
+
+# 成本可视化面板（main.py 挂载 Gradio）
+gradio==6.27.0    # ← 2026-10-09 钉死（原 gradio>=4.0.0 · SECURITY.md §3.5）
+
+# Alembic / 元数据定义（db.py 使用 sqlalchemy）
+sqlalchemy==2.0.53    # ← 2026-10-09 钉死（原 sqlalchemy>=2.0.0 · SECURITY.md §3.5）
+# 🆕 2026-10-10（需求方裁「**装，进清单**」）：
+#    🔴 改前 **`alembic` 既没装、也不在本清单里** ⇒ `app/alembic/versions/` 下那几份迁移
+#       **在本机一份都没被执行过**，而 `app/alembic/CLAUDE.md` 原先只写了「迁移不在 CI 里跑」——
+#       **没说它根本跑不了**（那是两件事）。
+#    ⚠️ **它【会进 本服务镜像】**（本清单就是镜像的依赖清单）—— 需求方知道这一点后仍裁「进清单」，
+#       理由是「**不要留尾巴**」：一份跑不了的迁移目录比多装一个包更坏。
+#    📌 判据：`venv/bin/alembic --version` ⇒ `alembic 1.20.0`
+#    ⚠️ 它会带一个传递依赖 `Mako`（模板引擎，Alembic 生成迁移脚本用）—— 同样在 venv 里，
+#       但**不单独钉**（它是 `alembic` 的实现细节，钉死反而会在 Alembic 升级时制造冲突）。
+alembic==1.20.0
+
+# RAGAS 评估脚本依赖 datasets
+datasets>=2.0.0

@@ -1,0 +1,248 @@
+version: '3.8'
+name: fastapi-rag-agent   # 2026-09-15 由 `my-fixed-name` 改名：与旧构建及其他项目彻底分开
+                          # ⚠️ 改名会连带改掉网络名（<项目名>_app-net）；已存在的容器仍带旧项目标签，
+                          #    见文末「改名后遗症」注释。
+services:
+  # ==================== API 服务 ====================
+  api:
+    # 显式镜像名。历史上叫 `my-fixed-name-api`（由旧顶层 name 派生），
+    # 那个名字被 agent-eval-gate 的评测 harness 依赖
+    # （tools/sut-harness/run_sut.sh:16），而它只 docker run、**从不 build**
+    # ⇒ 那个名字上的镜像停留在 2026-07-01 的旧构建（缺整个 Agent 子系统）。
+    image: fastapi-rag-agent:latest
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: rag-api
+    ports:
+      # 🔴 2026-10-09（安全收口 · `SECURITY.md` §3.2）：**只绑回环** —— 与 PG/Redis 同一手法。
+      #    原先是 `"8000:8000"` = **绑在 `0.0.0.0`** ⇒ 同网段任何人可调这个 API。
+      #    ⚠️ **改这里不改变正在运行的容器** —— 需重建才生效（与 PG/Redis 那两条同理）。
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DOCKER_ENV=true           # ← 新增这一行，实现环境切换完全自动化，不再需要手动改任何配置文件
+      # 🔴 2026-10-08：代码执行器的地址。
+      #    ⚠️ 服务名 `executor` 由 compose 的**内部网络** DNS 解析 —— 端口不对外映射。
+      #    有值时 `code_executor_impl` 走**远端**；⛔ 没值则回落本地子进程（本机开发/CI 不受影响）。
+      - EXECUTOR_URL=http://executor:8000
+    volumes:
+      - ./logs:/app/logs  # ← 新增这一行 本地日志存放地方设置了30天一更新
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # 🔴 等执行器**健康**再起 —— 否则 api 启动瞬间就可能打到一个还没起来的执行器
+      executor:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-net
+      - monitor-net
+      - exec-net          # 🔴 ：只为能解析到 `executor`
+    restart: unless-stopped
+
+  # ==================== 代码执行器====================
+  # 🔴 **为什么单开一个容器**：`execute_python` 跑的是**任意代码**。
+  #    需求方 2026-10-07：「不要暴露在系统中执行，**是安全事故**」。
+  #    ⛔ **不是**让应用自己 `docker run` —— 那要挂 `/var/run/docker.sock`，
+  #       而 sock = **宿主 root 等价**，且本应用**自己就在容器里**
+  #       ⇒ 那是把"代码执行逃逸"的洞换成**更大**的"容器逃逸"洞。
+  #    ⇒ 应用**只发 HTTP**（`EXECUTOR_URL`），⛔ 永远不认识 Docker。
+  #
+  # ⚠️ **硬化配置逐条都有理由，⛔ 别"简化"掉任何一条** —— 见每行注释。
+  executor:
+    build:
+      context: ./app
+      dockerfile: executor.Dockerfile
+    container_name: rag-executor
+    # ⛔ **不写 `ports:`** —— 它**只在内部网络里**被 api 调，⛔ 不对宿主暴露。
+    #    ⚠️ 改这个前提（给它开端口）⇒ **先加鉴权**（本服务没有鉴权）。
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      # 🔴 2026-10-08：同时在跑的上限 —— **必须与 `cpus:` 配套看**。
+      #    显式写出来是因为**它是个运维旋钮** —— 调它要动这里，⛔ 不是去翻代码找默认值。
+      #
+      # 🔵 **为什么是 2 而不是 4（实测定的，⛔ 不是拍的）**：
+      #    本容器限死 `cpus: 0.5`（宿主 4 核）。实测 `range(20000000)` 的单体耗时 **1.38s**。
+      #    · cap=**4** ⇒ 4 个并发各拿 0.125 核 ⇒ 1.38×4 ≈ **5.5s** ⇒ 🔴 **撞上 5 秒硬杀**
+      #      ⇒ **本该 1.5 秒就完的活儿，一并发就被判成"超时"** —— 用户看到的错是假的
+      #    · cap=**2** ⇒ 各拿 0.25 核 ⇒ ≈ **2.8s** ⇒ **仍在 5 秒承诺内** ✅
+      #    ⇒ **上限与 CPU 配额是一对，⛔ 别单独调其中一个。**
+      #    ⚠️ 想要更高吞吐 ⇒ **两个一起抬**（如 cap=4 + `cpus: 1.0`），
+      #       抬完**必须重跑**那次实测，确认最坏情况仍在 5 秒内。
+      - EXECUTOR_MAX_CONCURRENCY=2
+    read_only: true                 # 只读根文件系统 —— 被执行的代码写不了任何地方
+    tmpfs:
+      # ⚠️ `noexec`：⛔ 不许在 /tmp 里执行东西；`nosuid`：⛔ 不许带 suid 位
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop:
+      - ALL                         # ⛔ 丢掉全部 Linux capabilities
+    security_opt:
+      - no-new-privileges:true      # ⛔ 不许通过 setuid 等方式提权
+    user: "65534:65534"             # nobody —— ⛔ 不以 root 跑
+    mem_limit: 256m                 # ⚠️ 本机 Docker 只分到 3.84 GB
+    pids_limit: 64                  # ⛔ 防 fork 炸弹
+    cpus: "0.5"                     # ⛔ 防它把 CPU 吃光（死循环仍在，只是被 5 秒杀掉）
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - exec-net
+    restart: unless-stopped
+
+  # ==================== PostgreSQL + pgvector ====================
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: postgres-rag
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-rag_db}
+    ports:
+      # 🔴 只绑回环地址（2026-09-17 凭据③「端口收窄」）—— 原先写 `"5432:5432"`，
+      # 等于**绑在 0.0.0.0**：局域网内任何机器都能连到这个库。
+      # ⚠️ **改这里不改变正在运行的容器** —— 需重建才生效。
+      #    **本次有意不重建**：理由与连带影响见**本文件末尾「改名后遗症」§2/§3** ——
+      #    重建会让容器落到 `fastapi-rag-agent_app-net`，而 `agent-eval-gate` 的
+      #    `sut-harness/run_sut.sh` 默认网络名还写着旧名 ⇒ 会打断评测。
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-rag_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-net
+    restart: unless-stopped
+
+  # ==================== Redis 缓存 ====================
+  redis:
+    image: redis:7-alpine
+    container_name: redis-rag
+    ports:
+      # 🔴 同上（凭据③「端口收窄」）：原先 `"6379:6379"` = 绑在 0.0.0.0。
+      # ⚠️ Redis **没有口令**，暴露面比 Postgres 更大 —— 这条比对端更该收。
+      # ⚠️ 同样**需重建容器才生效**；本次有意不重建（见 `postgres` 那条 + 文件末尾「改名后遗症」）。
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-net
+    restart: unless-stopped
+
+  # ==================== Prometheus 监控 ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      # 🔴 2026-10-09 同上：**Prometheus 默认无鉴权** ⇒ 只绑回环。
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - api
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  # ==================== Grafana 可视化 ====================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      # 🔴 2026-10-09 同上：**Grafana 未设管理员口令**（走默认 `admin/admin`）⇒ 只绑回环。
+      #    ⚠️ 上公网前仍必须**显式设口令**（见 `SECURITY.md` §四）—— 绑回环只挡住了局域网。
+      - "127.0.0.1:3000:3000"
+    environment:
+      # 🔴 2026-10-09（安全收口 · SECURITY.md §四）：**不再写死 `admin`**。
+      #    走 `.env` 的 `GRAFANA_ADMIN_PASSWORD`；未设时回落 `admin`（本地开发够用）。
+      #    ⚠️ **上公网前必须在 `.env` 里设一个真口令** —— 回落值不是给公网用的。
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+# ==================== 自定义网络 ====================
+networks:
+  app-net:
+    driver: bridge
+  monitor-net:
+    driver: bridge
+  # 🔴 2026-10-08：**执行器专用网络**。
+  #    `internal: true` ⇒ **没有对外的网关**：这张网上的容器**出不了互联网**，
+  #    但**彼此仍能互通**（用户自定义网络自带 DNS ⇒ `api` 能解析到 `executor`）。
+  #
+  # ⚠️ **为什么不按施工单原稿用 `network_mode: "none"`**：
+  #    施工单 Step 1 写的是 `none`，并在 Step 2 要求**实测**。
+  #    `none` 的含义是"**连内部网都没有**" ⇒ api **也连不上它** ⇒ 两者不可兼得。
+  #    ⇒ 改用本网络：**对"出网"的隔离效果相同**（执行器只在这张网上 ⇒ 无法访问互联网），
+  #      同时保住"api 能调它"。⚠️ 这一处**偏离施工单原稿，已在 DEC 里记明**。
+  exec-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  # ⚠️ 显式钉住卷名 —— 这是改项目名时最容易踩的坑。
+  # compose 默认按 `<项目名>_<卷名>` 生成卷名。项目名从 my-fixed-name 改成
+  # fastapi-rag-agent 后，若不加 `name:`，compose 会去找
+  # `fastapi-rag-agent_postgres_data`（不存在）⇒ **新建一个空卷**
+  # 知识库看起来"丢了"（实际仍躺在 my-fixed-name_postgres_data 里，只是没被挂上）。
+  # 钉住名字即可：项目名改了，数据仍指向原来的卷。
+  postgres_data:
+    name: my-fixed-name_postgres_data
+  redis_data:
+    name: my-fixed-name_redis_data
+  prometheus_data:
+    name: my-fixed-name_prometheus_data
+  grafana_data:
+    name: my-fixed-name_grafana_data
+
+# ==================== 改名后遗症（2026-09-15 · my-fixed-name → fastapi-rag-agent）====================
+# 本次只改了本文件，**没有执行任何 docker compose 命令** —— 下面是"还带着旧名字、
+# 需要时手动处理"的东西，动之前先看这里，否则会打断正在跑的评测或造成数据误判：
+#
+# 1. 【数据卷】已按上面的 `name:` 钉住，数据安全。但卷名仍带旧前缀 ——
+#    这是有意的：Docker 没有 rename volume，改名要 create+copy+delete，对在跑的库不划算。
+#
+# 2. 【已存在的容器】postgres-rag / redis-rag / rag-api-eval 的项目标签仍是
+#    `com.docker.compose.project=my-fixed-name`，且 **rag-api-eval 正被 agent-eval-gate 的评测使用**。
+#    ⇒ 有评测在跑时**不要执行 `docker compose up`**：项目名变了，compose 会认为这些容器
+#      属于"别的项目"，而 container_name 是写死的 ⇒ 直接 up 会撞名/尝试重建，打断评测。
+#
+# 3. 【网络】旧的 `my-fixed-name_app-net` 仍在（三个容器挂着）；新项目名会创建
+#    `fastapi-rag-agent_app-net`。
+#    ⇒ ⚠️ `agent-eval-gate/tools/sut-harness/run_sut.sh:18` 的 NETWORK 默认值写的是旧名，
+#      **改名后那个脚本需要同步更新**（或跑的时候设 `EVAL_SUT_NETWORK=my-fixed-name_app-net`）。
+#
+# 4. 【旧镜像】`my-fixed-name-api`（2026-07-01 构建，缺整个 Agent 子系统）**保留不动** ——
+#    agent-eval-gate 的 harness 仍指向它。本项目改用 `fastapi-rag-agent:latest`。

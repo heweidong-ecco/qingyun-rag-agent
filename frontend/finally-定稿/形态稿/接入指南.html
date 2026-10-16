@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>接入指南 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第六处 —— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  · 语言全部取自 `/3`（styles.css 同目录，copy 过来的整份）
+  · 骨架取自 `/3` 的**文档页**（左索栏 ｜ 正文 ｜ 右边注）—— 与后面的「API 参考」同一形态
+  · ⛔ 页内没有一个"编的"数：代码块里的主机与凭据一律写成 <占位>
+  ============================================================================
+-->
+<meta name="description" content="把一条调用接到自己项目里：拿到凭据 → 粘一段能跑的 → 看到真返回；以及接下去会撞上的几件事。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="总览.html"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="总览.html">总览</a>
+      <a href="知识入库.html">知识入库</a>
+      <a href="内部RAG知识库检索及问答.html">内部RAG知识库检索及问答</a>
+      <a href="外部检索与工具Agent编排.html">外部检索与工具Agent编排</a>
+      <a href="系统观测.html">系统观测</a>
+      <a href="接入指南.html" aria-current="page">接入指南</a>
+      <a href="API参考.html">API 参考</a>
+    </nav>
+    <div class="ha">
+      <span class="btn" style="cursor:default">不演示假结果</span>
+      <span class="btn btn--sig" style="cursor:default">形态演示</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">上手 · 三步之内看到真返回</span>
+    <p class="lead" style="margin-top:.8rem; max-width:62ch">
+      拿到凭据 → <b>粘一段能跑的</b> → 看到真返回。三步之后，再讲<b>接下去会撞上的几件事</b>。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>认证头是 <code>X-API-Key</code></span><span class="sep">|</span>
+      <span>所有接口都在 <code>/api/v1/</code> 下</span><span class="sep">|</span>
+      <span>本页内容会随接口走，⛔ 不抄过期的写法</span>
+    </div>
+  </div>
+
+  <div class="wrap doc">
+
+    <!-- 左：本页目录 -->
+    <nav class="side" aria-label="本页目录">
+      <h2>上手</h2>
+      <ol>
+        <li><a href="#key">① 拿到凭据</a></li>
+        <li><a href="#call">② 粘一段能跑的</a></li>
+        <li><a href="#back">③ 看到真返回</a></li>
+      </ol>
+      <h2>接下去会撞上</h2>
+      <ol>
+        <li><a href="#defaults">两个默认值是关的</a></li>
+        <li><a href="#stream">流式与非流式不同源</a></li>
+        <li><a href="#errors">状态码与重试</a></li>
+      </ol>
+    </nav>
+
+    <!-- 中：正文 -->
+    <article class="doc-body">
+
+      <section class="ep" id="key">
+        <h2>① 拿到凭据</h2>
+        <p>两条路 —— <b>看你从哪个入口进来</b>：</p>
+        <table class="tbl">
+          <thead><tr><th>入口</th><th>怎么拿</th><th class="r">注意</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="fld">本仓入口</td>
+              <td><code>POST /api/v1/auth/login</code>（到期用 <code>/auth/refresh</code>）</td>
+              <td class="r">要用户名密码；建号走 <code>/admin/create_user</code></td>
+            </tr>
+            <tr>
+              <td class="fld">旧入口</td>
+              <td class="r">⚠️ <b>只在 旧平台那条路上存在</b> —— 本仓那条路上是 404</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="font-size:var(--fs-xs); line-height:1.8">
+          拿到之后一律放在 <code>X-API-Key</code> 头上。
+          🔴 <b>创空间那条路上⛔ 别用 <code>Authorization</code></b> —— 平台会往每个请求里注入它自己的值；
+          也 ⛔ <b>不要在任何地方回显请求头</b>。
+        </p>
+      </section>
+
+      <section class="ep" id="call">
+        <h2>② 粘一段能跑的</h2>
+        <p>最小的一次调用（内部线那条；尖括号里换成你自己的）：</p>
+<pre class="resp-code" style="border:1px solid var(--rule); border-radius:var(--r-sm); margin-top:1rem; padding:.75rem 0"><code><span class="ln"><span class="c"># 问一句只有本库答得出的问题</span></span><span class="ln"><span class="p">curl</span> <span class="n">-X</span> <span class="s">POST</span> <span class="s">"&lt;你的主机&gt;/api/v1/rag/search?mode=accurate_norerank"</span> <span class="p">\</span></span><span class="ln">  <span class="n">-H</span> <span class="s">"X-API-Key: &lt;你的凭据&gt;"</span> <span class="p">\</span></span><span class="ln">  <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> <span class="p">\</span></span><span class="ln">  <span class="n">-d</span> <span class="s">'{"question":"在保设备上门收不收工时费","citations":true,"generate_answer":true}'</span></span></code></pre>
+        <p class="dim" style="font-size:var(--fs-xs); line-height:1.8">
+          ⚠️ <code>mode</code> 走 <b>query 参数</b>（四档之一）。默认那一档 = <code>accurate_norerank</code>
+          （改写 + 向量 + BM25 + RRF，<b>不含重排</b>）。
+        </p>
+      </section>
+
+      <section class="ep" id="back">
+        <h2>③ 看到真返回</h2>
+        <p>
+          返回长什么样 —— <b>字段名、结构、每一栏什么意思</b> —— 在
+          <a href="总览.html">总览</a>那一页逐字段标着。
+          这里只说一句：<b>它是真返回</b>，⛔ 不是画出来的样例。
+        </p>
+      </section>
+
+      <section class="ep" id="defaults">
+        <h2>第一个坑：两个默认值是<b>关</b>的</h2>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>默认</th><th class="r">不给会怎样</th></tr></thead>
+          <tbody>
+            <tr><td class="fld">generate_answer</td><td><code>false</code></td><td class="r">只回检索结果，<b>没有答案</b></td></tr>
+            <tr><td class="fld">citations</td><td><code>false</code></td><td class="r">答案里<b>没有引用</b> —— 也就没有"点回原文"</td></tr>
+          </tbody>
+        </table>
+        <p class="dim" style="font-size:var(--fs-xs)">
+          要引用，两个都得显式打开（像上面那段 <code>curl</code> 那样）。
+        </p>
+      </section>
+
+      <section class="ep" id="stream">
+        <h2>第二个坑：流式与非流式<b>不同源</b></h2>
+        <p>
+          <code>/rag/search</code> 走的是<b>改写 + 向量 + BM25 + RRF</b> 那条完整链；
+          <code>/rag/stream_search</code> 是<b>另一条更轻的链</b>。
+          ⇒ 同一个问题，两边结果<b>可能不一样</b> —— 这是<b>现状</b>，⛔ 不是 bug。
+        </p>
+      </section>
+
+      <section class="ep" id="errors">
+        <h2>第三个坑：状态码与重试</h2>
+        <table class="tbl">
+          <thead><tr><th>码</th><th>什么时候</th><th class="r">你该做什么</th></tr></thead>
+          <tbody>
+            <tr><td class="fld">401</td><td>没给凭据 / 凭据失效</td><td class="r">重新拿</td></tr>
+            <tr><td class="fld">422</td><td>参数不合法（例如 <code>mode</code> 拼错）</td><td class="r">改参数 —— ⛔ 它<b>不会</b>静默兜底</td></tr>
+            <tr><td class="fld">429</td><td>被限速，或额度用尽</td><td class="r">🔴 看 <code>Retry-After</code>，⛔ 别硬重试</td></tr>
+          </tbody>
+        </table>
+        <p class="dim" style="font-size:var(--fs-xs); line-height:1.8">
+          错误体是<b>一层 <code>error</code> 包住的</b>，里面 <code>type</code> / <code>code</code> 两级 ——
+          <b>给人看的 message 与给机器读的 code 是分开的</b>，⛔ 别去解析 message。
+        </p>
+      </section>
+
+      <!-- 嵌套：给 agent 的入口 —— 如实说现状 -->
+      <details class="pane rv" style="margin-top:1.5rem">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>给 agent 的入口（llms.txt / MCP 发现）</span>
+          <span class="r dim">现状：<b>还没有</b> · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-xs); line-height:1.8">
+            对照行业惯例（2026 年文档站的常规做法是给 <code>llms.txt</code>、MCP 发现入口、以及"每页加 <code>.md</code> 后缀"）——
+            🔴 <b>本仓现在这三样都还没有做</b>。这一格<b>只如实说现状</b>，⛔ 不是承诺。
+          </p>
+        </div>
+      </details>
+
+    </article>
+
+    <!-- 右：边注 -->
+    <aside class="aside">
+      <h3>Base URL</h3>
+      <p class="mono" style="font-size:var(--fs-xs); color:var(--fg-3)">&lt;你的主机&gt;/api/v1</p>
+
+      <h3 style="margin-top:1.25rem">认证</h3>
+      <p class="mono" style="font-size:var(--fs-xs); color:var(--fg-3)">X-API-Key: &lt;凭据&gt;</p>
+
+      <h3 style="margin-top:1.25rem">本页用到</h3>
+      <p style="font-size:var(--fs-xs); color:var(--fg-3)">
+        <code>/rag/search</code><br>
+        <code>/auth/login</code> · <code>/auth/refresh</code><br>
+      </p>
+
+      <h3 style="margin-top:1.25rem">接口全表</h3>
+      <p style="font-size:var(--fs-xs)">
+        <a href="API参考.html">API 参考 →</a>
+      </p>
+    </aside>
+
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>形态稿 · 语言取自定稿模板（`/3`）</span>
+      <span class="st"><span class="dot dot--sig">接入指南 · 未接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="app-reveal.js"></script>
+</body>
+</html>

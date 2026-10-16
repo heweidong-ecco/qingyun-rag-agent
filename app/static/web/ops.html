@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>系统观测 · 青云精工</title>
+<meta name="description" content="系统方视角：服务此刻正常吗 —— 活着、有没有积压、缓存对不对、我这个身份的限。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops" aria-current="page">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明（含「这是系统方视角」的直白标注）═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">系统方视角 · 不问问题，只看状态</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">这一页给的是<b>一个判断</b>：此刻正常吗 · 哪里不对劲 · 下一步该看哪里 —— ⛔ 不是摆一堆数让人自己猜。</p>
+    <div class="tools" style="margin-top:1rem">
+      <span>🔴 <b>这是系统方视角，⛔ 不是访客视角</b></span><span class="sep">|</span>
+      <span>判断在前 · 明细在后</span><span class="sep">|</span>
+      <span>取不到的一律标「取不到」—— ⛔ 不显示 0 来冒充正常</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>它和「使用者本人那一页」的区别</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          同一个系统，<b>两种人看两种东西</b>：
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>谁在看</th><th>他想知道</th><th>拿到的是什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">使用者本人</td>
+              <td>我花了多少、我还剩多少</td>
+              <td>一组<b>结果</b>（数字与明细）—— 在每条链页的"花费"块里</td>
+            </tr>
+            <tr>
+              <td class="fld">系统方（本页）</td>
+              <td>服务此刻正常吗</td>
+              <td>一个<b>判断</b>（正常 / 异常 + 下一步）</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          为什么拆开：<b>产出性质不同</b> —— 一个给结果，一个给判断。混在一起，
+          访客会被系统方的信息淹掉，而系统方又拿不到"下一步"。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左判断 / 右分项 ═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：此刻 · 判断 ─────────── -->
+    <div>
+      <div class="pane">
+        <div class="pane-h">
+          <span>此刻 · 判断</span>
+          <span class="r"><span class="dot dot--sig" id="verdict-dot">—</span></span>
+        </div>
+        <div class="pane-b">
+          <button class="btn btn--sig btn--block" id="probe" type="button">探一次</button>
+          <p class="dim" id="probe-status" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center">
+            点一次，下面每一格都填上真值（全部是只读的 GET）。
+          </p>
+          <div class="empty" id="verdict-body" style="margin-top:.7rem">
+            <span class="mono">verdict</span>还没有探过。探一次之后，这里给<b>一句话结论</b>：
+            <b>正常</b>，或者<b>哪里不对劲 + 下一步看哪里</b>。
+          </div>
+          <dl style="margin-top:.9rem">
+            <div class="metric"><dt>活着吗</dt><dd id="m-alive">—</dd></div>
+            <div class="metric"><dt>有没有积压</dt><dd id="m-backlog">—</dd></div>
+            <div class="metric"><dt>缓存对不对</dt><dd id="m-cache">—</dd></div>
+            <div class="metric"><dt>我这个身份的限</dt><dd id="m-limits">—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.8rem; font-size:var(--fs-2xs); line-height:1.8">
+            🔴 <b>取不到的东西，这一格显示「取不到」</b>，⛔ <b>不显示 0</b> ——
+            0 会被读成"一切正常"，那是最坏的一种谎。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：分项探针 ─────────── -->
+    <div>
+
+      <div class="pane rv">
+        <div class="pane-h"><span>分项：一件事一条，各自说清「正常长什么样」与「这一条特有的坑」</span></div>
+        <div class="pane-b" style="padding:0">
+          <table class="tbl" style="padding:0">
+            <thead>
+              <tr><th>看什么</th><th>打谁</th><th class="r">现在</th><th>正常长什么样</th></tr>
+            </thead>
+            <tbody id="probes-body"></tbody>
+          </table>
+          <p class="dim" style="padding:.7rem .9rem; font-size:var(--fs-2xs); line-height:1.8; margin:0">
+            这一页<b>没有主接口</b> —— 它是一组探针（上面每行"打谁"就是它打的端点）。
+            <b>全是只读的 GET</b>：⛔ 不写库、⛔ 不改配置。
+            ⚠️ 有一条例外必须写清：<b>工具健康那块能做的"探活"，会真的去打那个工具</b>（含联网）——
+            所以本页<b>不提供那个入口</b>（它现在用的是一份后台已经探过的结果）。
+          </p>
+        </div>
+      </div>
+
+      <!-- 嵌套：有意不露 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>有几条数据，我们<span class="tag">不在这页展示</span></span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            下面三条接口<b>确实存在</b>，但这一页<b>不展示它们</b>。理由不是"藏"，是
+            <b>它们回答的不是本页那个问题</b>（"此刻正常吗"）。
+          </p>
+          <table class="tbl" style="margin-top:.6rem">
+            <thead><tr><th>接口</th><th>为什么这一页不放它</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">token/recent</td>
+                  <td>它<b>曾经</b>是全站口径、里面含别人的用户名 —— <b>那个已经修掉了</b>（现在只回调用者自己）。
+                      ⚠️ 这一页仍不放它：<b>"我花了多少"不归判断页</b>，它归每条链页的「花费」块。</td></tr>
+              <tr><td class="fld">token/purpose</td>
+                  <td>它<b>仍是全站口径</b>（不带用户名，但是所有人的之和）—— 全站用量不是"此刻正常吗"这个问题的一部分。</td></tr>
+              <tr><td class="fld">token/thread</td>
+                  <td>同上：<b>全站口径</b>，而且默认会把所有线程汇总到一起。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- 嵌套：做不到的，明确声明（§8.1 模板 · ⛔ 一页一个写法） -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>有的事，这里<b>做不到</b> —— 明确告诉你</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p style="color:var(--fg-2); max-width:82ch">
+            这条要管理员权限，线上没有开。
+          </p>
+          <p style="color:var(--fg-2); max-width:82ch; margin-top:.6rem">
+            访客用的是「免费档」的系统用户 —— 只能看到<b>自己的</b>与<b>公共的</b>数据，
+            看不到任何他人的数据：<b>数据按用户隔离，凭据各自独立</b>。
+          </p>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⇒ 所以这里<b>只做声明，不提供入口</b>。（影响到的：<code>/rag/benchmark-embedding</code>
+            <code>/admin/create_user</code>）
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：工具健康明细 -->
+      <details class="pane rv" id="tools-pane">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>工具健康 · 明细</span><span class="r dim" id="tools-count">探一次就有了 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty" id="tools-body">
+            <span class="mono">tool_health</span>还没有探过。探一次之后，这里逐条列出每个工具的状态、版本、上次探到的时间</div>
+          <p class="dim" style="margin-top:.5rem; font-size:var(--fs-2xs); line-height:1.8">
+            ⚠️ 三点必须写清：① <b>探活本身会真的去打那个工具</b>（所以它不是免费的、本页不给入口）；
+            ② <b>服务刚起来时这张表是空的</b> —— 空<b>不等于</b>全都好；
+            ③ 只有<b>登记过</b>的工具才体检，没登记的会被静默跳过。
+          </p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>服务边界（登录与有效期 · 额度 · 限流 · 真调用）⇒ <a href="/">见首页「这套服务的边界」</a></span>
+      <span class="st"><span class="dot dot--sig" id="page-status">系统观测 · 已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script src="/static/js/ops.js?v=6480c37a7b"></script>
+  <script>
+  /* 本页的**装配层**（DOM / fetch / 渲染）—— 纯逻辑全在 /static/js/ops.js（那边有 node 用例）。
+     🔴 整段包在 IIFE 里：⛔ 别在顶层写 `const key` / `function el` ——
+        那会与 session.js / cred.js 或页面自己的绑定撞车，而**语法错会让整段一行都不跑**。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var O = window.RagOps;
+
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+    function auth() { return window.RagAuth.authHeader(); }
+    function show(el, text) { el.textContent = text; }
+    function empty(el, mono, text) {
+      el.className = 'empty';
+      el.textContent = '';
+      var m = document.createElement('span'); m.className = 'mono'; m.textContent = mono;
+      el.appendChild(m); el.appendChild(document.createTextNode(text));
+    }
+    /* ⚠️ 每一条都**自己吞掉失败**（回 null）—— 探针页里"某一条挂了"是**信息**，⛔ 不是整页崩。 */
+    function getJSON(u) {
+      return RagAuth.apiFetch(u, { headers: auth() })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+    /* 根路径那三条（health · /ready · /metrics）—— ⚠️ 路径由名字拼，⛔ 页面里不写字面量 */
+    function getRoot(name) {
+      return RagAuth.apiFetch(O.rootPath(name))
+        .then(function (r) { return r.ok ? r.text() : null; })
+        .catch(function () { return null; });
+    }
+
+    /* ---------- 右栏那些行（表是**建出来的** —— 行数与上面那张探针表同源） ---------- */
+    var tbody = $('probes-body');
+    var nowCells = {};
+    O.PROBES.forEach(function (p) {
+      var tr = document.createElement('tr');
+      var a = document.createElement('td'); a.className = 'fld'; a.textContent = p.what;
+      var b = document.createElement('td');
+      b.style.fontFamily = 'var(--mono)'; b.style.fontSize = 'var(--fs-2xs)';
+      b.textContent = p.who.join(' · ');
+      var c = document.createElement('td'); c.className = 'r'; c.textContent = '—';
+      var d = document.createElement('td');
+      d.textContent = p.norm;
+      var note = document.createElement('div');
+      note.className = 'dim';
+      note.style.cssText = 'margin-top:.3rem; font-size:var(--fs-2xs); line-height:1.7';
+      note.textContent = p.note;
+      d.appendChild(note);
+      tr.appendChild(a); tr.appendChild(b); tr.appendChild(c); tr.appendChild(d);
+      tbody.appendChild(tr);
+      nowCells[p.id] = c;
+    });
+
+    /* ---------- 渲染 ---------- */
+    function setDot(level) {
+      var map = { ok: '正常', warn: '有注意项', bad: '异常', unknown: '探不动' };
+      var color = { ok: 'var(--sig)', warn: 'var(--amber)', bad: 'var(--bad)', unknown: 'var(--fg-2)' };
+      var d = $('verdict-dot');
+      show(d, map[level] || '—');
+      d.style.color = color[level] || '';
+    }
+
+    function render(res) {
+      var v = O.verdictOf(res);
+      setDot(v.level);
+      /* 判决那句：⚠️ 用 textContent（⛔ 不过 HTML）—— 里面可能带接口名，那不是标记 */
+      var box = $('verdict-body');
+      box.className = v.level === 'ok' ? '' : 'empty';
+      box.textContent = '';
+      box.appendChild(document.createTextNode(v.sentence));
+      if (v.next) {
+        var n = document.createElement('div');
+        n.className = 'dim';
+        n.style.marginTop = '.4rem';
+        n.textContent = '下一步：' + v.next;
+        box.appendChild(n);
+      }
+
+      /* 四格 */
+      var hc = res.health ? O.healthChecks(res.health) : null;
+      show($('m-alive'), !res.health && !res.ready ? '取不到'
+        : (hc ? hc.map(function (x) { return x.name + ' ' + x.state; }).join(' · ') : '取不到'));
+      show($('m-backlog'), res.pending ? (O.fmtNum(res.pending.count) + ' 条') : '取不到');
+      show($('m-cache'), (res.cache || res.count)
+        ? ('缓存 ' + (res.cache ? O.fmtNum(res.cache.cached_embeddings_count) : '取不到') + ' 键 · 库 ' +
+           (res.count ? O.fmtNum(res.count.total_documents) : '取不到') + ' 篇')
+        : '取不到');
+      var q = res.quota, r = res.rate;
+      show($('m-limits'), (q || r)
+        ? ('额度 ' + (q ? (q.remaining + '/' + q.daily_limit) : '取不到')
+           + ' · 桶 ' + (r ? (r.remaining_tokens + '/' + r.capacity) : '取不到'))
+        : '取不到');
+
+      /* 右栏「现在」那一列 */
+      show(nowCells.alive, res.health
+        ? (String(res.health.status) + (res.ready ? ' · ' + res.ready.status : ''))
+        : '取不到');
+      show(nowCells.backlog, res.pending ? (O.fmtNum(res.pending.count) + ' 条') : '取不到');
+      show(nowCells.cache, (res.cache || res.count)
+        ? ((res.cache ? O.fmtNum(res.cache.cached_embeddings_count) + ' 键' : '取不到')
+           + ' / ' + (res.count ? O.fmtNum(res.count.total_documents) + ' 篇' : '取不到'))
+        : '取不到');
+      show(nowCells.limits, (q || r)
+        ? ((q ? (q.remaining + '/' + q.daily_limit) : '取不到')
+           + ' / ' + (r ? (r.remaining_tokens + '/' + r.capacity) : '取不到'))
+        : '取不到');
+      var tools = O.toolRows(res.toolHealth, res.toolVersions, Date.now() / 1000);
+      show(nowCells.tools, !res.toolHealth ? '取不到'
+        : (tools.empty ? '空表（⚠️ 空不等于全好）'
+                       : (tools.rows.length + ' 个 · ' +
+                          tools.rows.filter(function (x) { return !x.ok; }).length + ' 个不健康')));
+      show(nowCells.metrics, res.metricsText == null ? '取不到'
+        : ('在动 · ' + res.metricsText.types + ' 个指标名 · ' + res.metricsText.lines + ' 行文本'));
+
+      /* 工具健康明细 */
+      var tb = $('tools-body');
+      if (!res.toolHealth) {
+        empty(tb, 'tool_health', '这次取不到 —— ⚠️ 取不到不等于"没有异常"。');
+        show($('tools-count'), '取不到');
+      } else if (tools.empty) {
+        empty(tb, 'tool_health', '这张表现在是空的 —— ⚠️ 空不等于全好（服务刚起时它就是空的）。');
+        show($('tools-count'), '空表');
+      } else {
+        tb.className = '';
+        tb.textContent = '';
+        var t = document.createElement('table');
+        t.className = 'tbl';
+        t.innerHTML = '<thead><tr><th>工具</th><th>状态</th><th>版本</th><th class="r">上次探到</th></tr></thead>';
+        var tbody2 = document.createElement('tbody');
+        tools.rows.forEach(function (x) {
+          var tr = document.createElement('tr');
+          var c1 = document.createElement('td'); c1.className = 'fld'; c1.textContent = x.name;
+          var c2 = document.createElement('td'); c2.textContent = x.status;
+          c2.style.color = x.ok ? '' : 'var(--bad)';
+          var c3 = document.createElement('td'); c3.textContent = x.version;
+          var c4 = document.createElement('td'); c4.className = 'r'; c4.textContent = x.ago;
+          tr.appendChild(c1); tr.appendChild(c2); tr.appendChild(c3); tr.appendChild(c4);
+          tbody2.appendChild(tr);
+        });
+        t.appendChild(tbody2); tb.appendChild(t);
+        show($('tools-count'), tools.rows.length + ' 个');
+      }
+      return v;
+    }
+
+    /* ---------- 探一次 ---------- */
+    var busy = false;
+    function run() {
+      if (busy) { return; }
+      if (!key()) {
+        show($('probe-status'), '⚠️ 还没有登录 —— 先在页头那块点「去登录」。');
+        return;
+      }
+      busy = true;
+      show($('probe-status'), '正在探 …');
+      var jobs = {
+        health: getRoot('health').then(function (t) { try { return JSON.parse(t); } catch (e) { return null; } }),
+        ready: getRoot('ready').then(function (t) { try { return JSON.parse(t); } catch (e) { return null; } }),
+        metrics: getRoot('metrics'),
+        pending: getJSON(O.PATHS.pending),
+        cache: getJSON(O.PATHS.cache),
+        count: getJSON(O.PATHS.count),
+        quota: getJSON(O.PATHS.quota),
+        rate: getJSON(O.PATHS.rate),
+        toolHealth: getJSON(O.PATHS.toolHealth),
+        toolVersions: getJSON(O.PATHS.toolVersions),
+      };
+      return Promise.all(Object.keys(jobs).map(function (k) { return jobs[k]; })).then(function (vals) {
+        var raw = {};
+        Object.keys(jobs).forEach(function (k, i) { raw[k] = vals[i]; });
+        /* ⚠️ 拼装那一步在纯逻辑里（`O.composeProbes`）—— 它出过一个真 bug，那边有用例钉着。 */
+        var res = O.composeProbes(raw);
+        var v = render(res);
+        var got = O.PROBE_KEYS.filter(function (k) { return !!res[k]; });
+        show($('probe-status'),
+          '✅ 探完了（' + new Date().toLocaleTimeString() + '）· ' + got.length + '/' + O.PROBE_KEYS.length
+          + ' 条拿到了 · 判决：' + v.level);
+      }).catch(function (e) {
+        show($('probe-status'), '🔴 探失败：' + e.message);
+      }).then(function () { busy = false; });
+    }
+    $('probe').addEventListener('click', function () { run(); });
+
+    /* ⭐ 凭据就位之后再起（首访时手里还没有凭据 —— 先发请求会一片 401） */
+    window.RagAuthBar.mount(function () {
+      if (!key()) { return; }
+      run();
+    });
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "default": [
+    {"pattern": "第\\s*\\d+\\s*页", "replacement": "", "description": "去除页码标记"},
+    {"pattern": "<[^>]+>", "replacement": "", "description": "去除HTML标签"},
+    {"pattern": "https?://\\S+", "replacement": " ", "description": "去除URL"},
+    {"pattern": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", "replacement": " ", "description": "去除邮箱地址"},
+    {"pattern": "!\\[([^\\]]*)\\]\\([^)]+\\)", "replacement": "\\1", "description": "去除Markdown图片语法残留（保留alt文本）"}
+  ],
+  "legal": [
+    {"pattern": "第\\s*\\d+\\s*页", "replacement": "", "description": "去除页码标记"},
+    {"pattern": "（此页无正文）", "replacement": "", "description": "去除法律文书空白页标记"},
+    {"pattern": "案号：[^(\\n]+", "replacement": "", "description": "去除案号信息（隐私脱敏）"},
+    {"pattern": "（\\d{4}）[\\u4e00-\\u9fa5]+字第\\d+号", "replacement": "[案号已脱敏]", "description": "案号脱敏保留标记"}
+  ],
+  "medical": [
+    {"pattern": "第\\s*\\d+\\s*页", "replacement": "", "description": "去除页码标记"},
+    {"pattern": "住院号：\\d+", "replacement": "[住院号已脱敏]", "description": "住院号脱敏"},
+    {"pattern": "姓名：[\\u4e00-\\u9fa5]{2,4}", "replacement": "[姓名已脱敏]", "description": "患者姓名脱敏"},
+    {"pattern": "身份证号：\\d{17}[\\dXx]", "replacement": "[身份证号已脱敏]", "description": "身份证号脱敏"}
+  ]
+}

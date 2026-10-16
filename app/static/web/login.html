@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · 青云精工</title>
+<!--
+  ============================================================================
+  登录（`GET /login` ·  §七·1）
+  · 需求方 2026-10-15 裁「前端改成**正规登录**」⇒ 用户名 + 密码换 JWT，
+    替掉原来那套「访客凭据」（首访静默领一把 API Key）。
+  · 🔴 它是**独立一页**，不是弹窗 —— 8 个页面**共用同一份**登录逻辑
+    （`/static/js/auth.js`），与原来「一份管凭据」同构。
+  · 🔴 登录态存 localStorage（⛔ 不是 sessionStorage），理由写在 `auth.js` 文件头。
+  · 表单的接线在这页末尾那段内联脚本；**"登完回哪去"那个判定在 `js/login.js`**（有单测）。
+  ============================================================================
+-->
+<meta name="description" content="用一个账号登进来：看这套 RAG + Agent 服务做了什么、每一步花多少、哪一步能接管。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <div class="wrap" style="padding-block:2.5rem 0">
+    <span class="mark">登录</span>
+    <p class="lead" style="margin-top:.8rem; max-width:56ch">用账号登录后，每一页的操作都会<b>真的调后端</b> —— 看到的是<b>真调用与真返回</b>。
+    </p>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem; max-width:34rem">
+    <div class="pane" id="login-pane">
+      <div class="pane-h"><span>用用户名和密码登入</span></div>
+      <div class="pane-b" id="login-body">
+
+        <form id="login-form" autocomplete="on">
+          <p class="fld">
+            <label for="u">用户名</label><br>
+            <input class="in" id="u" name="user_name" type="text" autocomplete="username"
+                   spellcheck="false" required style="width:100%; margin-top:.35rem">
+          </p>
+          <p class="fld" style="margin-top:.9rem">
+            <label for="p">密码</label><br>
+            <input class="in" id="p" name="password" type="password" autocomplete="current-password"
+                   required style="width:100%; margin-top:.35rem">
+          </p>
+          <p style="margin-top:1.1rem">
+            <button class="btn" id="go" type="submit">登入</button>
+          </p>
+        </form>
+
+        <!-- 失败时由下面那段脚本填。⛔ 默认 hidden —— 「什么都没有」和「有一句错」不是一回事。 -->
+        <p id="err" hidden role="alert"
+           style="margin-top:.9rem; color:var(--bad); font-size:var(--fs-sm)"></p>
+
+        <p style="margin-top:1.4rem; font-size:var(--fs-xs); color:var(--fg-3)">
+          账号由管理员建（登进去之后在「接入指南」那页有说明）。
+          ⚠️ 登进去之后，登录态存在<b>这个浏览器</b>里，到期或点「退出」才失效。
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>登进来看看 ⇒ <a href="/guide">接入指南</a> · <a href="/reference">API 参考</a></span>
+      <span class="st"><span class="dot dot--sig">登录</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script>
+  (function () {
+    var form = document.getElementById('login-form');
+    var err = document.getElementById('err');
+    var go = document.getElementById('go');
+    if (!form) return;
+
+    function say(msg) {
+      if (!err) return;
+      err.textContent = msg;
+      err.hidden = false;
+    }
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (err) err.hidden = true;
+
+      var u = document.getElementById('u');
+      var p = document.getElementById('p');
+      // ⛔ 空值不在前端编话术 —— `required` 已经拦了一道；真漏到这里就交给后端答。
+      if (go) { go.disabled = true; go.textContent = '登入中…'; }
+
+      window.RagAuth.login(u ? u.value.trim() : '', p ? p.value : '').then(function (res) {
+        if (res && res.ok) {
+          // 🔴 回哪去由 `RagLogin.safeNext` 定（只收站内路径，防开放重定向 —— 它有单测）。
+          location.replace(window.RagLogin.safeNext(location.search));
+          return;
+        }
+        say((res && res.error) || '登入失败');
+        if (go) { go.disabled = false; go.textContent = '登入'; }
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

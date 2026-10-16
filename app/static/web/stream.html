@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流式问答 · 青云精工</title>
+<meta name="description" content="内部资料线的流式形态：边生成边出字，逐字可。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/rag">← 回到检索问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+  <!-- ═════════ 登录态那两块（页头那颗按钮 + 页头下面那一行）═════════
+       🔴 唯一实现 ⇒ /static/js/auth.js（管登录态本身）+ authbar.js（管这两块怎么显示）。
+       ⛔ 页面里⛔ 别再自己写一段 —— 两份实现必然漂移。
+       · 没登录 ⇒ 页头那颗按钮写「登录」（authbar 会把 next= 补成"回本页"）
+       · 已登录 ⇒ 那颗按钮换成「已登录」（并去掉 href），**页头下面那一行**露出来（额度 + 退出）
+       ⚠️ ⛔ 一个字节的令牌都不进 DOM（只显示"登没登录"和"还剩多少"）。
+       📄 为什么不再是"访客凭据"那套 ⇒  §七·1。
+  ═════════ -->
+
+<main id="main">
+
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">内部资料线 · 流式形态</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      同一个问题，<b>边生成边出字</b> —— 不用等整段答案算完才看见第一个字。
+      🔴 <b>它和「内部RAG知识库检索及问答」是同一条链</b>，只是<b>出口形态不同</b>：
+      那一页一次回完整结果，这一页逐字吐。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>本页用到的接口 <b>1</b> 条：<code>POST /api/v1/rag/stream_search</code></span><span class="sep">|</span>
+      <span>本页<b>不收 <code>mode</code> 参数</b>（那个是 <code>/rag/search</code> 的）</span><span class="sep">|</span>
+      <span>帧序：<code>内容 → [DONE] → sources</code></span>
+    </div>
+  </div>
+
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <div class="form">
+      <div class="pane">
+        <div class="pane-h"><span>POST&nbsp;/api/v1/rag/stream_search</span><span class="r"><span class="dot dot--sig">就绪</span></span></div>
+        <div class="pane-b">
+          <div class="f">
+            <label for="q">question</label>
+            <textarea class="in" id="q" rows="2" spellcheck="false"
+              placeholder="问一件本厂业务上的事 —— 这一页会边生成边出字"></textarea>
+            <div class="chips" style="margin-top:.4rem" id="presets">
+              <button class="chip" type="button">在保内上门收不收工时费</button>
+              <button class="chip" type="button">备件调拨要走哪几级审批</button>
+            </div>
+          </div>
+          <div class="f">
+            <button class="btn btn--sig btn--block" type="button" id="ask">提问（流式）</button>
+            <button class="btn btn--block" type="button" id="stop" style="margin-top:.4rem">停止</button>
+            <p class="dim" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center" id="ask-status">
+              点一下会真调 <code>POST /api/v1/rag/stream_search</code>（⛔ 不是本地模拟）。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="pane rv">
+        <div class="pane-h"><span>逐字输出</span><span class="r"><span class="mono" id="stream-meta">—</span></span></div>
+        <div class="pane-b">
+          <div class="empty" id="stream-body"><span class="mono">stream</span>还没有跑过。提问之后，这里<b>逐字</b>出现答案。</div>
+        </div>
+      </div>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>引用</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty" id="refs-body"><span class="mono">sources</span>🔴 <b>它在这一页是【最后】才到的</b> ——
+            帧序是 <code>内容 → [DONE] → sources</code>（<code>[DONE]</code> 在 sources <b>之前</b>，很反直觉但是现状）。</div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>服务边界（登录与有效期 · 额度 · 限流 · 真调用）⇒ <a href="/">见首页「这套服务的边界」</a></span>
+      <span class="st"><span class="dot dot--sig">内部资料线 · 流式</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script>
+  /* 本页的装配层。🔴 整段包在 IIFE 里（⛔ 顶层绑定会与共用脚本撞车）。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var ctrl = null;
+    var threadId = 'stream-page-' + String(Math.random()).slice(2, 10);
+
+    var list = document.querySelectorAll('#presets button');
+    for (var i = 0; i < list.length; i++) {
+      (function (b) { b.addEventListener('click', function () { $('q').value = b.textContent.trim(); }); })(list[i]);
+    }
+
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+
+    /* 逐帧解析（SSE）：把每一行 `data: {...}` 交给 onFrame。
+       ⚠️ 本端点的 `ensure_ascii=True` ⇒ 中文是 `\uXXXX` —— **必须 JSON.parse**，
+          ⛔ 别当普通文本直接拼（会印出一串反斜杠 u）。 */
+    function feed(buf, onFrame) {
+      var lines = buf.split('\n');
+      var rest = lines.pop();
+      for (var i = 0; i < lines.length; i++) {
+        var l = lines[i].trim();
+        if (l.indexOf('data:') !== 0) { continue; }
+        var raw = l.slice(5).trim();
+        if (raw === '[DONE]') { onFrame({ done: true }); continue; }
+        try { onFrame(JSON.parse(raw)); } catch (e) { /* ⛔ 一帧坏了不许把整条流打断 */ }
+      }
+      return rest;
+    }
+
+    $('ask').addEventListener('click', function () {
+      var q = $('q').value.trim();
+      if (!q) { $('ask-status').textContent = '⚠️ 先写一个问题。'; return; }
+      if (!key()) { $('ask-status').textContent = '⚠️ 还没有登录 —— 先在页头那块点「去登录」。'; return; }
+
+      var body = $('stream-body');
+      body.className = '';
+      body.textContent = '';
+      $('refs-body').className = 'empty';
+      $('refs-body').textContent = '';
+      $('stream-meta').textContent = '流式中…';
+      $('ask-status').textContent = '正在跑 …';
+      ctrl = new AbortController();
+      var acc = '';
+      var gotDone = false;
+
+      RagAuth.apiFetch('/api/v1/rag/stream_search?thread_id=' + encodeURIComponent(threadId), {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q, top_k: 4, citations: true, generate_answer: true }),
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        var reader = r.body.getReader();
+        var dec = new TextDecoder('utf-8');
+        var buf = '';
+        function pump() {
+          return reader.read().then(function (res) {
+            if (res.done) { return null; }
+            buf += dec.decode(res.value, { stream: true });
+            buf = feed(buf, function (f) {
+              if (f.done) { gotDone = true; $('stream-meta').textContent = '已收尾'; return; }
+              if (f.error) { $('ask-status').textContent = '🔴 服务端报错：' + f.error; return; }
+              // ⚠️ 答案里带的 ** 要抹掉再显示（本仓：页面上⛔ 不许有 markdown 记号）
+              //    —— 2026-10-12 真浏览器上看见的；⛔ 只去记号，内容一字不改。
+              if (typeof f.content === 'string') { acc += f.content; body.textContent = acc.replace(/\*\*/g, ''); return; }
+              if (Array.isArray(f.sources)) { renderRefs(f.sources); }
+            });
+            return pump();
+          });
+        }
+        return pump();
+      }).then(function () {
+        if (!gotDone) {
+          // 🔴 本端点的契约：**出错时只发 error 帧、不发 `[DONE]`** ⇒ 靠"没有 [DONE]"分辨
+          $('ask-status').textContent = '🔴 这条流没有正常收尾（⛔ 没有收到 [DONE]）—— 多半是中间出错了。';
+        } else {
+          $('ask-status').textContent = '✅ 跑完了（' + new Date().toLocaleTimeString() + '）';
+        }
+      }).catch(function (e) {
+        $('ask-status').textContent = (e && e.name === 'AbortError') ? '⏹ 已停止' : ('🔴 调用失败：' + (e && e.message));
+      });
+    });
+
+    $('stop').addEventListener('click', function () {
+      if (ctrl) { ctrl.abort(); ctrl = null; }
+    });
+
+    function renderRefs(src) {
+      var box = $('refs-body');
+      box.className = '';
+      box.textContent = '';
+      if (!src.length) { box.className = 'empty'; box.textContent = '这次没有引用。'; return; }
+      src.forEach(function (x) {
+        var d = document.createElement('div');
+        d.style.cssText = 'border-top:1px solid var(--rule); padding:.5rem 0';
+        var h = document.createElement('div');
+        h.className = 'dim';
+        h.style.cssText = 'font-family:var(--mono); font-size:var(--fs-2xs)';
+        h.textContent = '[' + (x.index == null ? '—' : x.index) + '] ' + (x.source || '—');
+        var b = document.createElement('div');
+        b.style.cssText = 'margin-top:.25rem; line-height:1.75';
+        b.textContent = String(x.content_preview || x.content || '').replace(/\*\*/g, '');
+        d.appendChild(h); d.appendChild(b);
+        box.appendChild(d);
+      });
+    }
+
+    window.RagAuthBar.mount(function () { /* 凭据就位 —— 本页没有开局就要拉的数 */ });
+  })();
+  </script>
+</body>
+</html>

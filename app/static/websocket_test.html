@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Agent WebSocket 实时监控</title>
+    <style>
+        body { font-family: Arial; max-width: 900px; margin: 50px auto; padding: 20px; }
+        #message { width: 70%; padding: 10px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+        #output { margin-top: 20px; padding: 15px; background: #1e1e1e; color: #d4d4d4; border-radius: 5px; min-height: 200px; font-family: monospace; white-space: pre-wrap; max-height: 500px; overflow-y: auto; }
+        .thinking { color: #569cd6; }
+        .action { color: #dcdcaa; }
+        .observation { color: #4ec9b0; }
+        .final { color: #ce9178; font-weight: bold; }
+        .done { color: #6a9955; }
+        .error { color: #f48771; }
+        .ready { color: #6a9955; font-weight: bold; }
+        #apikey { width: 40%; padding: 8px; font-size: 14px; }
+        .hint { color: #888; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Agent WebSocket 实时监控</h1>
+    <p class="hint">
+        🔴 2026-10-05：这条 WS <b>已经不是匿名可达</b>了。
+        连上后<b>第一帧必须是认证帧</b> <code>{"type":"auth","api_key":"…"}</code>，
+        认证通过才会收到 <code>{"type":"ready"}</code>；否则服务端以
+        <code>close(1008)</code> 关闭（key 无效 / 5 秒内没发认证帧）。
+        <br>⚠️ API Key 存在<b>本机 localStorage</b>，方便调试；⛔ 别在公用机器上用。
+    </p>
+    <input type="password" id="apikey" placeholder="API Key（sk-…，或粘贴 JWT 时勾下面那个框）">
+    <button onclick="connect()">连接</button>
+    <button onclick="disconnect()">断开</button>
+    <span>状态：<span id="status">未连接</span></span>
+    <hr>
+    <input type="text" id="message" placeholder="输入你的问题..." value="今天天气怎么样？">
+    <button onclick="sendMessage()">发送</button>
+    <div id="output"></div>
+
+    <script>
+        let ws = null;
+        let ready = false;          // ← 认证通过之前**不许发业务帧**
+        const KEY_STORE = 'ws_api_key';
+
+        // 回显上一次用的 key（只存本机），⛔ 不自动连接 ——
+        // 自动连会在没 key 时每 5 秒刷一条超时失败，日志里全是噪音。
+        document.getElementById('apikey').value = localStorage.getItem(KEY_STORE) || '';
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            const key = document.getElementById('apikey').value.trim();
+            if (!key) {
+                alert('请先填 API Key —— 这条 WS 已经需要鉴权了');
+                return;
+            }
+            localStorage.setItem(KEY_STORE, key);
+            ready = false;
+
+            // 🩹 2026-09-20 修：原文写死 `ws://localhost:8000/ws/agent` —— **两处都错**：
+            //   ① 路径错：端点真实路径是 `/api/v1/ws/agent`（`api_v1_rag.py:45` 的 router 前缀是 `/api/v1`）
+            //      ⇒ 实测 `new WebSocket('/ws/agent')` 直接被拒（WebSocketDisconnect）
+            //   ② 写死 host/port：从别的机器或别的端口打开就连不上
+            // ⇒ 改为**从当前页面推导**（页面本身由 `/static/...` 提供，同源）。
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${location.host}/api/v1/ws/agent`);
+
+            ws.onopen = () => {
+                // 🔴 凭据只能走**首帧**：浏览器 `new WebSocket()` 不能自定义请求头，
+                //    HTTP 那套 `X-API-Key` / `Authorization` 送不上来。
+                ws.send(JSON.stringify({ type: 'auth', api_key: key }));
+                setStatus('已连接，认证中…', 'orange');
+            };
+
+            ws.onmessage = (event) => {
+                const output = document.getElementById('output');
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'ready') {
+                        ready = true;
+                        setStatus(`已认证：${data.user}`, 'green');
+                    }
+
+                    let className = '';
+                    let text = '';
+
+                    switch(data.type) {
+                        case 'ready':
+                            className = 'ready';
+                            text = `✅ 认证通过（${data.user}）`;
+                            break;
+                        case 'thinking':
+                            className = 'thinking';
+                            text = data.content;
+                            break;
+                        case 'action':
+                            className = 'action';
+                            text = `[${data.tool}] ${data.input}`;
+                            break;
+                        case 'observation':
+                            className = 'observation';
+                            text = data.content;
+                            break;
+                        case 'final':
+                            className = 'final';
+                            text = data.content;
+                            break;
+                        case 'done':
+                            className = 'done';
+                            text = '✅ 任务完成';
+                            break;
+                        case 'error':
+                            className = 'error';
+                            text = '❌ ' + data.content;
+                            break;
+                    }
+                    if (text) {
+                        output.innerHTML += `<div class="${className}">${text}</div>`;
+                    }
+                }catch (e) {
+                    output.innerHTML += `<div>${event.data}</div>`;
+                }
+                output.scrollTop = output.scrollHeight;
+            };
+
+            // 🔴 认证失败是**靠关闭码说出来的** —— WS 没有 HTTP 状态码可用。
+            //    1008 = 凭据/帧不对（换 key）；1011 = 服务端自己出问题（重试，别换 key）。
+            //    ⛔ 把两者混成一句"连接失败"，用户会照着错的方向去查。
+            ws.onclose = (event) => {
+                ready = false;
+                let why = '已断开';
+                if (event.code === 1008) {
+                    why = `🔴 认证被拒（1008）：${event.reason || '凭据无效'}`;
+                } else if (event.code === 1011) {
+                    why = `⚠️ 认证服务不可用（1011）：${event.reason || '请稍后重试'}`;
+                }
+                setStatus(why, event.code === 1000 ? 'gray' : 'red');
+                if (event.reason) {
+                    document.getElementById('output').innerHTML +=
+                        `<div class="error">连接关闭 code=${event.code}：${event.reason}</div>`;
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket错误:', err);
+            };
+        }
+
+        function setStatus(text, color) {
+            const el = document.getElementById('status');
+            el.textContent = text;
+            el.style.color = color;
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('请先连接');
+                return;
+            }
+            if (!ready) {
+                alert('还没认证通过 —— 等状态变成「已认证」再发（首帧必须让给认证帧）');
+                return;
+            }
+            const message = document.getElementById('message').value;
+            ws.send(JSON.stringify({ message: message }));
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识入库 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第三处 —— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  · 语言全部取自 `/3`（styles.css 同目录，copy 过来的整份）
+  · ⛔ 页内没有一个"编的"数 —— 数值位一律「—」+ 空态说明；真数据归 ⑥
+  · 本页的魂：入库完必须【立刻验一次】能不能召回（不做这步，入库就只是一次上传）
+  ============================================================================
+-->
+<meta name="description" content="把一份材料交给系统：入库 → 拿 id → 立刻验一次能不能被召回。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb" aria-current="page">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明 ═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">知识入库 · 入库即验</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">把一份材料交给系统：<b>入库</b>→ 拿回 id → <b>立刻拿刚入库的那段检索一次</b> —— 当场看出它<b>到底有没有被召回</b>
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>三种入库方式：单条 · 批量 · 上传文件（各有各的用法，见下面板）</span><span class="sep">|</span>
+      <span>边入库边切块</span><span class="sep">|</span>
+      <span>这一步只写库，不联网</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>为什么入库之后【必须验一次】</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          入库成功 ≠ 以后查得到。中间还隔着<b>切块、向量化、写索引</b>几步 ——
+          任何一步不对，材料就像<b>扔进了黑洞</b>：入库接口照样回"成功"。
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>如果你只做一半</th><th>会发生什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">只入库，不验</td>
+              <td>库里<b>有</b>这条、检索<b>召不回</b> —— 而界面上一切正常，<b>看不出来</b></td>
+            </tr>
+            <tr>
+              <td class="fld">入库 + 当场验一次</td>
+              <td>召不回就<b>当场明说"没召回"</b>，而不是留到下一次问答才露馅</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          🔴 所以本页把<b>「验一次」当作入库的一部分</b>，⛔ 不是可选项。
+          这也是本页和「上传一下就算完」那种做法的<b>唯一区别</b>。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 本页用到的接口 ═════════ -->
+  <!-- 🔴 2026-10-13 修：这里原先【套了两层 `.wrap`】—— 内层会再吃一道 `padding-inline`
+       ⇒ 这一块比别的块**窄一圈**（需求方看出来的：要和其他块一样宽）。 -->
+  <div class="wrap" style="margin-top:1.25rem">
+    <!-- 🔴 2026-10-12（需求方）：这一行原来是个 `.tools` 横条，现在改成
+         **和「内部RAG知识库检索及问答」页那个「链」展示列表【一样的块】**（`.pane` + `.rail` 行）。
+         ⚠️ 名字也改了 —— 原来叫「本页用到的接口」，按他补的起名标准（说清这是什么/范围多大）重起。 -->
+    <div class="pane">
+      <div class="pane-h"><span>本页用到的接口：上面 <b id="kb-n-write">—</b> 条入库 · 下面 <b id="kb-n-read">—</b> 条伴随 —— 每一行都写明它打哪条端点、以及它收不收什么。</span></div>
+      <div class="pane-b" style="padding:.4rem .5rem" id="kb-eps">
+        <div class="rail"><span class="ri">1</span><span class="rn">POST /api/v1/rag/insert：单条入库（整篇当一条 · ⛔ 不切块）</span></div>
+        <div class="rail"><span class="ri">2</span><span class="rn">POST /api/v1/rag/insert_batch：批量入库（一段一条 · ⛔ 同样不切块）</span></div>
+        <div class="rail"><span class="ri">3</span><span class="rn">POST /api/v1/rag/upload_document：上传文件（解析 → 预处理 → 切块 → 入库）</span></div>
+        <div class="rail" data-side="read"><span class="ri">伴</span><span class="rn">POST /api/v1/rag/search：入库完【当场验一次】召不召回</span></div>
+        <div class="rail" data-side="read"><span class="ri">伴</span><span class="rn">DELETE /api/v1/rag/documents/{doc_id}：撤销（⛔ 只能删自己上传的）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左输入 / 右结果 ═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：入库 ─────────── -->
+    <div class="form">
+      <div class="pane">
+        <div class="pane-h">
+          <span>POST&nbsp;/api/v1/rag/insert</span>
+          <span class="r"><span class="dot dot--sig">就绪</span></span>
+        </div>
+        <div class="pane-b">
+
+          <div class="f">
+            <label>入库方式（三选一）</label>
+            <div class="chips" id="methods">
+              <button class="chip" type="button" data-method="single" aria-pressed="true">单条文本</button>
+              <button class="chip" type="button" data-method="batch" aria-pressed="false">批量</button>
+              <button class="chip" type="button" data-method="upload" aria-pressed="false">上传文件</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              三种走<b>三条不同的端点</b>：<code>/rag/insert</code> · <code>/rag/insert_batch</code> · <code>/rag/upload_document</code>。点上面切换 —— 只有<b>上传</b>那条会<b>切块</b>，另两条是<b>整篇当一条</b>。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="body" id="body-label">正文</label>
+            <textarea class="in" id="body" rows="5" spellcheck="false"
+              placeholder="贴一段本厂的制度、规范或说明 —— 例如「在保设备上门，工时费不计；备件按调拨价计」"></textarea>
+            <div class="chips" style="margin-top:.4rem">
+              <button class="chip" type="button">贴一条保修条款</button>
+              <button class="chip" type="button">贴一条调拨流程</button>
+              <button class="chip" type="button">贴一条上门作业规范</button>
+            </div>
+          </div>
+
+          <div class="f" id="only-upload" hidden>
+            <label>doc_type（<b>只有"上传文件"这条收它</b> · 决定怎么切块）</label>
+            <div class="chips" id="doc-types"></div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              ⚠️ 档位由<b>后端</b>定义，这里的选项<b>由 <code>RagKb.DOC_TYPES</code> 填</b>，
+              而且有一条<b>跨语言的门</b>钉着它与后端 <code>CHUNK_CONFIGS</code> 逐字相等
+              ⇒ ⛔ 页面不许自己编一个档位。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="file">文件（上传文件那条用）</label>
+            <!-- 🔴 2026-10-13 改：原先是 `<input class="in" type="file">` —— 那个框看着**整条都能点**，
+                 而原生 file 输入**只有左边那颗小按钮能点**（实测：框 315px、按钮 ~90px
+                 **右边四分之三全是死区**，点它什么都不发生）。需求方真撞上了：「点击选择文件，没有弹出选择窗口」。
+                 ⇒ 改成【显式按钮 + 藏起来的原生输入】—— 整颗按钮都能点，而且**顺带把选中的文件名显出来**
+                 （native 那句「未选择任何文件」字号小、还容易被忽略）。 -->
+            <input id="file" type="file" accept=".md,.pdf,.docx,.html" hidden>
+            <div class="tools" style="margin:0">
+              <button class="btn" id="pick" type="button">选择文件</button>
+              <span class="dim" id="file-name">还没有选文件</span>
+            </div>
+            <p class="dim" style="margin-top:.35rem; font-size:var(--fs-2xs)">
+              ⚠️ 后端有<b>格式白名单</b>（<code>pdf</code> / <code>docx</code> / <code>md</code> / <code>html</code>）—— 不支持的会<b>明确报错</b>，⛔ 不静默吞。
+            </p>
+          </div>
+
+          <div class="f">
+            <button class="btn btn--sig btn--block" type="button" id="do-insert">入库</button>
+            <p class="dim" id="insert-status" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center">
+              点一下会真入库 —— 会花掉 embedding 的钱，结果与费用都来自这一次返回。
+            </p>
+          </div>
+          <div class="f">
+            <label for="del-id">撤销 —— 拿 id 删掉刚入库的那条</label>
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) 120px; gap:.7rem">
+              <input class="in" id="del-id" type="number" min="1" placeholder="入库时回给你的那个 id">
+              <button class="btn" type="button" id="do-del">删除</button>
+            </div>
+            <p class="dim" id="del-status" style="margin-top:.35rem; font-size:var(--fs-2xs)">
+              ⚠️ 只能删<b>自己上传的</b>（后端会 403）。<br>
+              🔴 <b>平常删东西走上面「库里有什么」更省事</b>：切到「我的库」⇒ 每篇末尾就有「删除」，
+              ⛔ 不用你抄 id。这一格留给<b>刚入库的那一条</b> —— 入库的响应里当场回给你 id，
+              粘过来删掉，不用先去列表里把它找出来。
+            </p>
+          </div>
+
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：入库结果 + 验一次 ─────────── -->
+    <div>
+
+      <!-- 入库结果 -->
+      <div class="pane rv">
+        <div class="pane-h"><span>入库结果</span><span class="r mono">—</span></div>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">doc_id</span>还没有入库过。入库一次之后，这里把<b>回给你的那个 id</b>顶到最显眼处 —— 后面验和删都要用它</div>
+        </div>
+      </div>
+
+      <!-- 验一次（本页的魂） -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span>验一次 · 它到底召不召得回</span>
+          <span class="r"><span class="tag tag--sig">入库的一部分</span></span>
+        </div>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            自动拿<b>刚入库进去那句里的一段话</b>去检索；召不回就<b>明说召不回</b>，⛔ 不静默。
+          </p>
+          <div class="empty" style="margin-top:.5rem">
+            <span class="mono">verify</span>还没有入库过。入库完之后，这里给一个判断：<b>召回 / 没召回</b>，以及命中的那条是哪一段</div>
+        </div>
+      </div>
+
+      <!-- 嵌套：三种入库方式 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>三种入库方式（各走哪条端点）</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <table class="tbl">
+            <thead><tr><th>方式</th><th>端点</th><th class="r">什么时候用它</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">单条文本</td><td><code>POST /rag/insert</code></td><td class="r">手头就一段</td></tr>
+              <tr><td class="fld">批量</td><td><code>POST /rag/insert_batch</code></td><td class="r">一次几十上百段</td></tr>
+              <tr><td class="fld">上传文件</td><td><code>POST /rag/upload_document</code></td><td class="r">有现成的文档文件</td></tr>
+            </tbody>
+          </table>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            ⚠️ 上传那条对文件类型有白名单，⛔ 不支持的格式会明确报错（不会静默吞掉）。
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：后悔药 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>删掉刚入库的这条</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            拿上面那个 id 去删：<code>DELETE /api/v1/rag/documents/{doc_id}</code>。
+            ⚠️ 删不掉要<b>明说原因</b>，⛔ 不装作删掉了。
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：本次花费 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次花费 / 我的额度</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <dl>
+            <div class="metric"><dt>本次 embedding tokens</dt><dd>—</dd></div>
+            <div class="metric"><dt>本次费用</dt><dd>—</dd></div>
+            <div class="metric"><dt>今日剩余额度</dt><dd>—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⚠️ 缺值一律显示「取不到」，⛔ <b>不显示 0</b>。入库<b>只有 embedding</b>，没有 LLM —— 所以这页比问答便宜。
+          </p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+
+  <!-- ═════════ 🆕 「库里有什么」（需求方 2026-10-12 定）═════════
+       🔴 **目的（他逐字）**：「让大部分不想自己提交文档的访客，能知道已有哪些是已有的，
+          是可以直接搜索，我该搜索什么，会出现内容」⇒ **可发现性**。
+       🔴 **两个作用域**：「自己的 + 公用的」。
+       ⚠️ **分层是"语料方定的五类"，⛔ 不是"文件夹"** —— 表里没有目录这一层。
+  ═════════ -->
+  <div class="wrap" id="library" style="margin-top:2rem; padding-bottom:2rem">
+    <div class="pane">
+      <div class="pane-h">
+        <span>库里有什么</span>
+        <span class="r"><span class="mono" id="lib-summary">—</span></span>
+      </div>
+      <div class="pane-b">
+        <div class="tools" style="margin-bottom:.8rem">
+          <span class="chips" id="lib-scopes"></span><span class="sep">|</span>
+          <span>搜：<input class="in" id="lib-q" type="search" style="display:inline-block;width:20rem;min-height:0;padding:.25rem .5rem;margin-left:.3rem"
+                   placeholder="篇名或正文片段 —— 「我该搜什么」这里就有答案"></span>
+          <button class="btn" type="button" id="lib-go">搜</button>
+        </div>
+        <!-- 「删了没有 / 列到哪了」那一行 —— 空着也占位（min-height），⛔ 不让下面的列表跳 -->
+        <p class="dim" id="lib-status" style="margin:0 0 .6rem; min-height:1.2em; font-size:var(--fs-2xs)"></p>
+        <div id="lib-body">
+          <div class="empty" id="lib-empty"><span class="mono">documents</span>点上面的「公用库 / 我的库」就会列出<b>库里有什么</b>。</div>
+        </div>
+        <div id="lib-full"></div>
+        <p class="dim" style="margin-top:.8rem; font-size:var(--fs-2xs); line-height:1.8">
+          🔴 <b>分组用的是语料方自己定的五类</b>（A 产品规格 · B 流程制度 · C 常见问题 · D 数据报告 · E 负样本）——
+          ⚠️ 表里<b>没有「目录」这一层</b>（<code>source</code> 只是文件名）⇒ 按文件夹分层做不到，⛔ 也不编。<br>
+          点一篇 ⇒ 走 <b>PostgreSQL</b> 直接取全文（⛔ 不经向量库）· ⛔ 只会列出<b>你自己的</b>与<b>公用的</b>。<br>
+          🔴 <b>「我的库」每篇末尾有「删除」</b>：删的是<b>整篇</b>（不是某一段）、点之前<b>先问一次</b>、
+          删完<b>当场重列</b>——⛔ 不让你对着「刚才那条还在不在」自己猜。
+          ⚠️ <b>「公用库」没有那颗按钮</b> —— 那是语料方交的，不是你的。
+        </p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>服务边界（登录与有效期 · 额度 · 限流 · 真调用）⇒ <a href="/">见首页「这套服务的边界」</a></span>
+      <span class="st"><span class="dot dot--sig">入库 · 已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script src="/static/js/kb.js?v=0642391745"></script>
+
+  <script>
+  /* 「库里有什么」那一片的装配层。🔴 整段包在 IIFE 里（⛔ 顶层绑定会与共用脚本撞车）。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var K = window.RagKb;
+    var scope = 'public';
+    var groups = [];
+
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+    function auth() { return window.RagAuth.authHeader(); }
+
+    (function () {
+      var box = $('lib-scopes');
+      K.SCOPES.forEach(function (s) {
+        var b = document.createElement('button');
+        b.className = 'chip';
+        b.type = 'button';
+        b.textContent = s.label;
+        b.title = s.note;
+        b.setAttribute('data-scope', s.id);
+        b.addEventListener('click', function () { scope = s.id; paint(); load(); });
+        box.appendChild(b);
+      });
+    })();
+
+    function paint() {
+      var bs = document.querySelectorAll('#lib-scopes [data-scope]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-scope') === scope;
+        bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        bs[i].style.color = on ? 'var(--sig)' : '';
+        bs[i].style.borderColor = on ? 'var(--sig-dim)' : '';
+      }
+    }
+
+    /** 那一行字（「正在删…」「✅ 删掉了…」）。⚠️ 取不到元素 ⇒ 跳过，⛔ 别抛。 */
+    function status(msg) {
+      var n = $('lib-status');
+      if (n) { n.textContent = msg || ''; }
+    }
+
+    /**
+     * 列一遍。
+     * @param {string} [doneMsg] 列完之后要在状态行上留一句话（「✅ 删掉了…」那种）。
+     *   🔴 **为什么不是"删完立刻写"**：删完紧接着就要重列（见 `delDoc`），
+     *      先写的那句会被这一趟整个盖掉 ⇒ 变成"闪一下就没了"。
+     */
+    function load(doneMsg) {
+      if (!key()) { $('lib-summary').textContent = '⚠️ 还没有登录 —— 先在页头那块点「登录」。'; return; }
+      $('lib-summary').textContent = '正在列 …';
+      $('lib-full').textContent = '';
+      status('');
+      RagAuth.apiFetch(K.buildListPath(scope, 200), { headers: auth() })
+        .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+        .then(function (d) {
+          groups = d.groups || [];
+          $('lib-summary').textContent = K.summaryOf(scope, d);
+          render();
+          if (doneMsg) { status(doneMsg); }
+        })
+        .catch(function (e) { $('lib-summary').textContent = '🔴 列不出来：' + e.message; });
+    }
+
+    function render() {
+      var box = $('lib-body');
+      var q = ($('lib-q') || {}).value || '';
+      var gs = K.filterGroups(groups, q);
+
+      // 🔴 **重画之前先记下"哪几组是开着的"**，画完给它们开回去。
+      //    ⚠️ 不记的话：`render()` 每次都新建 `<details>`（默认折叠）
+      //    **删完一篇、那一组当场折回去**，而这一页刚承诺的是
+      //    「删完当场重列 —— ⛔ 不让你对着'刚才那条还在不在'自己猜」
+      //    ⇒ 折起来 = 你又得点一次才知道删没删（搜索、切库同理）。
+      var wasOpen = [];
+      var olds = box.querySelectorAll('details[data-group][open]');
+      for (var i = 0; i < olds.length; i++) { wasOpen.push(olds[i].getAttribute('data-group')); }
+
+      box.textContent = '';
+      if (!gs.length) {
+        box.className = 'empty';
+        box.textContent = groups.length
+          ? '这一库里没有匹配「' + q + '」的资料 —— 换个词，或者切到另一个库看看。'
+          : '这个库现在是空的。⚠️「公用库」空 = 语料还没灌；「我的库」空 = 你还没入库过。';
+        return;
+      }
+      box.className = '';
+      gs.forEach(function (g) {
+        var det = document.createElement('details');
+        det.className = 'pane';
+        det.setAttribute('data-group', g.name);
+        if (wasOpen.indexOf(g.name) >= 0) { det.open = true; }
+        det.style.marginTop = '.5rem';
+        var sum = document.createElement('summary');
+        sum.className = 'pane-h';
+        sum.style.cssText = 'cursor:pointer;list-style:none';
+        sum.textContent = g.name + ' · ' + g.docs.length + ' 篇 · 点开 ▾';
+        det.appendChild(sum);
+        var b = document.createElement('div');
+        b.className = 'pane-b';
+        g.docs.forEach(function (d) {
+          // 🔴 一行里现在有**两颗按钮**：左边「点开看全文」· 右边「删除」（**只有「我的库」给**）。
+          //    ⚠️ ⛔ 别把"看全文"做成**包住**删除按钮的那种整行按钮 ——
+          //       `<button>` 里再套 `<button>` 是**非法 HTML**，浏览器会把里面那颗**甩到外面去**。
+          var row = document.createElement('div');
+          row.className = 'lib-row';
+          row.style.cssText = 'display:flex;align-items:center;gap:.5rem';
+
+          var open = document.createElement('button');
+          open.type = 'button';
+          open.className = 'rail';
+          open.style.cssText = 'flex:1;min-width:0;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:.35rem .3rem';
+          var a = document.createElement('span'); a.className = 'ri'; a.textContent = String(d.chunks);
+          var c = document.createElement('span'); c.className = 'rn'; c.textContent = d.source;
+          var e = document.createElement('span'); e.className = 'rt'; e.textContent = d.preview.replace(/\*\*/g, '').slice(0, 48);
+          open.appendChild(a); open.appendChild(c); open.appendChild(e);
+          open.addEventListener('click', function () { openFull(d); });
+          row.appendChild(open);
+
+          // 🔴 **「公用库」⛔ 不给删除** —— 那是语料方交的那批，不是你的（后端也不许删）。
+          if (scope === 'mine') { row.appendChild(delBtn(d)); }
+
+          b.appendChild(row);
+        });
+        det.appendChild(b);
+        box.appendChild(det);
+      });
+    }
+
+    /** 那一行的「删除」按钮。⚠️ **只挂在「我的库」上** —— 判 `scope` 的是调用点。 */
+    function delBtn(d) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn';
+      btn.textContent = '删除';
+      btn.title = '删掉整篇（' + d.chunks + ' 块）—— 点了会先问你一次';
+      btn.addEventListener('click', function () { delDoc(d); });
+      return btn;
+    }
+
+    /**
+     * 删一篇。
+     *
+     * 🔴 **删完当场【重列】一次** —— 沿这一页的魂（「入库即验」）：
+     *    动作之后立刻给一次**可核的反馈**，⛔ 不让访客对着"刚才那条还在不在"自己猜。
+     * 🔴 **先问一次**：删的是**整篇**（表里一篇 = 很多块），⛔ 撤不回来。
+     * ⚠️ **权限在后端**（只许删自己传的）—— 前端这里只管"点得到"与把被拒的原因说清楚。
+     */
+    function delDoc(d) {
+      if (!key()) { status('⚠️ 还没有登录 —— 先去页头那块点「登录」。'); return; }
+      var ask = '删掉「' + d.source + '」？\n\n这一篇有 ' + d.chunks + ' 块，会一次全删，⛔ 撤不回来。';
+      if (!window.confirm(ask)) { status('已取消 —— 什么都没删。'); return; }
+
+      status('正在删「' + d.source + '」…');
+      RagAuth.apiFetch(K.buildDeletePath(d.first_id), { method: 'DELETE', headers: auth() })
+        .then(function (r) {
+          return r.ok ? r.json()
+            : r.json().then(function (e) { throw new Error((e && e.error) || ('HTTP ' + r.status)); });
+        })
+        .then(function () {
+          $('lib-full').textContent = '';        // 刚删的那篇，全文那块也一起收掉
+          load('✅ 删掉了「' + d.source + '」—— 下面这一屏是重列过的。');
+        })
+        .catch(function (e) {
+          status('🔴 删不掉：' + e.message + '（⚠️ 只能删自己传的）');
+        });
+    }
+
+    function openFull(d) {
+      var box = $('lib-full');
+      box.textContent = '正在取全文 …';
+      RagAuth.apiFetch(K.buildFullPath(d.first_id), { headers: auth() })
+        .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+        .then(function (f) {
+          box.textContent = '';
+          var pane = document.createElement('div');
+          pane.className = 'pane';
+          pane.style.marginTop = '.8rem';
+          var h = document.createElement('div');
+          h.className = 'pane-h';
+          h.textContent = f.source + ' · ' + f.chunks + ' 块 · ' + f.category + '（走 PostgreSQL 取的原文本）';
+          var b = document.createElement('div');
+          b.className = 'pane-b';
+          b.style.cssText = 'white-space:pre-wrap; line-height:1.85; max-width:78ch';
+          b.textContent = String(f.content || '').replace(/\*\*/g, '');
+          pane.appendChild(h); pane.appendChild(b);
+          box.appendChild(pane);
+        })
+        .catch(function (e) { box.textContent = '🔴 取不到全文：' + e.message; });
+    }
+
+    $('lib-go').addEventListener('click', render);
+    $('lib-q').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { render(); } });
+    paint();
+    window.RagAuthBar.mount(function () { load(); });
+  })();
+  </script>
+
+  <script>
+  /* 「三种入库 + 当场验一次 + 撤销」—— 🔴 **这一页的魂**（`知识入库页-Agent自验收标准.md` K1/K2）：
+     只入库不验 ⇒ 库里【有】这条、检索【召不回】，而界面一切正常、**看不出来**。
+     🔴 整段包在 IIFE 里（⛔ 顶层绑定会与共用脚本撞车）。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var K = window.RagKb;
+    var method = 'single';
+    var docType = 'technical';
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+    function hdr() { return Object.assign({ 'Content-Type': 'application/json' }, window.RagAuth.authHeader()); }
+
+    /* ---------- 三种方式可切 ---------- */
+    function paint() {
+      var bs = document.querySelectorAll('#methods [data-method]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-method') === method;
+        bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        bs[i].style.color = on ? 'var(--sig)' : '';
+        bs[i].style.borderColor = on ? 'var(--sig-dim)' : '';
+      }
+      $('only-upload').hidden = (method !== 'upload');
+      $('body-label').textContent = (method === 'batch') ? '正文（空行或 --- 分隔，一段一条）' : '正文';
+    }
+    (function () {
+      var bs = document.querySelectorAll('#methods [data-method]');
+      for (var i = 0; i < bs.length; i++) {
+        (function (b) {
+          b.addEventListener('click', function () { method = b.getAttribute('data-method'); paint(); });
+        })(bs[i]);
+      }
+    })();
+
+    /* ---------- 档位：⛔ 不在 HTML 里写死，由 RagKb.DOC_TYPES 填 ---------- */
+    (function () {
+      var box = $('doc-types');
+      K.DOC_TYPES.forEach(function (t) {
+        var b = document.createElement('button');
+        b.className = 'chip'; b.type = 'button'; b.textContent = t;
+        b.setAttribute('data-dt', t);
+        b.addEventListener('click', function () { docType = t; paintDt(); });
+        box.appendChild(b);
+      });
+    })();
+    function paintDt() {
+      var bs = document.querySelectorAll('#doc-types [data-dt]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-dt') === docType;
+        bs[i].style.color = on ? 'var(--sig)' : '';
+        bs[i].style.borderColor = on ? 'var(--sig-dim)' : '';
+      }
+    }
+    paintDt(); paint();
+
+    /* ---------- 选文件（🔴 2026-10-13 加） ----------
+       显式按钮点一下 = 打开原生输入的选择窗口；选完把**文件名印出来**。
+       ⛔ 原先是直接摆 `<input type="file">` —— 那个框的**右边四分之三是死区**（见上面 markup 的注释）。 */
+    (function () {
+      var f = $('file'), b = $('pick'), n = $('file-name');
+      if (!f || !b || !n) { return; }
+      b.addEventListener('click', function () { f.click(); });
+      f.addEventListener('change', function () {
+        n.textContent = (f.files && f.files[0]) ? f.files[0].name : '还没有选文件';
+      });
+    })();
+    /* 🔴 那两个计数**从行里数出来**（⛔ 不写死 —— 加一条端点它就漂） */
+    (function () {
+      var all = document.querySelectorAll('#kb-eps .rail');
+      var rd = document.querySelectorAll('#kb-eps .rail[data-side=\"read\"]');
+      var a = $('kb-n-write'), b = $('kb-n-read');
+      if (a) { a.textContent = String(all.length - rd.length); }
+      if (b) { b.textContent = String(rd.length); }
+    })();
+
+    /* ---------- 入库（三条路） ---------- */
+    function sourceOf() { return '手动入库（本页）'; }
+
+    function verify(text, newId, what) {
+      return RagAuth.apiFetch('/api/v1/rag/search?mode=accurate_norerank', {
+        method: 'POST', headers: hdr(),
+        body: JSON.stringify({ question: String(text || '').slice(0, 120), top_k: 8, generate_answer: false, citations: false }),
+      }).then(function (r) { return r.ok ? r.json() : null; }).then(function (s2) {
+        if (!s2) { $('insert-status').textContent = '⚠️ ' + what + '成功，但【验一次】没跑成（检索那条没过）。'; return; }
+        var ids = (s2.docs || []).map(function (x) { return x.id; });
+        var hit = Array.isArray(newId) ? newId.some(function (i) { return ids.indexOf(i) !== -1; })
+                                      : ids.indexOf(newId) !== -1;
+        $('insert-status').textContent = hit
+          ? '✅ ' + what + ' + 【当场验过】：召回了（在返回的 ' + ids.length + ' 条里）'
+          : '🔴 ' + what + '成功，但当场没召回 —— 库里【有】它、检索【没带回来】。⚠️ 这不是页面坏了，是这条链在那一刻没对上（切块/向量化/索引之间隔着东西）。';
+      });
+    }
+
+    $('do-insert').addEventListener('click', function () {
+      if (!key()) { $('insert-status').textContent = '⚠️ 还没有登录 —— 先在页头那块点「去登录」。'; return; }
+
+      if (method === 'upload') {
+        var f = $('file').files[0];
+        if (!f) { $('insert-status').textContent = '⚠️ 先选一个文件。'; return; }
+        var fd = new FormData();
+        fd.append('file', f);
+        fd.append('doc_type', docType);
+        $('insert-status').textContent = '正在上传并切块 …';
+        // ⚠️ 这一条**不要**手写 Content-Type —— 让浏览器自己带 boundary
+        RagAuth.apiFetch('/api/v1/rag/upload_document', { method: 'POST', body: fd })
+          .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+          .then(function (d) {
+            $('insert-status').textContent = '✅ 上传成功：切成 ' + d.chunks_inserted + ' 块，正在当场验一次…';
+            return verify(d.preview, [], '上传入库');
+          })
+          .catch(function (e) { $('insert-status').textContent = '🔴 上传失败：' + e.message; });
+        return;
+      }
+
+      var text = $('body').value.trim();
+      if (!text) { $('insert-status').textContent = '⚠️ 先贴一段正文。'; return; }
+
+      if (method === 'batch') {
+        var body = K.buildBatchBody(text, sourceOf());
+        if (!body.documents.length) { $('insert-status').textContent = '⚠️ 没切出任何一段 —— 空行或 --- 分隔。'; return; }
+        $('insert-status').textContent = '正在批量入库 ' + body.documents.length + ' 条 …';
+        RagAuth.apiFetch('/api/v1/rag/insert_batch', { method: 'POST', headers: hdr(), body: JSON.stringify(body) })
+          .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+          .then(function (d) {
+            $('insert-status').textContent = '✅ 批量入库 ' + d.count + ' 条，正在拿第一段当场验一次…';
+            return verify(body.documents[0].content, [], '批量入库');
+          })
+          .catch(function (e) { $('insert-status').textContent = '🔴 批量入库失败：' + e.message; });
+        return;
+      }
+
+      $('insert-status').textContent = '正在入库 …';
+      RagAuth.apiFetch('/api/v1/rag/insert', { method: 'POST', headers: hdr(),
+        body: JSON.stringify({ content: text, source: sourceOf() }) })
+        .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+        .then(function (d) {
+          $('insert-status').textContent = '✅ 入库成功（id=' + d.id + '）—— 正在拿刚贴的这段去检索一次…';
+          return verify(text, d.id, '入库');
+        })
+        .catch(function (e) { $('insert-status').textContent = '🔴 入库失败：' + e.message; });
+    });
+
+    /* ---------- 撤销 ---------- */
+    $('do-del').addEventListener('click', function () {
+      var id = ($('del-id').value || '').trim();
+      if (!id) { $('del-status').textContent = '⚠️ 先填 id。'; return; }
+      if (!key()) { $('del-status').textContent = '⚠️ 还没有登录。'; return; }
+      $('del-status').textContent = '正在删 …';
+      RagAuth.apiFetch('/api/v1/rag/documents/' + encodeURIComponent(id),
+            { method: 'DELETE' })
+        .then(function (r) { return r.ok ? r.json() : r.json().then(function (e) { throw new Error((e && e.error) || ('HTTP ' + r.status)); }); })
+        .then(function (d) { $('del-status').textContent = '✅ 删掉了（id=' + d.id + '）。再把库里那份列一遍就能核。'; })
+        .catch(function (e) { $('del-status').textContent = '🔴 删不掉：' + e.message + '（⚠️ 只能删自己上传的）'; });
+    });
+  })();
+  </script>
+</body>
+</html>

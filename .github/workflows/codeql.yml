@@ -1,0 +1,73 @@
+# CodeQL —— SAST（需求方 2026-10-09 裁「**做 D**」）
+#
+# ⚠️ **为什么加它**：`SECURITY.md` §五 原先写着「**SAST：无**」。
+#    它是 GitHub 自带的静态分析，**只扫描、⛔ 不开 PR** ⇒ 与「**PR 别频繁开**」不冲突。
+#
+# ⚠️ **它跑在 GitHub 的 runner 上**（本机不跑）⇒ ⛔ 不影响 `scripts/ci-local.sh` 的"CI 等价"。
+# 🔴 **2026-10-14 修：本仓已转 private ⇒ CodeQL 在【私有仓】上跑不了。**
+#    实测报错原文：`Code scanning is not enabled for this repository.`
+#    ⇒ 代码扫描（CodeQL / secret scanning）在**私有仓**上要付费的 GitHub Advanced Security；
+#      **公开仓免费**。⇒ 下面 `analyze` 那个 job 加了 `if: !github.event.repository.private`：
+#      **公开仓跑、私有仓跳过**（跳过是中性态，⛔ 不是红）。
+#      ⇒ 将来那个**产品仓（public）**会自动重新跑起来，⛔ 不用再改这里。
+#
+# 📌 判据：仓库的 Security 页出现 CodeQL 的分析结果；Actions 里有一个叫 `CodeQL` 的 workflow。
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # ⚠️ 每周跑一次 —— 依赖/规则集会变，只跑 PR 会漏掉"没改代码但规则变了"
+    - cron: '23 3 * * 1'   # 周一 03:23 UTC（避开整点，同本仓既有习惯）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: 分析（python）
+    # 🔴 只在【公开仓】跑 —— 私有仓的代码扫描要付费（见文件头 2026-10-14 那条）
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    # 🔴 本仓纪律：**每个 job 必须带 `timeout-minutes`**（`scripts/check_ci_job_timeouts.py` 会核）
+    timeout-minutes: 20
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # 🔴 2026-10-10：**只豁免一个文件** —— `scripts/issue_api_key.py`。
+          #
+          # **为什么**：它是那把「**把新发的 API key 交给操作员**」的 CLI。CodeQL 的
+          # `py/clear-text-logging-sensitive-data` 与 `py/clear-text-storage-sensitive-data`
+          # 盯的是「**密钥流到一个输出点位**」—— 而**把 key 交出去正是这个工具的全部用途**
+          # （库里只有哈希，⛔ 找不回来）。换个交付方式（`print` / 写文件 / 传参）**只是换一个 sink**。
+          # ⇒ 这两条告警**在这个文件上不可能消除**，⛔ 不是"还没修"。
+          #
+          # ⚠️ **试过并【没生效】的写法**（⛔ 别重复踩）：在那一行加 `# codeql[py/…]` 注释 ——
+          #    2026-10-10 实测跑完一轮 CI，两条告警**照旧**。
+          #
+          # ⚠️ **豁免范围是【一个文件】，⛔ 不是把这两条规则全仓关掉** ——
+          #    `app/` 下的同类问题照样会报（那才是要紧的地方）。
+          # 📌 **代价（如实记）**：这个文件从此**不再被 CodeQL 覆盖**。
+          #    它是 55 行、不接请求、不碰用户输入的 CLI ⇒ 本仓判为可接受。
+          #
+          # 🔴 **实测（2026-10-10）：排除生效了，但它【关不掉已存在的告警】——**
+          #    合并后 main 重跑分析（带本配置）⇒ 那次分析**没再报**这两条，
+          #    而 GitHub 对「**已不再被分析的文件**」**不会判 `fixed`**
+          #    （它没有新数据可以说"没了"）⇒ 那两条**一直 open**。
+          #    ⇒ ⛔ **别把"加了 paths-ignore" 当成"告警会消失"** —— 那两条要**另行 dismiss**，
+          #      理由写「有意的行为 + 见本配置」。
+          # 🔴 **真风险仍然存在，处置在代码里**：非交互调用请用 `--out <文件>`（权限 600），
+          #    ⛔ 别把 key 打进 stdout —— **2026-10-10 实测栽过一次**（key 进了会话记录）。
+          paths-ignore: |
+            scripts/issue_api_key.py
+      - uses: github/codeql-action/analyze@v3

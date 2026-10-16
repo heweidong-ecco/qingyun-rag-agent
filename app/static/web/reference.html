@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API 参考 · 青云精工</title>
+<!--
+  ============================================================================
+  API 参考（上线页 · `GET /reference`）
+  🔴 左索栏 / 中栏 / 响应示例三栏都由探针【机械生成】：
+     
+  🔴 响应示例：**声明了返回形状的就摊开真结构**；没声明的**如实说"还没声明"**（⛔ 不摆白块）。
+  ============================================================================
+-->
+<meta name="description" content="全仓接口参考：按资源分组，逐条给方法、身份、参数；响应示例等返回形状补齐后统一回写。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference" aria-current="page">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <div class="wrap" style="padding-block:2rem 0">
+    <span class="mark">接口参考 · v1</span>
+    <p class="lead" style="margin-top:.8rem; max-width:62ch">
+      全仓接口按<b>资源</b>分组列在这里：方法 · 路径 · <b>要不要身份</b> · <b>收什么</b>。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>共 <b>65</b> 条（不含页面地址）</span><span class="sep">|</span>
+      <span>左/中/右三栏<b>都由探针从 OpenAPI 生成</b></span><span class="sep">|</span>
+      <span>清单由探针机械生成，⛔ 不手抄</span>
+    </div>
+  </div>
+
+  <div class="wrap doc">
+
+    <nav class="side" aria-label="接口索引">
+      <h2>认证</h2>
+      <ol>
+        <li><a href="#ep-1"><span class="mono">POST</span> /api/v1/auth/login</a></li>
+        <li><a href="#ep-2"><span class="mono">POST</span> /api/v1/auth/refresh</a></li>
+      </ol>
+      <h2>知识入库</h2>
+      <ol>
+        <li><a href="#ep-3"><span class="mono">DELETE</span> /api/v1/rag/documents/{doc_id}</a></li>
+        <li><a href="#ep-4"><span class="mono">GET</span> /api/v1/rag/documents/{doc_id}</a></li>
+        <li><a href="#ep-5"><span class="mono">POST</span> /api/v1/rag/insert</a></li>
+        <li><a href="#ep-6"><span class="mono">POST</span> /api/v1/rag/insert_batch</a></li>
+        <li><a href="#ep-7"><span class="mono">POST</span> /api/v1/rag/upload_document</a></li>
+      </ol>
+      <h2>检索</h2>
+      <ol>
+        <li><a href="#ep-8"><span class="mono">GET</span> /api/v1/rag/chat_history</a></li>
+        <li><a href="#ep-9"><span class="mono">GET</span> /api/v1/rag/documents</a></li>
+        <li><a href="#ep-10"><span class="mono">POST</span> /api/v1/rag/hybrid_search</a></li>
+        <li><a href="#ep-11"><span class="mono">POST</span> /api/v1/rag/pg_search</a></li>
+        <li><a href="#ep-12"><span class="mono">POST</span> /api/v1/rag/rerank_search</a></li>
+        <li><a href="#ep-13"><span class="mono">POST</span> /api/v1/rag/rewrite_search</a></li>
+        <li><a href="#ep-14"><span class="mono">POST</span> /api/v1/rag/search</a></li>
+        <li><a href="#ep-15"><span class="mono">POST</span> /api/v1/rag/stream_search</a></li>
+      </ol>
+      <h2>对话与编排</h2>
+      <ol>
+        <li><a href="#ep-16"><span class="mono">POST</span> /api/v1/agent/advanced_chat</a></li>
+        <li><a href="#ep-17"><span class="mono">POST</span> /api/v1/agent/advanced_chat/stream</a></li>
+        <li><a href="#ep-18"><span class="mono">POST</span> /api/v1/agent/langgraph_chat</a></li>
+        <li><a href="#ep-19"><span class="mono">POST</span> /api/v1/agent/langgraph_chat/stream</a></li>
+        <li><a href="#ep-20"><span class="mono">POST</span> /api/v1/agent/mcp_chat</a></li>
+        <li><a href="#ep-21"><span class="mono">POST</span> /api/v1/agent/mcp_chat/stream</a></li>
+        <li><a href="#ep-22"><span class="mono">POST</span> /api/v1/agent/memory_chat</a></li>
+        <li><a href="#ep-23"><span class="mono">POST</span> /api/v1/agent/memory_chat/stream</a></li>
+        <li><a href="#ep-24"><span class="mono">POST</span> /api/v1/agent/plan_execute</a></li>
+        <li><a href="#ep-25"><span class="mono">POST</span> /api/v1/agent/plan_execute/stream</a></li>
+      </ol>
+      <h2>记忆</h2>
+      <ol>
+        <li><a href="#ep-26"><span class="mono">POST</span> /api/v1/agent/memory/add</a></li>
+        <li><a href="#ep-27"><span class="mono">GET</span> /api/v1/agent/memory/search</a></li>
+      </ol>
+      <h2>工具与执行器</h2>
+      <ol>
+        <li><a href="#ep-28"><span class="mono">GET</span> /api/v1/agent/available_tools</a></li>
+        <li><a href="#ep-29"><span class="mono">POST</span> /api/v1/agent/execute_code</a></li>
+        <li><a href="#ep-30"><span class="mono">GET</span> /api/v1/agent/mcp_tools_dynamic</a></li>
+        <li><a href="#ep-31"><span class="mono">GET</span> /api/v1/agent/tool_health</a></li>
+        <li><a href="#ep-32"><span class="mono">POST</span> /api/v1/agent/tool_health/refresh</a></li>
+        <li><a href="#ep-33"><span class="mono">GET</span> /api/v1/agent/tool_versions</a></li>
+      </ol>
+      <h2>轨迹与人工接管</h2>
+      <ol>
+        <li><a href="#ep-34"><span class="mono">GET</span> /api/v1/agent/approvals/history</a></li>
+        <li><a href="#ep-35"><span class="mono">POST</span> /api/v1/agent/approve</a></li>
+        <li><a href="#ep-36"><span class="mono">GET</span> /api/v1/agent/pending</a></li>
+        <li><a href="#ep-37"><span class="mono">GET</span> /api/v1/agent/pending/context</a></li>
+        <li><a href="#ep-38"><span class="mono">GET</span> /api/v1/agent/trace/{thread_id}</a></li>
+        <li><a href="#ep-39"><span class="mono">GET</span> /api/v1/agent/trace/{thread_id}/cost</a></li>
+        <li><a href="#ep-40"><span class="mono">GET</span> /api/v1/agent/traces</a></li>
+      </ol>
+      <h2>成本与令牌</h2>
+      <ol>
+        <li><a href="#ep-41"><span class="mono">GET</span> /api/v1/agent/cost/monthly_report</a></li>
+        <li><a href="#ep-42"><span class="mono">GET</span> /api/v1/agent/cost/overview</a></li>
+        <li><a href="#ep-43"><span class="mono">GET</span> /api/v1/agent/cost/records</a></li>
+        <li><a href="#ep-44"><span class="mono">GET</span> /api/v1/agent/token/budget</a></li>
+        <li><a href="#ep-45"><span class="mono">GET</span> /api/v1/agent/token/history</a></li>
+        <li><a href="#ep-46"><span class="mono">GET</span> /api/v1/agent/token/purpose</a></li>
+        <li><a href="#ep-47"><span class="mono">GET</span> /api/v1/agent/token/recent</a></li>
+        <li><a href="#ep-48"><span class="mono">GET</span> /api/v1/agent/token/thread</a></li>
+        <li><a href="#ep-49"><span class="mono">GET</span> /api/v1/agent/token/usage</a></li>
+      </ol>
+      <h2>预算与熔断</h2>
+      <ol>
+        <li><a href="#ep-50"><span class="mono">GET</span> /api/v1/agent/budget/check</a></li>
+        <li><a href="#ep-51"><span class="mono">GET</span> /api/v1/agent/budget/estimates</a></li>
+        <li><a href="#ep-52"><span class="mono">GET</span> /api/v1/agent/budget/intercepts</a></li>
+      </ol>
+      <h2>观测与调试</h2>
+      <ol>
+        <li><a href="#ep-53"><span class="mono">GET</span> /api/v1/debug/cache_stats</a></li>
+        <li><a href="#ep-54"><span class="mono">GET</span> /api/v1/debug/count</a></li>
+        <li><a href="#ep-55"><span class="mono">GET</span> /api/v1/debug/quota</a></li>
+        <li><a href="#ep-56"><span class="mono">GET</span> /api/v1/debug/rate_limit</a></li>
+      </ol>
+      <h2>管理与系统</h2>
+      <ol>
+        <li><a href="#ep-57"><span class="mono">GET</span> /api/v1/</a></li>
+        <li><a href="#ep-58"><span class="mono">POST</span> /api/v1/admin/create_user</a></li>
+        <li><a href="#ep-59"><span class="mono">GET</span> /api/v1/info</a></li>
+        <li><a href="#ep-60"><span class="mono">POST</span> /api/v1/rag/benchmark-embedding</a></li>
+        <li><a href="#ep-61"><span class="mono">WS</span> /api/v1/ws/agent</a></li>
+        <li><a href="#ep-62"><span class="mono">GET</span> /health</a></li>
+        <li><a href="#ep-63"><span class="mono">GET</span> /metrics</a></li>
+        <li><a href="#ep-64"><span class="mono">GET</span> /openapi.json</a></li>
+        <li><a href="#ep-65"><span class="mono">GET</span> /ready</a></li>
+      </ol>
+    </nav>
+
+    <article class="doc-body" data-body>
+      <section class="ep" id="howto">
+        <h2>这一页怎么读</h2>
+        <ul style="color:var(--fg-2); line-height:1.9; font-size:var(--fs-sm)">
+          <li><b>分组按资源</b>（认证 / 入库 / 检索 / …），⛔ 不是按 HTTP 方法。</li>
+          <li><b>身份</b>那一行写的是这条接口<b>要什么</b>；「豁免」= 它在中间件豁免名单里，⛔ 不等于"公开"。</li>
+          <li>⚠️ <b>参数表里的「说明」一栏全是「—」</b>：本仓接口<b>没有逐字段写说明</b>，⛔ 我不替它们编。</li>
+          <li>🔴 <b>当下这批的统计</b>：<b>65</b> 条端点里，<b>30</b> 条<b>声明了返回形状</b>（下面每条的「响应」格摊开它的真结构）；剩下 <b>35</b> 条<b>还没声明</b>。</li>
+          <li>🔴 <b>响应示例分两种</b>：<b>声明了返回形状的</b>摊开<b>真结构</b>（字段名 + 类型）；<b>没声明的</b>那一格<b>如实说</b>「这条还没声明」—— ⛔ 不手写一个像样的样例（那是编的）。</li>
+        </ul>
+      </section>
+
+      <h2 style="margin-top:2rem">端点 · 一条一节</h2>
+      <p class="dim" style="font-size:var(--fs-xs)">
+        🔴 <b>索栏里列了几条，这里就展开几节</b> —— ⛔ 不做"列了但点不到"的假清单。
+      </p>
+      <section class="ep" id="ep-1">
+        <h2><span class="mono">POST</span> /api/v1/auth/login</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/routing/api_v1.py:97</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">LoginRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>TokenResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">access_token</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">refresh_token</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">token_type</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">expires_in</td><td class="ty">integer</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-2">
+        <h2><span class="mono">POST</span> /api/v1/auth/refresh</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/routing/api_v1.py:118</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">RefreshRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AccessTokenResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">access_token</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">token_type</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">expires_in</td><td class="ty">integer</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-3">
+        <h2><span class="mono">DELETE</span> /api/v1/rag/documents/{doc_id}</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:434</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">doc_id</td><td class="ty">path</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">⚠️ 这条是<b>真欠账</b> —— <b>本站页面确实在调它</b>，而它的<b>返回结构还没声明</b>。<br>⚠️ <b>不是坏了</b>：接口本身在跑（页面就在用它），缺的是<b>这份清单里摊不出字段表</b>。<br>⇒ 正规补法：<b>真调一次量出真键</b>，再给它声明（⛔ 照代码抄会漏键）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-4">
+        <h2><span class="mono">GET</span> /api/v1/rag/documents/{doc_id}</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:533</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">doc_id</td><td class="ty">path</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DocFullResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">source</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">category</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">chunks</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">content</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-5">
+        <h2><span class="mono">POST</span> /api/v1/rag/insert</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:91</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">DocumentInsert</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DocInsertResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">status</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">id</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">content</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">source</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-6">
+        <h2><span class="mono">POST</span> /api/v1/rag/insert_batch</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:192</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">BatchDocumentInsert</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>BatchInsertResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">status</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">count</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-7">
+        <h2><span class="mono">POST</span> /api/v1/rag/upload_document</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:297</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">domain</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">doc_type</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>UploadDocResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">filename</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">format</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">domain</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">chunks_inserted</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">text_length</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">preview</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-8">
+        <h2><span class="mono">GET</span> /api/v1/rag/chat_history</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:573</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>ChatHistoryResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">messages</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">count</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">window</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-9">
+        <h2><span class="mono">GET</span> /api/v1/rag/documents</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:487</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">scope</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">limit</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DocListResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">scope</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">total</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">groups</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">truncated</td><td class="ty">boolean</td><td class="c">—</td></tr>
+              <tr><td class="fld">has_more</td><td class="ty">boolean</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-10">
+        <h2><span class="mono">POST</span> /api/v1/rag/hybrid_search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:675</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-11">
+        <h2><span class="mono">POST</span> /api/v1/rag/pg_search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:603</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-12">
+        <h2><span class="mono">POST</span> /api/v1/rag/rerank_search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:690</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-13">
+        <h2><span class="mono">POST</span> /api/v1/rag/rewrite_search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:705</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-14">
+        <h2><span class="mono">POST</span> /api/v1/rag/search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:750</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">mode</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>RagSearchResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">query</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">pipeline</td><td class="ty">object</td><td class="c">—</td></tr>
+              <tr><td class="fld">timing</td><td class="ty">object</td><td class="c">—</td></tr>
+              <tr><td class="fld">docs</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">answer</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">sources</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">mode</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-15">
+        <h2><span class="mono">POST</span> /api/v1/rag/stream_search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_rag.py:933</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-16">
+        <h2><span class="mono">POST</span> /api/v1/agent/advanced_chat</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:878</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-17">
+        <h2><span class="mono">POST</span> /api/v1/agent/advanced_chat/stream</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:932</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-18">
+        <h2><span class="mono">POST</span> /api/v1/agent/langgraph_chat</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:236</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentChatResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">question</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">status</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">answer</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">pending_tool_calls</td><td class="ty">array | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-19">
+        <h2><span class="mono">POST</span> /api/v1/agent/langgraph_chat/stream</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:325</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-20">
+        <h2><span class="mono">POST</span> /api/v1/agent/mcp_chat</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>check_budget+get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1688</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentMcpChatResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">question</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">answer</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">budget_warning</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-21">
+        <h2><span class="mono">POST</span> /api/v1/agent/mcp_chat/stream</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>check_budget+get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1772</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-22">
+        <h2><span class="mono">POST</span> /api/v1/agent/memory_chat</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1288</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-23">
+        <h2><span class="mono">POST</span> /api/v1/agent/memory_chat/stream</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1354</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">question</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-24">
+        <h2><span class="mono">POST</span> /api/v1/agent/plan_execute</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1117</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">goal</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentPlanExecuteResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">goal</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">plan</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">execution_result</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-25">
+        <h2><span class="mono">POST</span> /api/v1/agent/plan_execute/stream</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1171</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">goal</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">流式</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条返回的是一条<b>流</b>（SSE，<code>data:</code> 一帧一帧）—— ⛔ 不是 JSON，所以<b>它永远不会有"返回形状"</b>。<br>⚠️ <b>这不是没做</b>：形式不同而已（帧序 ⇒ <code>app/routing/specs/sse.md</code>）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-26">
+        <h2><span class="mono">POST</span> /api/v1/agent/memory/add</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1452</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">content</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentMemoryAddResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">status</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">content</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-27">
+        <h2><span class="mono">GET</span> /api/v1/agent/memory/search</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1467</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">query</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentMemorySearchResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">query</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">memories</td><td class="ty">array[string]</td><td class="c">—</td></tr>
+              <tr><td class="fld">memory_space</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-28">
+        <h2><span class="mono">GET</span> /api/v1/agent/available_tools</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1594</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentToolsResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">healthy_tools</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">unhealthy_tools</td><td class="ty">array[string]</td><td class="c">—</td></tr>
+              <tr><td class="fld">total</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-29">
+        <h2><span class="mono">POST</span> /api/v1/agent/execute_code</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1550</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">code</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-30">
+        <h2><span class="mono">GET</span> /api/v1/agent/mcp_tools_dynamic</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1888</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-31">
+        <h2><span class="mono">GET</span> /api/v1/agent/tool_health</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1562</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentToolHealthResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">tools</td><td class="ty">object</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-32">
+        <h2><span class="mono">POST</span> /api/v1/agent/tool_health/refresh</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1569</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-33">
+        <h2><span class="mono">GET</span> /api/v1/agent/tool_versions</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1581</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentToolVersionsResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">tool_versions</td><td class="ty">object</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-34">
+        <h2><span class="mono">GET</span> /api/v1/agent/approvals/history</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2105</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">limit</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">offset</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentApprovalHistoryResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">events</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">count</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">has_more</td><td class="ty">boolean</td><td class="c">—</td></tr>
+              <tr><td class="fld">limit</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">offset</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-35">
+        <h2><span class="mono">POST</span> /api/v1/agent/approve</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:482</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">approved</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">edited_answer</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">owner</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentApproveResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">status</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">answer</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">message</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">pending_tool_calls</td><td class="ty">array | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">forced_finish</td><td class="ty">boolean | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">rounds</td><td class="ty">integer | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-36">
+        <h2><span class="mono">GET</span> /api/v1/agent/pending</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:745</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentPendingResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">count</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">items</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-37">
+        <h2><span class="mono">GET</span> /api/v1/agent/pending/context</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:806</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">必填</td><td class="dim">—</td></tr>
+              <tr><td class="fld">owner</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentPendingContextResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">status</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">message</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">owner</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">graph</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">rounds</td><td class="ty">integer | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">next</td><td class="ty">array | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">messages</td><td class="ty">array | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-38">
+        <h2><span class="mono">GET</span> /api/v1/agent/trace/{thread_id}</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2217</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">path</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentTraceResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">trace</td><td class="ty">object | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">error</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-39">
+        <h2><span class="mono">GET</span> /api/v1/agent/trace/{thread_id}/cost</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2238</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">path</td><td class="c">必填</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentTraceCostResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">items</td><td class="ty">array[object]</td><td class="c">—</td></tr>
+              <tr><td class="fld">total</td><td class="ty">object</td><td class="c">—</td></tr>
+              <tr><td class="fld">truncated</td><td class="ty">boolean</td><td class="c">—</td></tr>
+              <tr><td class="fld">thread_id</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-40">
+        <h2><span class="mono">GET</span> /api/v1/agent/traces</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2269</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-41">
+        <h2><span class="mono">GET</span> /api/v1/agent/cost/monthly_report</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2040</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">year</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">month</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-42">
+        <h2><span class="mono">GET</span> /api/v1/agent/cost/overview</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1989</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-43">
+        <h2><span class="mono">GET</span> /api/v1/agent/cost/records</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2142</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">days</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">limit</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">offset</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>CostRecordsResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">records</td><td class="ty">array[CostRecordItem]</td><td class="c">—</td></tr>
+              <tr><td class="fld">count</td><td class="ty">integer | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">truncated</td><td class="ty">boolean | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">has_more</td><td class="ty">boolean | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">offset</td><td class="ty">integer | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">limit</td><td class="ty">integer | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              <tr><td class="fld">error</td><td class="ty">string | null</td><td class="c">可空</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-44">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/budget</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1639</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>TokenBudgetResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">user_name</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">daily_budget</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">used_today</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">remaining</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">llm_tokens_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">embedding_tokens_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">other_tokens_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">llm_daily_limit</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">llm_remaining_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">embedding_daily_limit</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">embedding_remaining_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">global_daily_limit</td><td class="ty">number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">global_used_today</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">global_remaining</td><td class="ty">number</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-45">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/history</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2024</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">days</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-46">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/purpose</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1932</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-47">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/recent</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1942</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">limit</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-48">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/thread</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1973</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">thread_id</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-49">
+        <h2><span class="mono">GET</span> /api/v1/agent/token/usage</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:1920</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-50">
+        <h2><span class="mono">GET</span> /api/v1/agent/budget/check</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2059</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">tool_name</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+              <tr><td class="fld">purpose</td><td class="ty">query</td><td class="c">可选</td><td class="dim">—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-51">
+        <h2><span class="mono">GET</span> /api/v1/agent/budget/estimates</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2080</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-52">
+        <h2><span class="mono">GET</span> /api/v1/agent/budget/intercepts</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1_agent.py:2094</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>AgentInterceptsResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">user_name</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">total_intercepts</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">requested_by</td><td class="ty">string</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-53">
+        <h2><span class="mono">GET</span> /api/v1/debug/cache_stats</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1.py:340</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DebugCacheStatsResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">cached_embeddings_count</td><td class="ty">integer</td><td class="c">—</td></tr>
+              <tr><td class="fld">sample_keys</td><td class="ty">array[string]</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-54">
+        <h2><span class="mono">GET</span> /api/v1/debug/count</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1.py:259</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DebugCountResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">total_documents</td><td class="ty">integer</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-55">
+        <h2><span class="mono">GET</span> /api/v1/debug/quota</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1.py:277</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DebugQuotaResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">user_name</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">role</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">daily_limit</td><td class="ty">integer | number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">remaining</td><td class="ty">integer | number | string</td><td class="c">—</td></tr>
+              <tr><td class="fld">used_today</td><td class="ty">integer | number</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-56">
+        <h2><span class="mono">GET</span> /api/v1/debug/rate_limit</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid</code> · 出处：<code>app/routing/api_v1.py:382</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag tag--sig">已声明</span></span></div>
+          <div class="pane-b">
+            <p class="dim" style="font-size:var(--fs-2xs)">返回形状：<code>DebugRateLimitResponse</code>（下表是它<b>声明</b>的字段）</p>
+            <table class="tbl">
+              <thead><tr><th>字段</th><th>类型</th><th class="c">可空</th></tr></thead>
+              <tbody>
+              <tr><td class="fld">user_name</td><td class="ty">string</td><td class="c">—</td></tr>
+              <tr><td class="fld">remaining_tokens</td><td class="ty">integer | number</td><td class="c">—</td></tr>
+              <tr><td class="fld">capacity</td><td class="ty">integer | number</td><td class="c">—</td></tr>
+              <tr><td class="fld">rate</td><td class="ty">integer | number</td><td class="c">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-57">
+        <h2><span class="mono">GET</span> /api/v1/</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—</code> · 出处：<code>app/routing/api_v1.py:65</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-58">
+        <h2><span class="mono">POST</span> /api/v1/admin/create_user</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid+require_admin</code> · 出处：<code>app/routing/api_v1.py:175</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">UserCreate</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-59">
+        <h2><span class="mono">GET</span> /api/v1/info</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/routing/api_v1.py:73</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-60">
+        <h2><span class="mono">POST</span> /api/v1/rag/benchmark-embedding</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>get_current_user_hybrid+require_admin</code> · 出处：<code>app/routing/api_v1.py:306</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+              <tr><td class="fld">body</td><td class="ty">body</td><td class="c">可选</td><td class="dim">QuestionRequest</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-61">
+        <h2><span class="mono">WS</span> /api/v1/ws/agent</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>require_ws_user</code> · 出处：<code>app/routing/api_v1_rag.py:1264</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-62">
+        <h2><span class="mono">GET</span> /health</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/main.py:857</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-63">
+        <h2><span class="mono">GET</span> /metrics</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/main.py:799</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-64">
+        <h2><span class="mono">GET</span> /openapi.json</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/main.py:803</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ep" id="ep-65">
+        <h2><span class="mono">GET</span> /ready</h2>
+        <p class="dim" style="font-size:var(--fs-xs)">身份：<code>—（豁免）</code> · 出处：<code>app/main.py:881</code></p>
+        <table class="tbl">
+          <thead><tr><th>参数</th><th>位置</th><th class="c">必填</th><th>说明</th></tr></thead>
+          <tbody>
+              <tr><td class="fld">—</td><td class="ty">—</td><td class="c">—</td><td class="dim">这条不进 OpenAPI（见上一行的出处）</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pane" style="margin-top:1rem">
+          <div class="pane-h"><span>响应</span><span class="r"><span class="tag">未声明</span></span></div>
+          <div class="pane-b">
+            <div class="empty">这条<b>没有声明返回结构</b> ⇒ 这里<b>摊不出字段表</b>。<br>⚠️ <b>不是坏了，也不是没做</b> —— 它<b>不在本站页面上被调用</b>，列在这里是为了<b>把接口清单列全</b>。<br>⇒ <b>响应的样子以实际调用为准</b>；要一份确定的字段表，得先给它声明（没声明就不编）。</div>
+          </div>
+        </div>
+      </section>
+
+    </article>
+
+    <aside class="aside">
+      <h3>Base URL</h3>
+      <p class="mono" style="font-size:var(--fs-xs); color:var(--fg-3)">&lt;你的主机&gt;/api/v1</p>
+
+      <h3 style="margin-top:1.25rem">认证</h3>
+      <p class="mono" style="font-size:var(--fs-xs); color:var(--fg-3)">X-API-Key: &lt;凭据&gt;</p>
+
+      <h3 style="margin-top:1.25rem">上手</h3>
+      <p style="font-size:var(--fs-xs)"><a href="接入指南.html">接入指南 →</a></p>
+
+      <h3 style="margin-top:1.25rem">返回形状</h3>
+      <p style="font-size:var(--fs-xs); color:var(--fg-3)">
+        ⬜ <b>待补</b> —— 补齐后<b>统一回写</b>到每条的「响应示例」里。
+      </p>
+    </aside>
+
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>这一页由探针生成 —— ⛔ 不手改，改的是生成它的那份</span>
+      <span class="st"><span class="dot dot--sig">API 参考 · 已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+</body>
+</html>

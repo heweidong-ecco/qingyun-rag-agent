@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>总览 · 青云精工</title>
+<!--
+  ============================================================================
+  总览（首页 · `GET /` 302 到本页）
+  · 语言取自 `/3`：表格即规格表（它的原话是「⛔ 不是四张卡，是一张规格表」）。
+  · 这一页做三件事：① 一眼说清【这是什么 · 有什么】② 每条能力一个可点入口
+    ③ 留一条【真数据】当证据（返回体 · 点了才跑）。
+  · 🔴 页内⛔ 没有一个"编的"数：接口条数从 `/openapi.json` 现算、能力条数从本页行数现数、
+    返回体的值位一律先「—」、跑完由真返回填。缺值就画「—」，⛔ 绝不画 0。
+  ============================================================================
+-->
+<meta name="description" content="一个 RAG + Agent API 服务：入库 → 带引用回答 → 工具编排；每一步的耗时与花费都摊在页面上。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/" aria-current="page">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+
+
+<main id="main">
+
+  <!-- ═════════ ① 首屏：这是什么 · 有什么 ═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">总览</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">一套 <b>RAG + Agent API 服务</b>：资料<b>入库</b>、带<b>可点回原文的引用</b>作答、模型<b>自己调工具</b> —— 每一步的<b>真实耗时和花费</b>都摊在页面上。每条能力都能<b>点进去真跑一次</b>，看到的是真调用与真返回。</p>
+    <div class="tools" style="margin-top:1rem">
+      <span><b id="n-endpoints">—</b> 条接口</span><span class="sep">|</span>
+      <span><b id="n-groups">—</b> 组</span><span class="sep">|</span>
+      <span><b id="n-caps">—</b> 条能力</span><span class="sep">|</span>
+      <span>接口条数<b>当场从服务自己算</b> —— 不是写死的数字</span>
+    </div>
+  </div>
+
+  <!-- ═════════ ② 能力地图：每条一个可点入口 ═════════ -->
+  <div class="wrap" style="margin-top:1.5rem">
+    <table class="tbl">
+      <caption>这套东西能做什么 —— 每一条都能点进去</caption>
+      <thead>
+        <tr><th>能力</th><th>它做什么</th><th class="r">状态</th><th class="r">进</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fld">知识入库</td>
+          <td>单条 / 批量 / 上传文件三种喂法；🔴 <b>入库完当场验一次能不能被召回</b></td>
+          <td class="r"><span class="tag tag--sig">已接线</span></td>
+          <td class="r"><a href="/kb">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">内部RAG知识库检索及问答</td>
+          <td>只查<b>我们自己的库</b>：带引用的答案 + 各阶段真实耗时，两组参数能并排对比</td>
+          <td class="r"><span class="tag tag--sig">已接线</span></td>
+          <td class="r"><a href="/rag">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">外部检索与工具Agent编排</td>
+          <td>只查<b>库外</b>：模型自主调工具（含联网），过程摊成一条明文链；<b>敏感动作会停下来等人批</b></td>
+          <td class="r"><span class="tag tag--sig">已接线</span></td>
+          <td class="r"><a href="/agent">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">流式问答与真停止</td>
+          <td>边生成边出；断开连接时<b>真的停住</b>上游 —— 记数 + 留痕，⛔ 不是只把页面停住</td>
+          <td class="r"><span class="tag tag--sig">已接线</span></td>
+          <td class="r"><a href="/stream">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">系统观测</td>
+          <td>系统方看「此刻正常吗」—— 输出是<b>一个判断</b>，⛔ 不是一堆数</td>
+          <td class="r"><span class="tag tag--sig">已接线</span></td>
+          <td class="r"><a href="/ops">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">接入指南</td>
+          <td>拿凭据 → 粘一段能跑的 → 看到真返回；把会踩的坑先说清（<b>纯文档，不花额度</b>）</td>
+          <td class="r"><span class="tag">文档</span></td>
+          <td class="r"><a href="/guide">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">API 参考</td>
+          <td>全仓端点清单，按资源分组</td>
+          <td class="r"><span class="tag">文档</span></td>
+          <td class="r"><a href="/reference">进入 →</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═════════ ③ 一条真证据：真返回 + 逐字段标注（点了才跑）═════════
+       🔴 **为什么"点了才跑"**：它是**证据**（证明这不是画的），⛔ 不是首屏装饰。
+       进首页就自动跑 ⇒ **每次访问（含误入、刷新、爬虫）都花一次检索 + 生成** ——
+       那与"⛔ 不替访客无谓花钱"相反。⇒ 给一颗按钮，点了才真调。
+  ═════════ -->
+  <div class="wrap" style="margin-top:2rem">
+    <span class="mark">一次真调用长什么样</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      🔴 <b>点「跑一次」就行</b> —— <b>问题默认替你挑好</b>，想换就点后面那一排。下面是<b>这一次的真返回</b>、
+      右边是<b>各阶段真实耗时和这次的花费</b> —— 每一条标注说的都是<b>那个值意味着什么</b>。
+    </p>
+
+    <!-- 问题那一行 —— 🔴 可切，由 `js/index.js` 的 `QUESTIONS` 生成（⛔ 别在 HTML 里再写一份）。
+         ⚠️ **默认选中第一句** ⇒ 访客**什么都不做**也能点「跑一次」（⛔ 不留空、⛔ 不要打字）。 -->
+    <!-- 那一行 —— 🔴 **按钮在最前**（它才是这一节的动作），问题可切的那一排跟在它后面。
+         ⚠️ 字号用 `--fs-2xs`：与 `.tools` 自己那一档**同一个刻度**（⛔ 不新造字号）。 -->
+    <div class="tools" style="margin-top:1rem">
+      <button class="btn btn--sig" id="run" type="button">跑一次（真调后端）</button>
+      <span class="sep">|</span>
+      <span class="chips" id="qs"></span>
+    </div>
+    <p class="dim" style="margin-top:.5rem; font-size:var(--fs-2xs); line-height:1.7">
+      🔴 最后那一句<b>故意不在语料库里</b> —— 点它会得到「<b>根据现有资料，无法回答</b>……其中不包含任何关于
+      上海天气的信息」。那是它<b>该有的表现</b>（<b>没依据就不编</b>），⛔ 不是坏了。
+    </p>
+    <p class="dim" style="margin-top:.35rem; font-size:var(--fs-2xs)" id="run-status">
+      现在那些「—」是空的 —— 点上「跑一次」，这一次的真返回会把它们填上。
+    </p>
+  </div>
+
+  <div class="wrap" style="margin-top:1.25rem">
+    <div class="resp rv">
+      <div class="resp-head">
+        <span class="m">POST</span>
+        <span class="p">/api/v1/rag/search</span>
+        <span class="st" id="resp-status">未跑</span>
+        <span class="meta"><span id="resp-ms">— ms</span><span id="resp-mode">—</span><span id="resp-thread">thread —</span></span>
+      </div>
+      <div class="resp-body">
+        <div class="resp-code" style="align-self:start">
+<code><span class="ln"><span class="p">{</span></span><span class="ln" data-sig>  <span class="k">"query"</span><span class="p">:</span> <span class="s">"<span id="v-query">—</span>"</span><span class="p">,</span></span><span class="ln" data-sig>  <span class="k">"pipeline"</span><span class="p">:</span> <span class="p">{</span></span><span class="ln">    <span class="k">"original_query"</span><span class="p">:</span> <span class="s">"<span id="v-original">—</span>"</span><span class="p">,</span></span><span class="ln">    <span class="k">"rewrite_enabled"</span><span class="p">:</span> <span class="n" id="v-rewrite">—</span><span class="p">,</span> <span class="k">"expand_enabled"</span><span class="p">:</span> <span class="n" id="v-expand">—</span><span class="p">,</span></span><span class="ln">    <span class="k">"bm25_enabled"</span><span class="p">:</span> <span class="n" id="v-bm25">—</span><span class="p">,</span> <span class="k">"rerank_enabled"</span><span class="p">:</span> <span class="n" id="v-rerank">—</span></span><span class="ln">  <span class="p">},</span></span><span class="ln" data-sig>  <span class="k">"timing"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"rewrite_ms"</span><span class="p">:</span> <span class="n" id="v-t-rewrite">—</span><span class="p">,</span> <span class="k">"search_ms"</span><span class="p">:</span> <span class="n" id="v-t-search">—</span><span class="p">,</span> <span class="k">"rerank_ms"</span><span class="p">:</span> <span class="n" id="v-t-rerank">—</span><span class="p">,</span> <span class="k">"total_ms"</span><span class="p">:</span> <span class="n" id="v-t-total">—</span> <span class="p">},</span></span><span class="ln" data-sig>  <span class="k">"docs"</span><span class="p">:</span> <span class="p">[</span><span class="c" id="v-docs">— 条</span></span><span id="v-docs-rows" style="display:contents"><span class="ln">    { "id": —, "source": "—",</span><span class="ln">      "rrf_score": —, "from": "—",</span><span class="ln">      "content": "—" },</span></span><span class="ln">  <span class="p">],</span></span><span class="ln" data-sig>  <span class="k">"answer"</span><span class="p">:</span> <span class="s">"<span id="v-answer">—</span>"</span><span class="p">,</span></span><span class="ln" data-sig>  <span class="k">"sources"</span><span class="p">:</span> <span class="p">[</span><span class="c" id="v-sources">— 条</span></span><span id="v-sources-rows" style="display:contents"><span class="ln">    { "index": —, "id": —,</span><span class="ln">      "source": "—",</span><span class="ln">      "similarity": —, "content_preview": "—" },</span></span><span class="ln">  <span class="p">],</span></span><span class="ln">  <span class="k">"mode"</span><span class="p">:</span> <span class="s">"<span id="v-mode">—</span>"</span><span class="p">,</span></span><span class="ln">  <span class="k">"requested_by"</span><span class="p">:</span> <span class="s">"<span id="v-by">—</span>"</span></span><span class="ln"><span class="p">}</span></span></code>
+        </div>
+        <div class="resp-notes">
+          <dl class="resp-note">
+            <dt><b>■</b> query</dt>
+            <dd>你问的那句话，原样回显。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> pipeline</dt>
+            <dd>这一次<b>哪几步真开着</b>（改写 / 扩展 / BM25 / 重排）—— ⛔ 不是"这个模式理论上支持什么"。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> timing</dt>
+            <dd><b>各阶段的真实毫秒</b>：改写 · 检索 · 重排 · 总计。⛔ 不是估算，也不是把总耗时摊出来的。
+              ⚠️ <code>total_ms</code> <b>不含生成答案那一段</b>。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> docs[]</dt>
+            <dd>召回的资料条数（融合之后的），每条带 <code>rrf_score</code>。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> answer / sources[]</dt>
+            <dd>答案里<b>每一条引用绑到的原文</b>：<code>id</code> 是哪一段 · <code>content</code> 原文逐字 · <code>similarity</code> 有多像。<br>
+              ⚠️ 融合那条链上 <code>similarity</code> <b>本来就是空的</b>，页面画「—」，⛔ 不为了好看编一个分。</dd>
+          </dl>
+          <dl class="resp-note" data-plain>
+            <dt>mode / requested_by</dt>
+            <dd>用的哪一档、谁问的（检索只在这个用户名下的库 + 公共语料里找）。</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="tools" style="margin-top:.75rem">
+      <span>⬜ 还没跑：值位留「—」，<code>docs</code> / <code>sources</code> 先摆出<b>一条的形状</b></span><span class="sep">|</span>
+      <span>字段名取自代码（<code>rag_pipeline</code> / <code>answer_with_citations</code>）</span><span class="sep">|</span>
+      <span>跑一次之后由真返回填 —— ⛔ 不手填、不编</span>
+    </div>
+  </div>
+
+  <!-- ═════════ ④ 边界标注（🔴 全站【只此一份】）═════════
+       🔴 2026-10-12 定（结）：这一块说的是【这套服务的边界】，
+          全站是**同一件事** ⇒ 放在**首页这一处**，⛔ 不复制到 7 页（复制必漂 ——
+          本仓立场：「同一个东西两份实现必然漂移，而没有任何门会因为你只改了一头而变红」）。
+       ⚠️ **其余各页各有一行页脚指向这里**（`见首页「这套服务的边界」`）——
+          那是"让人看得见"那一半，⛔ 不含内容。
+       🔴 **数字一律当场数** —— 条数是 `#n-bounds` 由 js 现数的。
+          ⛔ **⛔ 不许在任何地方写「N 条」**：原先那个「5 条」被写死在【8 个地方】
+          （首页 pane 头 + 7 个页脚），加一条就全漂、而且**没有任何门会红**（2026-10-13 改掉）。
+       ⚠️ **位置**：2026-10-13 从【首屏】挪到这儿 —— 首屏该先答"这是什么、有什么"，
+          边界是**限制**，它该在能力之后、而不是在能力之前。
+  ═════════ -->
+  <div class="wrap" style="margin-top:2rem">
+    <div class="pane">
+      <div class="pane-h"><span>这套服务的边界（<span id="n-bounds">—</span> 条）</span><span class="r dim">⛔ 不是系统故障，是已知限制</span></div>
+      <div class="pane-b">
+        <div class="rail"><span class="ri">1</span><span class="rn">不用注册，但<b>要一个账号</b></span><span class="rt" style="font-size:var(--fs-2xs)">用账号登录即可 —— 账号由部署者发放，<b>不用你填 API Key</b>；账号<b>有有效期</b></span></div>
+        <div class="rail"><span class="ri">2</span><span class="rn">每人每天有独立 token 额度，互不影响</span><span class="rt" style="font-size:var(--fs-2xs)">剩多少 —— <b>页头那一行就写着</b>；用尽当天不再服务，次日恢复</span></div>
+        <div class="rail"><span class="ri">3</span><span class="rn">按分钟限流</span><span class="rt" style="font-size:var(--fs-2xs)"><b>请求过快会被限流</b> —— 页面会说清原因，不是出故障</span></div>
+        <div class="rail"><span class="ri">4</span><span class="rn">这里真的在调大模型</span><span class="rt" style="font-size:var(--fs-2xs)">这里真的在调大模型 —— 每次提问都有<b>真实</b>消耗，页面会显示花了多少</span></div>
+        <div class="rail"><span class="ri">5</span><span class="rn">怎么验它真的做完了</span><span class="rt" style="font-size:var(--fs-2xs)">引用可点开看原文 · 生成能真停住 · 敏感操作会停下来等你确认 —— 都当场看得见</span></div>
+        <div class="rail"><span class="ri">6</span><span class="rn">花的是<b>真钱</b></span><span class="rt" style="font-size:var(--fs-2xs)">本站用<b>真实付费的key</b>，连接云API接口 在运行 —— 你每次提问都在产生费用，⛔ 不是虚拟的数字</span></div>
+        <div class="rail"><span class="ri">7</span><span class="rn">有全站日级上限兜底</span><span class="rt" style="font-size:var(--fs-2xs)">全站每日有总额度 —— <b>到顶当天停、次日自动恢复</b>，不会突然消失</span></div>
+        <div class="rail"><span class="ri">8</span><span class="rn">数据是<b>常驻</b>的</span><span class="rt" style="font-size:var(--fs-2xs)">跑在自建云主机上、数据落在数据库里、每日OSS备份 —— <b>重启不清空</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ ⑤ 本页用到的接口 ═════════ -->
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="tools">
+      <span>本页用到的接口</span><span class="sep">|</span>
+      <span>「跑一次」真调：<code>POST /api/v1/rag/search</code></span><span class="sep">|</span>
+      <span>接口条数从服务自己的 <code>/openapi.json</code> 现算 —— 服务加了接口它会跟着变</span><span class="sep">|</span>
+      <span>其余都在上面那张表里 —— 各页会写清自己打哪些接口</span>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>边界就在上面那一块 —— 其余页各有一行指路回来</span>
+      <span class="st"><span class="dot dot--sig">总览 · 已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script src="/static/js/index.js?v=6467dc10df"></script>
+  <script>
+  /* 首页自己的接线 —— 🔴 整段包在 IIFE 里（⛔ 顶层绑定会与共用脚本撞车）。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var I = window.RagIndex;
+
+    /* ---------- 真数：从服务自己的 /openapi.json 现算（⛔ 不写死） ---------- */
+    I.loadCounts().then(function (c) {
+      if (c) {
+        $('n-endpoints').textContent = I.num(c.paths);
+        $('n-groups').textContent = I.num(c.groups);
+      }
+      // ⚠️ 取不到 ⇒ 保持「—」（⛔ **绝不画 0** —— 那会谎报"这个服务没有接口"）。
+    });
+    /* 能力条数从**本页那张表的行数**现数（⛔ 别写死 —— 加减一行就漂） */
+    $('n-caps').textContent = String(I.countRows(document.querySelectorAll('table.tbl tbody tr')));
+    /* 边界条数**同理**从那一块的条数现数 —— ⛔ 原文把「5 条」写死在【8 个地方】里（首页 + 7 页页脚），
+       加一条就全漂、而且**没有任何门会红**。⇒ 改成当场数。 */
+    $('n-bounds').textContent = String(I.countRows(document.querySelectorAll('.pane-b .rail')));
+
+    /* ---------- 「问它一句」那一排（🔴 默认就选中第一句） ---------- */
+    var picked = I.DEFAULT_QUESTION;
+
+    function paintQs() {
+      var bs = document.querySelectorAll('#qs [data-q]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-q') === picked;
+        bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        bs[i].style.color = on ? 'var(--sig)' : '';
+        bs[i].style.borderColor = on ? 'var(--sig-dim)' : '';
+      }
+    }
+    (function () {
+      var box = $('qs');
+      I.QUESTIONS.forEach(function (item) {
+        var b = document.createElement('button');
+        b.className = 'chip';
+        b.type = 'button';
+        b.textContent = item.q;
+        b.setAttribute('data-q', item.q);
+        if (!item.inCorpus) {
+          b.title = '这一句不在语料库里 —— 它会答「根据现有资料，无法回答」（那是对的，不是坏了）';
+        }
+        b.addEventListener('click', function () { picked = item.q; paintQs(); });
+        box.appendChild(b);
+      });
+      paintQs();
+    })();
+
+    /* ---------- 把「行数组」画进那两格（docs / sources 的真结构） ---------- */
+    function paintRows(boxId, lines) {
+      var box = $(boxId);
+      if (!box) { return; }
+      box.textContent = '';
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < lines.length; i++) {
+        var ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = lines[i];   // ⛔ 用 textContent —— 那些值是从返回里带出来的
+        frag.appendChild(ln);
+      }
+      box.appendChild(frag);
+    }
+
+    /* ---------- 「跑一次」：真调后端，把真返回填进那个返回体 ---------- */
+    function paint(fields) {
+      for (var i = 0; i < fields.length; i++) {
+        var n = $(fields[i].id);
+        if (n) { n.textContent = fields[i].text; }
+      }
+    }
+
+    function bindRun() {
+      $('run').addEventListener('click', function () {
+        if (!window.RagAuth.token()) {
+          $('run-status').textContent = '⚠️ 还没有登录 —— 先在页头那块点「去登录」。';
+          return;
+        }
+        $('run').disabled = true;
+        $('run-status').textContent = '正在真调 /rag/search …（问的是「' + picked + '」）';
+        var t0 = performance.now();
+        RagAuth.apiFetch(I.searchPath(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(I.buildBody(picked)),
+        })
+          .then(function (r) { return r.ok ? r.json() : r.json().then(function (e) {
+            throw new Error((e && e.error) || ('HTTP ' + r.status)); }); })
+          .then(function (d) {
+            var ms = Math.round(performance.now() - t0);
+            $('resp-status').textContent = '200 OK';
+            $('resp-ms').textContent = '往返 ' + ms + ' ms';
+            $('resp-thread').textContent = 'thread ' + I.threadId();
+            paint(I.respFields(d));
+            paintRows('v-docs-rows', I.arrayLines('docs', d));
+            paintRows('v-sources-rows', I.arrayLines('sources', d));
+            $('run-status').textContent = '✅ 这一次就是真返回 —— 右侧每一条标注说的都是它';
+          })
+          .catch(function (e) {
+            $('run-status').textContent = '🔴 没跑成：' + e.message
+              + '（429 = 限流或额度；422 = 参数不对）';
+          })
+          .then(function () { $('run').disabled = false; });
+      });
+    }
+
+    /* 🔴🔴 **必须先 `mount()` 再接线** —— `mount` 是**唯一**一处"首访静默领一把"。
+       ⛔ **少了这一句，页头那块永远停在【三块都藏起来】的状态、按钮永远按不动**
+       （2026-10-13 真浏览器上抓到的真缺陷：`claimStatus` 一直是 `idle`，
+       按钮却只会说"还没有凭据" —— 而页头那一行**看起来**像已经拿到了）。
+       ⚠️ 「先就位再起页面」是本仓 `cred.js` 的硬约定（旧平台那条路上首访时手里还没有凭据，
+       这时照旧发请求 ⇒ **第一批全是 401**）。 */
+    window.RagAuthBar.mount(function () { bindRun(); });
+  })();
+  </script>
+</body>
+</html>

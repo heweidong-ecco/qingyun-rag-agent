@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>总览 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第四处（首页）—— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  · 语言全部取自 `/3`：签名组件就是它的「返回体」（左：完整返回；右：逐字段标注）
+  · ⛔ 页内没有一个"编的"数 —— 字段名与结构是真的，【值位一律「—」】
+    ⇒ 跑一次之后由程序填真值（硬约束①：每个数都来自那次真调用）
+  ============================================================================
+-->
+<meta name="description" content="一次真调用长什么样：返回带原文区间的引用，以及各阶段的真实耗时。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="总览.html"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="总览.html" aria-current="page">总览</a>
+      <a href="知识入库.html">知识入库</a>
+      <a href="内部RAG知识库检索及问答.html">内部RAG知识库检索及问答</a>
+      <a href="外部检索与工具Agent编排.html">外部检索与工具Agent编排</a>
+      <a href="系统观测.html">系统观测</a>
+      <a href="接入指南.html">接入指南</a>
+      <a href="API参考.html">API 参考</a>
+    </nav>
+    <div class="ha">
+      <span class="btn" style="cursor:default">不演示假结果</span>
+      <span class="btn btn--sig" style="cursor:default">形态演示</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═════════ 首屏：一次真调用长什么样（主角是数据，⛔ 不是口号）═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">规格 · 一次真调用</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      一次提问，拿到三样东西：<b>带原文区间的引用</b>、<b>各阶段的真实耗时</b>、
+      以及<b>这一次花了多少</b>。下面的每一条标注，说的都是<b>那个值意味着什么</b>。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>每一步都能点回原文</span><span class="sep">|</span>
+      <span>耗时来自返回体，不是估算</span><span class="sep">|</span>
+      <span>页面按知识来源分成两条线，各有各的页面</span>
+    </div>
+  </div>
+
+  <!-- ═════════ 返回体（签名组件：左完整返回 ｜ 右逐字段标注）═════════ -->
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="resp rv">
+      <div class="resp-head">
+        <span class="m">POST</span>
+        <span class="p">/api/v1/rag/search</span>
+        <span class="st">200 OK</span>
+        <span class="meta"><span>— ms</span><span>—</span><span>thread —</span></span>
+      </div>
+      <div class="resp-body">
+        <div class="resp-code">
+<code><span class="ln"><span class="p">{</span></span><span class="ln" data-sig>  <span class="k">"query"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span></span><span class="ln" data-sig>  <span class="k">"pipeline"</span><span class="p">:</span> <span class="p">{</span></span><span class="ln">    <span class="k">"original_query"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span></span><span class="ln">    <span class="k">"rewrite_enabled"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"expand_enabled"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span></span><span class="ln">    <span class="k">"bm25_enabled"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"rerank_enabled"</span><span class="p">:</span> <span class="n">—</span></span><span class="ln">  <span class="p">},</span></span><span class="ln" data-sig>  <span class="k">"timing"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"rewrite_ms"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"search_ms"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"rerank_ms"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"total_ms"</span><span class="p">:</span> <span class="n">—</span> <span class="p">},</span></span><span class="ln" data-sig>  <span class="k">"docs"</span><span class="p">:</span> <span class="p">[</span></span><span class="ln">    <span class="p">{</span> <span class="k">"id"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"source"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span> <span class="k">"content"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span> <span class="k">"rrf_score"</span><span class="p">:</span> <span class="n">—</span> <span class="p">}</span></span><span class="ln">  <span class="p">],</span></span><span class="ln" data-sig>  <span class="k">"answer"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span></span><span class="ln" data-sig>  <span class="k">"sources"</span><span class="p">:</span> <span class="p">[</span></span><span class="ln">    <span class="p">{</span> <span class="k">"index"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"id"</span><span class="p">:</span> <span class="n">—</span><span class="p">,</span> <span class="k">"source"</span><span class="p">:</span> <span class="s">"—"</span><span class="p">,</span> <span class="k">"similarity"</span><span class="p">:</span> <span class="s">"—"</span> <span class="p">}</span></span><span class="ln">  <span class="p">],</span></span><span class="ln">  <span class="k">"mode"</span><span class="p">:</span> <span class="s">"accurate_norerank"</span><span class="p">,</span></span><span class="ln">  <span class="k">"requested_by"</span><span class="p">:</span> <span class="s">"—"</span></span><span class="ln"><span class="p">}</span></span></code>
+        </div>
+        <div class="resp-notes">
+          <dl class="resp-note">
+            <dt><b>■</b> query</dt>
+            <dd>你问的那句话，原样回显。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> pipeline</dt>
+            <dd>这一次<b>哪几步真开着</b>（改写 / 扩展 / BM25 / 重排）—— ⛔ 不是"这个模式理论上支持什么"。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> timing</dt>
+            <dd><b>各阶段的真实毫秒</b>：改写 · 检索 · 重排 · 总计。⛔ 不是估算，也不是把总耗时摊出来的。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> docs[]</dt>
+            <dd>召回的候选（融合之后的），带 <code>rrf_score</code>。</dd>
+          </dl>
+          <dl class="resp-note">
+            <dt><b>■</b> answer / sources[]</dt>
+            <dd>答案里<b>每一条引用绑到的原文</b>：<code>id</code> 是哪一段 · <code>content</code> 原文逐字 · <code>similarity</code> 有多像。<br>
+              ⚠️ 融合那条链上 <code>similarity</code> <b>本来就是空的</b>，页面画「—」，⛔ 不为了好看编一个分。</dd>
+          </dl>
+          <dl class="resp-note" data-plain>
+            <dt>mode / requested_by</dt>
+            <dd>端点补的两项：用的哪一档、谁问的。</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="tools" style="margin-top:.75rem">
+      <span>⬜ 形态稿：值位一律留「—」</span><span class="sep">|</span>
+      <span>字段名取自代码（<code>rag_pipeline</code> / <code>answer_with_citations</code>）</span><span class="sep">|</span>
+      <span>跑一次之后由程序填真值 —— ⛔ 不手填、不编</span>
+    </div>
+  </div>
+
+  <!-- ═════════ 往下走：三条链各自的页面 ═════════ -->
+  <div class="wrap" style="margin-top:2rem">
+    <table class="tbl">
+      <caption>往下走 · 三条链各有各的页面（⛔ 不在同一页让你选走哪条）</caption>
+      <thead>
+        <tr><th>页面</th><th>它做什么</th><th class="r">进</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fld">知识入库</td>
+          <td>把一份材料交给它，并<b>当场验一次能不能被召回</b></td>
+          <td class="r"><a href="知识入库.html">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">内部RAG知识库检索及问答</td>
+          <td>只查<b>我们自己的文档库</b>：带引用的答案 + 各阶段真实耗时</td>
+          <td class="r"><a href="内部RAG知识库检索及问答.html">进入 →</a></td>
+        </tr>
+        <tr>
+          <td class="fld">外部检索与工具Agent编排</td>
+          <td>只查<b>库外</b>：模型自主调工具，过程摊成一条明文链；敏感动作停下等人批</td>
+          <td class="r"><a href="外部检索与工具Agent编排.html">进入 →</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═════════ 本页用到的接口 ═════════ -->
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="tools">
+      <span>本页用到的接口</span><span class="sep">|</span>
+      <span>展示的一次调用：<code>POST /api/v1/rag/search</code></span><span class="sep">|</span>
+      <span>其余都在上面那三页里，各自页面会写清自己打哪些接口</span>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>形态稿 · 语言取自定稿模板（`/3`）</span>
+      <span class="st"><span class="dot dot--sig">总览 · 未接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="app-reveal.js"></script>
+</body>
+</html>

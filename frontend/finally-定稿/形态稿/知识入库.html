@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识入库 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第三处 —— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  · 语言全部取自 `/3`（styles.css 同目录，copy 过来的整份）
+  · ⛔ 页内没有一个"编的"数 —— 数值位一律「—」+ 空态说明；真数据归 ⑥
+  · 本页的魂：喂完必须【立刻验一次】能不能召回（不做这步，入库就只是一次上传）
+  ============================================================================
+-->
+<meta name="description" content="把一份材料交给系统：入库 → 拿 id → 立刻验一次能不能被召回。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="总览.html"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="总览.html">总览</a>
+      <a href="知识入库.html" aria-current="page">知识入库</a>
+      <a href="内部RAG知识库检索及问答.html">内部RAG知识库检索及问答</a>
+      <a href="外部检索与工具Agent编排.html">外部检索与工具Agent编排</a>
+      <a href="系统观测.html">系统观测</a>
+      <a href="接入指南.html">接入指南</a>
+      <a href="API参考.html">API 参考</a>
+    </nav>
+    <div class="ha">
+      <span class="btn" style="cursor:default">不演示假结果</span>
+      <span class="btn btn--sig" style="cursor:default">形态演示</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明 ═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">喂料 · 入库即验</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      把一份材料交给系统：<b>入库</b> → 拿回一个 id → 🔴 <b>立刻拿刚喂进去的那段去检索一次</b>，
+      当场看出它<b>到底有没有被召回</b>。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>三种投喂方式：单条 · 批量 · 上传文件</span><span class="sep">|</span>
+      <span>边入库边切块</span><span class="sep">|</span>
+      <span>这一步只写库，不联网</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>为什么入库之后【必须验一次】</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          入库成功 ≠ 以后查得到。中间还隔着<b>切块、向量化、写索引</b>几步 ——
+          任何一步不对，材料就像<b>扔进了黑洞</b>：入库接口照样回"成功"。
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>如果你只做一半</th><th>会发生什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">只入库，不验</td>
+              <td>库里<b>有</b>这条、检索<b>召不回</b> —— 而界面上一切正常，<b>看不出来</b></td>
+            </tr>
+            <tr>
+              <td class="fld">入库 + 当场验一次</td>
+              <td>召不回就<b>当场明说"没召回"</b>，而不是留到下一次问答才露馅</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          🔴 所以本页把<b>「验一次」当作入库的一部分</b>，⛔ 不是可选项。
+          这也是本页和「上传一下就算完」那种做法的<b>唯一区别</b>。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 本页用到的接口 ═════════ -->
+  <div class="wrap" style="margin-top:1.25rem">
+    <div class="tools">
+      <span>本页用到的接口</span><span class="sep">|</span>
+      <span>投喂三种：<code>POST /api/v1/rag/insert</code> · <code>/rag/insert_batch</code> · <code>/rag/upload_document</code></span><span class="sep">|</span>
+      <span>伴随 2 个：验一次用 <code>/rag/search</code> · 后悔药 <code>DELETE /rag/documents/{doc_id}</code></span><span class="sep">|</span>
+      <span>伴随的都收在下面<b>默认收起</b>的块里</span>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左输入 / 右结果 ═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：投喂 ─────────── -->
+    <div class="form">
+      <div class="pane">
+        <div class="pane-h">
+          <span>POST&nbsp;/api/v1/rag/insert</span>
+          <span class="r"><span class="dot dot--sig">就绪</span></span>
+        </div>
+        <div class="pane-b">
+
+          <div class="f">
+            <label>投喂方式（三选一）</label>
+            <div class="chips">
+              <button class="chip" type="button" style="color:var(--sig); border-color:var(--sig-dim)">单条文本</button>
+              <button class="chip" type="button">批量</button>
+              <button class="chip" type="button">上传文件</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              三种走三条不同的端点（对照表在右边「三种投喂方式」里）。
+              本稿只画<b>单条</b>那一种的表单，另两种形状一样。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="body">正文</label>
+            <textarea class="in" id="body" rows="5" spellcheck="false"
+              placeholder="贴一段本厂的制度、规范或说明 —— 例如「在保设备上门，工时费不计；备件按调拨价计」"></textarea>
+            <div class="chips" style="margin-top:.4rem">
+              <button class="chip" type="button">贴一条保修条款</button>
+              <button class="chip" type="button">贴一条调拨流程</button>
+              <button class="chip" type="button">贴一条上门作业规范</button>
+            </div>
+          </div>
+
+          <div class="f">
+            <label>doc_type（决定怎么切块）</label>
+            <div class="chips">
+              <button class="chip" type="button">technical</button>
+              <button class="chip" type="button">legal</button>
+              <button class="chip" type="button">…另外几档</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              ⚠️ 这个字段是<b>跨语言钉住的</b>：前端的档位表与后端切块配置一一对应，
+              ⛔ 页面不许自己编一个档位。真实档位以 <code>GET /api/v1/info</code> 为准。
+            </p>
+          </div>
+
+          <div class="f">
+            <button class="btn btn--sig btn--block" type="button">入库</button>
+            <p class="dim" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center">
+              ⬜ 形态稿：按钮尚未接线 —— 真调用在 ⑥ 实施那一步接上
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：入库结果 + 验一次 ─────────── -->
+    <div>
+
+      <!-- 入库结果 -->
+      <div class="pane rv">
+        <div class="pane-h"><span>入库结果</span><span class="r mono">—</span></div>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">doc_id</span>还没有喂过。喂一次之后，这里把<b>回给你的那个 id</b> 顶到最显眼处 —— 后面验和删都要用它。</div>
+        </div>
+      </div>
+
+      <!-- 验一次（本页的魂） -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span>验一次 · 它到底召不召得回</span>
+          <span class="r"><span class="tag tag--sig">入库的一部分</span></span>
+        </div>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            自动拿<b>刚喂进去那句里的一段话</b>去检索；召不回就<b>明说召不回</b>，⛔ 不静默。
+          </p>
+          <div class="empty" style="margin-top:.5rem">
+            <span class="mono">verify</span>还没有喂过。喂完之后，这里给一个判断：<b>召回 / 没召回</b>，以及命中的那条是哪一段。
+          </div>
+        </div>
+      </div>
+
+      <!-- 嵌套：三种投喂方式 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>三种投喂方式（各走哪条端点）</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <table class="tbl">
+            <thead><tr><th>方式</th><th>端点</th><th class="r">什么时候用它</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">单条文本</td><td><code>POST /rag/insert</code></td><td class="r">手头就一段</td></tr>
+              <tr><td class="fld">批量</td><td><code>POST /rag/insert_batch</code></td><td class="r">一次几十上百段</td></tr>
+              <tr><td class="fld">上传文件</td><td><code>POST /rag/upload_document</code></td><td class="r">有现成的文档文件</td></tr>
+            </tbody>
+          </table>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            ⚠️ 上传那条对文件类型有白名单，⛔ 不支持的格式会明确报错（不会静默吞掉）。
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：后悔药 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>删掉刚喂的这条</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            拿上面那个 id 去删：<code>DELETE /api/v1/rag/documents/{doc_id}</code>。
+            ⚠️ 删不掉要<b>明说原因</b>，⛔ 不装作删掉了。
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：本次花费 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次花费 / 我的额度</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <dl>
+            <div class="metric"><dt>本次 embedding tokens</dt><dd>—</dd></div>
+            <div class="metric"><dt>本次费用</dt><dd>—</dd></div>
+            <div class="metric"><dt>今日剩余额度</dt><dd>—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⚠️ 缺值一律显示「取不到」，⛔ <b>不显示 0</b>。入库<b>只有 embedding</b>，没有 LLM —— 所以这页比问答便宜。
+          </p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>形态稿 · 语言取自定稿模板（`/3`）</span>
+      <span class="st"><span class="dot dot--sig">喂料 · 未接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="app-reveal.js"></script>
+</body>
+</html>

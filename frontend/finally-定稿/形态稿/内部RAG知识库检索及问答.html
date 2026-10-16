@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内部RAG知识库检索及问答 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第一处 —— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  ----------------------------------------------------------------------------
+  · 语言全部取自 `/3`：styles.css 整份（同目录，copy 过来的）+ 它的类
+  · ⛔ 页内没有一个"编的"数 —— 所有数值位一律「—」+ 空态说明（.empty）
+    ⇒ 真数据在 ⑥ 实施那一步接上（硬约束①：每个数都来自那次真调用）
+  · 交互脚本：本稿只保留 /3 的 reveal（滚动揭示，需求方 2026-10-12 裁定照搬）
+    ⛔ 没有 console.js（那是本地四阶段模拟 = 假数据层，移植口径 §二 明令丢掉）
+  ============================================================================
+-->
+<meta name="description" content="内部资料线：只查本厂的文档库，不联网、不调外部工具。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="总览.html"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="总览.html">总览</a>
+      <a href="知识入库.html">知识入库</a>
+      <a href="内部RAG知识库检索及问答.html" aria-current="page">内部RAG知识库检索及问答</a>
+      <a href="外部检索与工具Agent编排.html">外部检索与工具Agent编排</a>
+      <a href="系统观测.html">系统观测</a>
+      <a href="接入指南.html">接入指南</a>
+      <a href="API参考.html">API 参考</a>
+    </nav>
+    <div class="ha">
+      <span class="btn" style="cursor:default">不演示假结果</span>
+      <span class="btn btn--sig" style="cursor:default">形态演示</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明（需求方 2026-10-12 要求「上方把用意和意图写清楚」）═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">内部资料线 · 只查本库</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      一句话进来，走<b>固定管线</b>（改写 → 向量 + BM25 → RRF → 生成），
+      出去的是<b>带引用的答案</b>和<b>各阶段真实耗时</b>。
+      <b>不联网，不调外部工具。</b>
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>知识来源：本厂文档库</span><span class="sep">|</span>
+      <span>注定查内部 —— 没有"要不要查"这个判断</span><span class="sep">|</span>
+      <span>答案可点回原文</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>这一页为什么和「外部检索与工具Agent编排」分成两页</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          本系统的知识来源被<b>有意分成两条独立的线</b>：
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>线</th><th>注定查什么</th><th>编排</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">内部线（本页）</td>
+              <td>我们自己的文档库 —— <b>没有"要不要查"这个判断</b></td>
+              <td>固定管线（改写 → 向量+BM25 → RRF → 生成）</td>
+            </tr>
+            <tr>
+              <td class="fld">外部线</td>
+              <td>模型自身 + 记忆 + 通用工具（含联网）—— <b>不接本库</b></td>
+              <td>模型自主决定调不调工具、调哪个</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          分成两条线的原因：<b>意图分流做不到 100% 准</b>。判错一次，外部场景就会被内部资料污染，
+          而页面上看不出它判错了。与其赌分类，不如让每条线<b>没有判断，也就没有判错</b>。
+          ⇒ 所以本站<b>不在一个页面上让你"选走哪条线"</b>，两条线各有各的页面。
+        </p>
+      </div>
+    </div>
+
+    <div class="pane rv" style="margin-top:1.25rem">
+      <div class="pane-h"><span>本页还空着的位置</span><span class="r"><span class="tag">⬜ 待补</span></span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          「<b>内部检索 + 编排</b>合起来服务于<b>一个固定业务流</b>」的那种形态 ——
+          目前<b>尚未实现</b>（施工单已写、未开工）。这里先占位；
+          那个模块做完之后，会把具体内容回写到本节。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 本页用到的接口（需求方 2026-10-12 要求：这一行要说清「不止一个接口」）═════════ -->
+  <div class="wrap" style="margin-top:1.25rem">
+    <div class="tools">
+      <span>本页用到的接口</span><span class="sep">|</span>
+      <span>主接口 <code>POST /api/v1/rag/search</code>（流式版是 <code>/rag/stream_search</code>）</span><span class="sep">|</span>
+      <span>伴随：端点级 4 条 · 会话历史 1 条 · 花费与额度</span><span class="sep">|</span>
+      <span>伴随的都收在下面<b>默认收起</b>的块里</span>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左输入 / 右结果（结构思路①：输入与结果同屏）═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：请求 ─────────── -->
+    <div class="form">
+      <div class="pane">
+        <div class="pane-h">
+          <span>POST&nbsp;/api/v1/rag/search</span>
+          <span class="r"><span class="dot dot--sig">就绪</span></span>
+        </div>
+        <div class="pane-b">
+
+          <div class="f">
+            <label for="q">question</label>
+            <textarea class="in" id="q" rows="2" spellcheck="false"
+              placeholder="问一件本厂业务上的事 —— 例如某个机型在保内怎么走"></textarea>
+            <div class="chips" style="margin-top:.4rem" id="presets">
+              <button class="chip" type="button">在保内上门收不收工时费</button>
+              <button class="chip" type="button">备件调拨要走哪几级审批</button>
+              <button class="chip" type="button">投诉升级到二级要多久响应</button>
+              <button class="chip" type="button">保修期外换件怎么计价</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              预设问题取自本库的真实主题（售后与保修 / 备件调拨 / 上门作业 / 投诉升级）。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="topk">top_k</label>
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) 52px; gap:.7rem; align-items:center">
+              <input type="range" id="topk" min="4" max="16" step="1" value="8">
+              <output id="topkOut" class="mono" style="font-size:var(--fs-xs); text-align:right">8</output>
+            </div>
+          </div>
+
+          <div class="f">
+            <label>mode（四档 · 选一档）</label>
+            <div class="chips">
+              <button class="chip" type="button">fast</button>
+              <button class="chip" type="button" style="color:var(--sig); border-color:var(--sig-dim)">accurate_norerank</button>
+              <button class="chip" type="button" disabled style="opacity:.4; cursor:not-allowed" title="需要重排模型，本环境没有">accurate</button>
+              <button class="chip" type="button" disabled style="opacity:.4; cursor:not-allowed" title="需要重排模型，本环境没有">full</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              默认 <code>accurate_norerank</code>（改写 + 向量 + BM25 + RRF，<b>不含重排</b>）。
+              <b><code>accurate</code> 与 <code>full</code> 需要重排模型，本环境没有</b> ⇒ 这里不给入口。
+            </p>
+          </div>
+
+          <div class="f">
+            <label>开关</label>
+            <label class="sw"><input type="checkbox" checked><span>citations <small>不打开就<span style="color:var(--fg-3)">没有引用</span> —— 本接口默认 <code>false</code></small></span></label>
+            <label class="sw"><input type="checkbox"><span>strict_mode <small>绑不到原文的句子丢弃</small></span></label>
+            <label class="sw"><input type="checkbox"><span>generate_answer <small>要不要让模型成文（不要则只回检索结果）</small></span></label>
+          </div>
+
+          <div class="f">
+            <button class="btn btn--sig btn--block" type="button">提问</button>
+            <p class="dim" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center">
+              ⬜ 形态稿：按钮尚未接线 —— 真调用在 ⑥ 实施那一步接上
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：结果 ─────────── -->
+    <div>
+
+      <!-- 阶段轨（结构思路②：阶段轨，且标出有副作用的那一步） -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span>阶段</span>
+          <span class="r"><span class="mono">accurate_norerank</span></span>
+        </div>
+        <div class="pane-b" style="padding:.55rem .5rem">
+          <div class="rail"><span class="ri">1</span><span class="rn">查询改写</span><span class="rt">—</span></div>
+          <div class="rail"><span class="ri">2</span><span class="rn">召回 · 向量 + BM25</span><span class="rt">—</span></div>
+          <div class="rail"><span class="ri">3</span><span class="rn">融合 · RRF</span><span class="rt">—</span></div>
+          <div class="rail"><span class="ri">4</span><span class="rn">生成答案</span><span class="rt">—</span></div>
+          <p class="dim" style="margin:.6rem .35rem 0; font-size:var(--fs-2xs); line-height:1.8">
+            每一段的耗时取自接口返回的 <code>timing</code>（真实毫秒，⛔ 不是估算）。
+            本页<b>只读</b>，不改动任何数据。
+          </p>
+        </div>
+      </div>
+
+      <!-- 答案 -->
+      <div class="pane rv">
+        <div class="pane-h"><span>answer</span><span class="r mono">—</span></div>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">answer</span>还没有跑过。提问之后，这里出现带 <b>[来源 n]</b> 标记的答案。</div>
+        </div>
+      </div>
+
+      <!-- 引用（带序号导航） -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span>引用</span>
+          <span class="r"><span class="mono">—</span></span>
+        </div>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">citations[]</span>跑一次之后，这里逐条列出每条结论绑到的原文区间 ——
+            带<b>序号导航（‹ 1 / N ›）</b>，切换即高亮并滚到那一条。</div>
+        </div>
+      </div>
+
+      <!-- ───── 嵌套层（默认收起 · 编排 §〇.五） ───── -->
+
+      <details class="pane rv" style="margin-top:1.25rem">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>端点级（这一步打的是哪条接口）</span><span class="r dim">5 条 · 默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <table class="tbl">
+            <thead><tr><th>端点</th><th>它做什么</th><th class="r">本环境</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">POST /rag/pg_search</td><td>只走向量检索</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/hybrid_search</td><td>向量 + BM25 + RRF</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/rewrite_search</td><td>先让模型改写问题再检索</td><td class="r re">可用</td></tr>
+              <tr><td class="fld">POST /rag/rerank_search</td><td>交叉编码器重排</td><td class="r" style="color:var(--bad)">缺重排模型</td></tr>
+              <tr><td class="fld">POST /rag/search</td><td>本页用的那条（按 mode 组装）</td><td class="r re">可用</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>两组参数并排对比</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="cmp">
+            <div class="cmp-col is-empty">
+              <h3>配置 <b>A</b> · accurate_norerank</h3>
+              <dl>
+                <div class="metric"><dt>命中条数</dt><dd>—</dd></div>
+                <div class="metric"><dt>引用 / 结论</dt><dd>—</dd></div>
+                <div class="metric"><dt>端到端</dt><dd>—</dd></div>
+                <div class="metric"><dt>本次费用</dt><dd>—</dd></div>
+              </dl>
+            </div>
+            <div class="cmp-col is-empty">
+              <h3>配置 <b>B</b> · fast</h3>
+              <dl>
+                <div class="metric"><dt>命中条数</dt><dd>—</dd></div>
+                <div class="metric"><dt>引用 / 结论</dt><dd>—</dd></div>
+                <div class="metric"><dt>端到端</dt><dd>—</dd></div>
+                <div class="metric"><dt>本次费用</dt><dd>—</dd></div>
+              </dl>
+            </div>
+          </div>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            ⚠️ 默认这一对必须<b>真的能跑出差异</b>（少了改写 ⇒ 命中与耗时都会变）；
+            ⛔ 若两边一样，这个对比就是摆设。
+          </p>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次花费 / 我的额度</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <dl>
+            <div class="metric"><dt>本次 LLM tokens</dt><dd>—</dd></div>
+            <div class="metric"><dt>本次 embedding tokens</dt><dd>—</dd></div>
+            <div class="metric"><dt>本次费用</dt><dd>—</dd></div>
+            <div class="metric"><dt>今日剩余额度</dt><dd>—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⚠️ 缺值一律显示「取不到」，⛔ <b>不显示 0</b>（0 会被读成"没花钱"）。
+          </p>
+        </div>
+      </details>
+
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>检索历史（本会话）</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">chat_history</span>本会话问过的会在离开页面后仍然取回 —— 这里逐条列出。</div>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>形态稿 · 语言取自定稿模板（`/3`）</span>
+      <span class="st"><span class="dot dot--sig">内部资料线 · 未接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="app-reveal.js"></script>
+</body>
+</html>

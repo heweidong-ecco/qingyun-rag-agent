@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>外部检索与工具Agent编排 · 青云精工</title>
+<meta name="description" content="外部知识线：只查库外（模型自身 + 记忆 + 通用工具），不接本库；敏感动作会停下来等人批。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css?v=5f025348ec">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="/"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="/">总览</a>
+      <a href="/kb">知识入库</a>
+      <a href="/rag">内部RAG知识库检索及问答</a>
+      <a href="/agent" aria-current="page">外部检索与工具Agent编排</a>
+      <a href="/ops">系统观测</a>
+      <a href="/guide">接入指南</a>
+      <a href="/reference">API 参考</a>
+    </nav>
+    <div class="ha">
+      <a class="btn" href="/stream">流式问答</a>
+      <a class="btn btn--sig btn--lg" id="auth-btn" href="/login">登录</a>
+    </div>
+  </div>
+</header>
+
+<!-- 登录之后那一行（额度 + 退出）——
+     🔴 **它【不在】`<header>` 里**：是页头**下面**独立的一块（需求方 2026-10-15 定：
+        「单独一行…不要和页头放在一个块里」）⇒ 它**跟着页面滚，⛔ 不吸顶**。
+     ⛔ 「已登录」三个字**不在这里** —— 它在页头那颗按钮上（`#auth-btn` 换字）。
+     ⛔ 没登录 ⇒ 整块 `hidden`；切它的只有 `authbar.js` 的 `applyMode()`。 -->
+<div class="auth-bar" id="auth-strip" hidden>
+  <div class="wrap auth-strip">
+    <span class="mono" id="auth-quota"></span>
+    <button class="btn" id="auth-logout" type="button">退出</button>
+  </div>
+</div>
+
+
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明 ═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">外部知识线 · 只查库外</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">给一句话，或者<b>给一个任务</b>—— 模型<b>自主决定调不调工具、调哪个</b>， 过程会摊成<b>一条明文可见的执行链</b>（每一步打了谁 · 花了多久 · 回了什么）。<b>要对外发数据的那一步会停下来等人批。</b>
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>知识来源：模型本身 · 历史记忆 · 通用工具（含联网）</span><span class="sep">|</span>
+      <span>只查库外 —— 本页不接内部资料库</span><span class="sep">|</span>
+      <span>敏感动作走人工接管</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>这一页为什么和「内部RAG知识库检索及问答」分成两页</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          本系统的知识来源被<b>有意分成两条独立的线</b>：
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>线</th><th>注定查什么</th><th>编排</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">内部线</td>
+              <td>我们自己的文档库 —— <b>没有"要不要查"这个判断</b></td>
+              <td>固定管线（改写 → 向量+BM25 → RRF → 生成），在<b>另一个页面</b></td>
+            </tr>
+            <tr>
+              <td class="fld">外部线（本页）</td>
+              <td>模型自身 + 记忆 + 通用工具（含联网）—— <b>不接本库</b></td>
+              <td>模型自主决定调不调工具、调哪个</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          分成两条线的原因：<b>意图分流做不到 100% 准</b>。判错一次，外部场景就会被内部资料污染，
+          而页面上看不出它判错了。与其赌分类，不如让每条线<b>没有判断，也就没有判错</b>。
+          ⇒ 所以本站<b>不在一个页面上让你"选走哪条线"</b>，两条线各有各的页面。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 链列表（需求方 2026-10-13 定）═════════
+       🔴 **一行 = 一条链**，行首一个可点的键；点它 ⇒ **下面左右两块同时换**。
+       🔴 **结构和措辞【照内部RAG 页那一块】**（`app/static/web/rag.html` 的 `#eps`，同一句标题）——
+          需求方 2026-10-13 指出这一块**原来做错了**：⛔ 不许把它写成页首那一行 `.tools`
+          （那一行的头一句是「本页用到的…」—— ⚠️ **本文件里⛔ 一个字都不留它**，
+           理由见仓根 `CLAUDE.md` 的判据表：「**要提那串，就拆开写或只描述它**」——
+           那条纪律就是为了让"断言它不在"的门**能真的成立**），也⛔ 不许用一排 chips。
+          **整行是按钮**（`button.rail` = `ri` 序号 + `rn` 一句 `POST <路径>：<说明>`）。
+  ═════════ -->
+  <div class="wrap" style="margin-top:1.25rem">
+    <div class="pane">
+      <div class="pane-h"><span>「链」展示列表：点击行首的切换按钮，下方左右两个面板将同步更新。</span></div>
+      <div class="pane-b" style="padding:.4rem .5rem" id="chains"></div>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左输入 / 右结果 ═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：请求 ─────────── -->
+    <div class="form">
+
+      <div class="pane">
+        <div class="pane-h">
+          <span id="ep-title">—</span>
+          <span class="r"><span class="dot dot--sig">就绪</span></span>
+        </div>
+        <div class="pane-b">
+
+          <div class="f">
+            <label for="q" id="q-label">question</label>
+            <textarea class="in" id="q" rows="2" spellcheck="false"
+              placeholder="一句话，或者一个任务"></textarea>
+            <div class="chips" style="margin-top:.4rem" id="presets">
+              <button class="chip" type="button">今天几号，30 天后呢</button>
+              <button class="chip" type="button">算一下 12*6 与 3 的幂</button>
+              <button class="chip" type="button">从这段 JSON 里取值</button>
+              <button class="chip" type="button">查一下青云精工的公开资料</button>
+            </div>
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              前三条只用<b>本机工具</b>（日期 / 计算 / 取值）；第四条会<b>联网</b> ——
+              它正好用来看<b>哪条链会停下来等人批</b>、哪条不会。
+            </p>
+          </div>
+
+          <div class="f">
+            <label for="tid">thread_id</label>
+            <input class="in" id="tid" type="text" placeholder="留空 = 新会话" autocomplete="off">
+            <p class="dim" style="margin-top:.4rem; font-size:var(--fs-2xs)">
+              留空就开一个新会话；填上旧的，就会<b>接着那次的上下文</b>继续。
+              执行明细与花费都按它归集。
+            </p>
+          </div>
+
+          <div class="f">
+            <label class="sw"><input type="checkbox" id="sw-stream"><span>用流式 <small>走这条链的流式端点，逐字回来；⚠️ 逐字只有正文，分段耗时仍取自轨迹</small></span></label>
+          </div>
+
+          <div class="f">
+            <button class="btn btn--sig btn--block" id="ask" type="button">开始</button>
+            <p class="dim" id="ask-status" style="margin-top:.45rem; font-size:var(--fs-2xs); text-align:center">
+              真调后端 —— 结果、耗时、花费都来自这一次返回。
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 记忆：读 + 一个**显式**写入键（需求方 2026-10-13 选「丙」）-->
+      <details class="pane" style="margin-top:1rem" id="memory-pane" open>
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>记忆</span><span class="r dim">点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            这条链在<b>动手之前</b>会先去记忆里找一次（自动的，没有开关）——
+            检索到就把它拼在这句话前面。找不到就跳过，不影响回答。
+          </p>
+          <div class="f" style="margin-top:.6rem">
+            <button class="btn btn--block" id="mem-search" type="button">拿上面那句话去记忆里找一次</button>
+          </div>
+          <div class="empty" id="mem-body" style="margin-top:.5rem">
+            <span class="mono">memories[]</span>还没有查过 —— 点上面那颗按钮，看它现在记得什么</div>
+          <div class="f" style="margin-top:.75rem">
+            <label for="mem-text">让它记住一句</label>
+            <input class="in" id="mem-text" type="text" placeholder="例如：我叫张三，只看 A 类报告" autocomplete="off">
+            <button class="btn btn--block" id="mem-add" type="button" style="margin-top:.45rem">记住这句</button>
+            <p class="dim" style="margin-top:.45rem; font-size:var(--fs-2xs); line-height:1.8">
+              ⚠️ <b>这一下会花钱，而且不便宜</b>：它不是把这句话原样存下来，而是叫模型把它
+              <b>抽成事实</b>再入库 —— 实测一次约 <b>8 千个 token</b>。
+              所以这里<b>不做成自动的</b>：什么时候记、记哪一句，由你按。
+            </p>
+          </div>
+          <p class="dim" id="mem-status" style="margin-top:.5rem; font-size:var(--fs-2xs)"></p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ─────────── 右：结果 ─────────── -->
+    <div>
+
+      <!-- 阶段轨 -->
+      <div class="pane rv">
+        <div class="pane-h">
+          <span>阶段</span>
+          <span class="r"><span class="mono" id="rail-mode">—</span></span>
+        </div>
+        <div class="pane-b" style="padding:.55rem .5rem">
+          <div id="rail"></div>
+          <p class="dim" id="rail-note" style="margin:.6rem .35rem 0; font-size:var(--fs-2xs); line-height:1.8">
+            每一格都来自这次真返回：模型决策看决策条数，调用工具看轨迹里每一步的耗时，
+            汇总生成看账本里那一笔的 token 与费用。
+          </p>
+        </div>
+      </div>
+
+      <!-- 答案（非"计划表"的那两条链） -->
+      <div class="pane rv" id="answer-pane">
+        <div class="pane-h"><span>answer</span><span class="r mono" id="answer-meta">—</span></div>
+        <div class="pane-b">
+          <div class="empty" id="answer-body">
+            <span class="mono">answer</span>还没有跑过。跑一次之后，这里出现模型最后的回答</div>
+        </div>
+      </div>
+
+      <!-- 计划表（「先规划、再执行」那条链特有） -->
+      <div class="pane rv" id="plan-pane" hidden>
+        <div class="pane-h"><span>计划表</span><span class="r dim">这条链的话是这么拆的</span></div>
+        <div class="pane-b">
+          <div id="plan-body">
+            <div class="empty"><span class="mono">plan[]</span>还没有跑过。跑一次之后，这里逐步列出它的计划与执行结果。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 人工接管（只有会停的那条链有） -->
+      <details class="pane rv" id="approval-pane">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>人工接管 <span class="tag tag--bad">该停的时候停</span></span>
+          <span class="r dim">点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            命中<b>敏感工具名单</b>时，链会停在这里：「要把这段数据发到本机之外」的动作，
+            <b>得有人点头才走</b>。本地工具（算数 / 日期 / 取值）不在此列 —— 它们直接执行。
+          </p>
+          <div class="f" style="margin-top:.7rem">
+            <button class="btn btn--block" id="pending-refresh" type="button">看现在有哪几条在等人批</button>
+          </div>
+          <div class="empty" id="pending-body" style="margin-top:.5rem">
+            <span class="mono">pending[]</span>还没有查过</div>
+          <p class="dim" style="margin-top:.5rem; font-size:var(--fs-2xs); line-height:1.8">
+            🔴 <b>如实说明</b>：这张表是<b>进程内存</b> —— <b>服务重启就空了</b>。
+            ⛔ 不是持久队列。
+          </p>
+
+          <div class="f" style="margin-top:.9rem">
+            <label for="appr-tid">要处理哪一条（上面那行里它的 thread_id）</label>
+            <input class="in" id="appr-tid" type="text" placeholder="点上面一条，或自己填" autocomplete="off">
+            <button class="btn btn--block" id="ctx-load" type="button" style="margin-top:.45rem">看它的完整上下文</button>
+          </div>
+          <div class="empty" id="ctx-body" style="margin-top:.5rem">
+            <span class="mono">messages[]</span>还没有取过。取一次之后，这里按时间顺序列出那几轮消息</div>
+
+          <div class="f" style="margin-top:.9rem">
+            <label for="appr-text">代它填一个结论（可选）</label>
+            <input class="in" id="appr-text" type="text" placeholder="留空 = 按它原来的打算走" autocomplete="off">
+          </div>
+          <div class="f" style="margin-top:.5rem">
+            <button class="btn btn--sig" id="btn-approve" type="button">批准</button>
+            <button class="btn" id="btn-reject" type="button" style="margin-left:.4rem">拒绝</button>
+          </div>
+          <p class="dim" id="appr-status" style="margin-top:.5rem; font-size:var(--fs-2xs); line-height:1.8">
+            批准 / 拒绝 / 代填 —— 三种都会让链<b>从停的地方接着往下跑</b>，返回的是续跑之后的结果。
+          </p>
+
+          <div class="f" style="margin-top:.9rem">
+            <button class="btn btn--block" id="history-load" type="button">翻裁决历史</button>
+          </div>
+          <div class="empty" id="history-body" style="margin-top:.5rem">
+            <span class="mono">events[]</span>还没有查过。查一次之后，这里一行一次真裁决</div>
+        </div>
+      </details>
+
+      <!-- 工具清单（从接口取，⛔ 不写死） -->
+      <details class="pane rv" id="tools-pane">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>它能用哪些工具</span><span class="r dim" id="tools-count">点开取一次 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div id="tools-body">
+            <div class="empty"><span class="mono">healthy_tools[]</span>点开这块会去取一次真实的工具名单</div>
+          </div>
+          <p class="dim" id="tools-note" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            名单来自服务端，本页不写死行数。其中<b>联网检索</b>是唯一会离开本机的一步；
+            <b>沙箱里跑代码</b>是在本机容器内跑，不对外发数据。
+          </p>
+        </div>
+      </details>
+
+      <!-- 本次执行明细（只有写轨迹的链有） -->
+      <details class="pane rv" id="detail-pane">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次执行明细（每一步打了谁）</span><span class="r dim">点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty" id="detail-body">
+            <span class="mono">tool_calls[]</span>跑一次之后，这里逐步列出：第几步 · 打了哪个工具 · 参数 · 结果 · 耗时</div>
+        </div>
+      </details>
+
+      <!-- 本次花费 / 我的额度 -->
+      <details class="pane rv" id="cost-pane">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>本次花费 / 我的额度</span><span class="r dim">点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <dl>
+            <div class="metric"><dt>这条链上的调用笔数</dt><dd id="cost-calls">—</dd></div>
+            <div class="metric"><dt>其中 LLM tokens</dt><dd id="cost-llm">—</dd></div>
+            <div class="metric"><dt>其中 embedding tokens</dt><dd id="cost-emb">—</dd></div>
+            <div class="metric"><dt>本次费用</dt><dd id="cost-money">—</dd></div>
+            <div class="metric"><dt>今日剩余额度</dt><dd id="cost-quota">—</dd></div>
+            <div class="metric"><dt>被挡过几次</dt><dd id="cost-intercepts">—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs); line-height:1.8">
+            ⚠️ 缺值一律显示「—」，⛔ 不显示 0（0 会被读成"没花钱"）。
+            前四格按<b>这个 thread</b> 归集；额度与「被挡」是本用户口径，
+            ⚠️ 其中「被挡过几次」是<b>进程内的计数</b> —— <b>服务重启就归零</b>。
+          </p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>服务边界（登录与有效期 · 额度 · 限流 · 真调用）⇒ <a href="/">见首页「这套服务的边界」</a></span>
+      <span class="st"><span class="dot dot--sig" id="page-status">外部知识线 · 已接线</span></span>
+    </div>
+  </div>
+</footer>
+
+  <script src="/static/js/auth.js?v=3fd7888618"></script>
+  <script src="/static/js/login.js?v=54a9f7c792"></script>
+  <script src="/static/js/authbar.js?v=d9ff3f68ca"></script>
+  <script src="/static/js/app-reveal.js?v=b3b21989b2"></script>
+  <script src="/static/js/agent.js?v=40fb1ff427"></script>
+  <script>
+  /* 本页的**装配层**（DOM / fetch / 渲染）—— 纯逻辑全在 /static/js/agent.js（那边有 node 用例）。
+     🔴 整段包在 IIFE 里：⛔ 别在顶层写 `const key` / `function el` ——
+        那会与 session.js / cred.js 或页面自己的绑定撞车，而**语法错会让整段一行都不跑**。 */
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var A = window.RagAgent;
+
+    /* 🔴 `thread_id` 按【本页会话】固定 —— 不是每次提问换一个新的：后端那条会话预算闸按它算。
+       ⇒ 代价：「本次花费」是**这个 thread 上的累计**（标签已如实写）。 */
+    var threadId = A.newThreadId();
+    $('tid').value = threadId;
+
+    var chain = A.CHAINS[0];
+    var lastTrace = null, lastCost = null, lastResp = null;
+
+    // 🔴 登录态与认证头由 `auth.js` 统一管（§七·1）—— 取数一律走 `RagAuth.apiFetch`。
+    function key() { return window.RagAuth.token(); }
+    function auth() { return window.RagAuth.authHeader(); }
+    function show(el, text) { el.textContent = text; }
+    function empty(el, mono, text) {
+      el.className = 'empty';
+      el.textContent = '';
+      var m = document.createElement('span'); m.className = 'mono'; m.textContent = mono;
+      el.appendChild(m); el.appendChild(document.createTextNode(text));
+    }
+    function row2(head, body, dim) {
+      var d = document.createElement('div');
+      d.style.cssText = 'border-top:1px solid var(--rule); padding:.5rem 0';
+      var h = document.createElement('div');
+      h.className = dim ? 'dim' : '';
+      h.style.cssText = 'font-family:var(--mono); font-size:var(--fs-2xs)';
+      h.textContent = head;
+      var b = document.createElement('div');
+      b.style.cssText = 'margin-top:.25rem; line-height:1.75; white-space:pre-wrap';
+      b.textContent = body;
+      d.appendChild(h); d.appendChild(b);
+      return d;
+    }
+    function getJSON(u) {
+      return RagAuth.apiFetch(u, { headers: auth() }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.json();
+      });
+    }
+
+    /* ---------- 链列表（🔴 整行是按钮 —— 结构照内部RAG 页那一块）---------- */
+    var box = $('chains');
+    A.CHAINS.forEach(function (c, n) {
+      var b = document.createElement('button');
+      b.className = 'rail';
+      b.type = 'button';
+      b.setAttribute('data-chain', c.id);
+      b.setAttribute('aria-pressed', n === 0 ? 'true' : 'false');
+      b.style.cssText = 'border:0;background:transparent;width:100%;text-align:left;'
+                      + 'cursor:pointer;font:inherit;color:inherit;padding:.35rem .3rem';
+      var i = document.createElement('span'); i.className = 'ri'; i.textContent = String(n + 1);
+      var m = document.createElement('span'); m.className = 'rn'; m.textContent = A.rowTextOf(c);
+      b.appendChild(i); b.appendChild(m);
+      b.addEventListener('click', function () { pick(c.id); });
+      box.appendChild(b);
+    });
+
+    function paintChains() {
+      var bs = box.querySelectorAll('button[data-chain]');
+      for (var i = 0; i < bs.length; i++) {
+        var on = bs[i].getAttribute('data-chain') === chain.id;
+        bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        bs[i].style.background = on ? 'var(--ink-200)' : 'transparent';
+      }
+    }
+
+    function pick(id) {
+      chain = A.chainOf(id);
+      paintChains();
+      $('ep-title').textContent = 'POST ' + chain.path;
+      $('q-label').textContent = chain.paramLabel;
+      $('q').setAttribute('placeholder', chain.placeholder);
+      $('rail-mode').textContent = chain.id;
+      /* 🔴 这条链**不产出**的块**整块去掉**（⛔ 不留一个空壳写着"这条链不产出…"）。 */
+      $('answer-pane').hidden = chain.has.plan;
+      $('plan-pane').hidden = !chain.has.plan;
+      $('approval-pane').hidden = !chain.has.approval;
+      $('detail-pane').hidden = !chain.has.trace;
+      $('memory-pane').hidden = !chain.has.memory;
+      lastTrace = null; lastCost = null; lastResp = null;
+      renderRail(); renderAnswer(); renderDetail(); renderPlan();
+    }
+
+    /* ---------- 渲染 ---------- */
+    function renderRail() {
+      var r = $('rail');
+      r.textContent = '';
+      A.railRows(chain, lastTrace, lastCost && lastCost.items).forEach(function (s, i) {
+        var d = document.createElement('div');
+        d.className = 'rail';
+        var a = document.createElement('span'); a.className = 'ri'; a.textContent = String(i + 1);
+        var b = document.createElement('span'); b.className = 'rn'; b.textContent = s.name;
+        var c = document.createElement('span'); c.className = 'rt'; c.textContent = s.value;
+        d.appendChild(a); d.appendChild(b); d.appendChild(c);
+        r.appendChild(d);
+      });
+      $('rail-note').textContent = chain.has.trace
+        ? '每一格都来自这次真返回。⚠️ 整条链那一格：停在审批点的那条还没有收表 —— 它算的是"从发起那次到现在"，批准后重取会更大。'
+        : '⚠️ 这条链不写执行轨迹（它这条端点上没有起轨迹）⇒ 除了模型决策与汇总生成能看账本，其余几格是「—」。';
+    }
+
+    function renderAnswer() {
+      var box2 = $('answer-body');
+      var resp = lastResp || {};
+      var text = A.stripMd(resp.answer == null ? '' : String(resp.answer)).trim();
+      $('answer-meta').textContent = resp.status || '—';
+      if (!text) {
+        empty(box2, 'answer',
+              resp.status === 'pending_approval'
+                ? '这次停在审批点 —— 工具还没执行，所以还没有最终答案（上面那是模型已经写出的半句）。'
+                : '还没有跑过。跑一次之后，这里出现模型最后的回答。');
+        return;
+      }
+      box2.className = '';
+      box2.textContent = text;
+    }
+
+    function renderPlan() {
+      var box2 = $('plan-body');
+      var rows = A.planRows(lastResp || {});
+      box2.textContent = '';
+      box2.className = '';
+      if (!rows.length) {
+        empty(box2, 'plan[]', '还没有跑过。跑一次之后，这里逐步列出它的计划与执行结果。');
+        return;
+      }
+      var t = document.createElement('table');
+      t.className = 'tbl';
+      t.innerHTML = '<thead><tr><th>步</th><th>它打算干什么</th><th>用哪个工具</th><th>输入</th></tr></thead>';
+      var tb = document.createElement('tbody');
+      rows.forEach(function (p) {
+        var tr = document.createElement('tr');
+        [p.n, p.action, p.tool, p.input].forEach(function (v, i) {
+          var td = document.createElement('td');
+          if (i === 0) { td.className = 'fld'; }
+          td.textContent = v;
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      box2.appendChild(t);
+      var res = document.createElement('p');
+      res.style.cssText = 'margin-top:.7rem; line-height:1.75';
+      res.textContent = A.stripMd((lastResp || {}).execution_result || '');
+      box2.appendChild(res);
+    }
+
+    function renderDetail() {
+      var box2 = $('detail-body');
+      var rows = A.toolRows(lastTrace || {});
+      if (!rows.length) {
+        empty(box2, 'tool_calls[]',
+              chain.has.trace
+                ? '这一步还没有记录 —— 跑一次之后，这里逐步列出每一步打了谁。'
+                : '这条链不写执行轨迹 ⇒ 这里没有东西可列。');
+        return;
+      }
+      box2.className = '';
+      box2.textContent = '';
+      rows.forEach(function (c) {
+        box2.appendChild(row2(
+          c.n + ' · ' + c.name + ' · ' + c.status + ' · ' + c.ms,
+          '参数 ' + c.args + '\n结果 ' + c.result, false));
+      });
+    }
+
+    function renderCost(detail, budget, intercepts) {
+      var c = A.costOf(detail || {});
+      $('cost-calls').textContent = c.calls;
+      $('cost-llm').textContent = c.llm;
+      $('cost-emb').textContent = c.embedding;
+      $('cost-money').textContent = c.cost;
+      var rem = budget && budget.llm_remaining_today;
+      $('cost-quota').textContent = (typeof rem === 'number' && isFinite(rem))
+        ? 'LLM 今日还剩 ' + rem + ' tokens' : '—';
+      var n = intercepts && intercepts.total_intercepts;
+      $('cost-intercepts').textContent = (typeof n === 'number' && isFinite(n)) ? String(n) : '—';
+    }
+
+    /* ---------- 跑一次 ---------- */
+    function refreshTraceAndCost() {
+      var p = [];
+      p.push(getJSON(A.buildTraceAxisPath(threadId)).then(function (d) {
+        lastTrace = (d && d.trace) || null; renderRail(); renderDetail();
+      }).catch(function () { lastTrace = null; renderRail(); renderDetail(); }));
+      p.push(getJSON(A.buildTracePath(threadId)).then(function (d) {
+        lastCost = d; renderCost(d);
+      }).catch(function () { lastCost = null; renderCost(null); }));
+      p.push(getJSON(A.BUDGET_PATH).then(function (b) { return getJSON(A.INTERCEPTS_PATH)
+        .then(function (x) { renderCost(lastCost, b, x); }); }).catch(function () {}));
+      return Promise.all(p);
+    }
+
+    function finish(resp, streamed) {
+      lastResp = resp || {};
+      if (!chain.has.plan) { renderAnswer(); } else { renderPlan(); }
+      return refreshTraceAndCost().then(function () {
+        show($('ask-status'), '✅ 这是真返回（' + new Date().toLocaleTimeString() + '）'
+             + (streamed ? ' · 流式' : ''));
+      });
+    }
+
+    /* 非流式：一次 POST，等整段回来 */
+    function runOnce(text) {
+      return RagAuth.apiFetch(A.buildPath(chain, text, threadId, false), {
+        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth()),
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.json();
+      });
+    }
+
+    /* 🔴 流式：逐帧读，正文一边到一边贴（分帧那条纯逻辑在 agent.js 里，有 node 用例） */
+    function runStream(text) {
+      return RagAuth.apiFetch(A.buildPath(chain, text, threadId, true), {
+        method: 'POST', headers: auth(),
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        if (!r.body) { return runOnce(text); }          // 老浏览器兜底：退回非流式
+        var reader = r.body.getReader();
+        var dec = new TextDecoder();
+        var buf = '';
+        var acc = '';
+        var summary = null;
+        function pump() {
+          return reader.read().then(function (res) {
+            if (res.done) { return; }
+            buf += dec.decode(res.value, { stream: true });
+            var out = A.parseFrames(buf);
+            buf = out.rest;
+            out.events.forEach(function (ev) {
+              if (ev.done) { return; }
+              var j = ev.json || {};
+              if (j.content) {
+                acc += j.content;
+                var box2 = $('answer-body');
+                box2.className = '';
+                box2.textContent = A.stripMd(acc);
+              }
+              if (j.status || j.thread_id) { summary = j; }
+              if (j.error) { show($('ask-status'), '🔴 服务端说：' + j.error); }
+            });
+            return pump();
+          });
+        }
+        return pump().then(function () { return summary || { answer: acc }; });
+      });
+    }
+
+    var busy = false;
+    $('ask').addEventListener('click', function () {
+      if (busy) { return; }
+      var text = $('q').value.trim();
+      if (!text) { show($('ask-status'), '⚠️ 先写一句话，或者一个任务。'); return; }
+      if (!key()) {
+        show($('ask-status'), '⚠️ 还没有登录 —— 先在页头那块点「去登录」。');
+        return;
+      }
+      busy = true;
+      var useStream = $('sw-stream').checked;
+      show($('ask-status'), '正在跑 ' + chain.id + (useStream ? '（流式）' : '') + ' …');
+      var p;
+      try { p = useStream ? runStream(text) : runOnce(text); }
+      catch (e) { show($('ask-status'), '🔴 调用失败：' + e.message); busy = false; return; }
+      p.then(function (resp) { return finish(resp, useStream); })
+       .catch(function (e) { show($('ask-status'), '🔴 调用失败：' + e.message); })
+       .then(function () { busy = false; });
+    });
+
+    /* ---------- 预设 ---------- */
+    var ps = document.querySelectorAll('#presets button');
+    for (var i = 0; i < ps.length; i++) {
+      (function (b) {
+        b.addEventListener('click', function () { $('q').value = b.textContent.trim(); });
+      })(ps[i]);
+    }
+
+    /* ---------- 人工接管：批 / 拒 / 代填 ---------- */
+    $('pending-refresh').addEventListener('click', function () {
+      if (!key()) { show($('pending-body'), '⚠️ 先登录。'); return; }
+      getJSON(A.buildPendingPath()).then(function (d) {
+        var rows = A.pendingRows(d);
+        var box3 = $('pending-body');
+        if (!rows.length) {
+          empty(box3, 'pending[]', '现在没有人在等 —— 要么还没跑过会停下来等人批的那条链，要么已经处理完了。');
+          return;
+        }
+        box3.className = '';
+        box3.textContent = '';
+        rows.forEach(function (r) {
+          box3.appendChild(row2(
+            r.raw + ' · ' + r.owner + ' · 第 ' + r.rounds + ' 轮 · ' + r.graph,
+            '它想调：' + (r.tools || '—'), true));
+        });
+      }).catch(function (e) { show($('pending-body'), '🔴 取不到：' + e.message); });
+    });
+
+    $('ctx-load').addEventListener('click', function () {
+      var tid = $('appr-tid').value.trim() || threadId;
+      getJSON(A.buildContextPath(tid)).then(function (d) {
+        var box3 = $('ctx-body');
+        if (d.status !== 'ok') { empty(box3, 'message', '服务端说：' + (d.message || '—')); return; }
+        box3.className = '';
+        box3.textContent = '';
+        var head = document.createElement('p');
+        head.className = 'dim';
+        head.style.fontSize = 'var(--fs-2xs)';
+        head.textContent = '停在 ' + (d.graph || '—') + ' · 第 ' + d.rounds + ' 轮 · 下一步去 '
+                         + JSON.stringify(d.next) + ' · 共 ' + (d.messages || []).length + ' 条消息';
+        box3.appendChild(head);
+        (d.messages || []).forEach(function (m) {
+          var c = m.content;
+          if (Object.prototype.toString.call(c) !== '[object String]') { c = JSON.stringify(c); }
+          box3.appendChild(row2('[' + (m.type || '?') + ']', A.stripMd(c), true));
+        });
+      }).catch(function (e) { show($('ctx-body'), '🔴 取不到：' + e.message); });
+    });
+
+    function doApprove(approved) {
+      var tid = $('appr-tid').value.trim();
+      if (!tid) { show($('appr-status'), '⚠️ 先写上是哪一条（上面那行里的 thread_id）。'); return; }
+      show($('appr-status'), approved ? '正在批准…' : '正在拒绝…');
+      RagAuth.apiFetch(A.buildApprovePath(tid, approved, $('appr-text').value.trim()), { method: 'POST', headers: auth() })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var msg = '结果：' + (d.status || '—');
+          if (d.message) { msg += ' · ' + d.message; }
+          if (d.forced_finish) { msg += ' · （被强制收口：轮次到顶了）'; }
+          if (d.rounds != null) { msg += ' · 第 ' + d.rounds + ' 轮'; }
+          show($('appr-status'), msg + '　续跑的答案：' + A.stripMd(d.answer || '—'));
+          /* 🔴 续跑之后**重取轨迹** —— 批准后那几步会继续往同一条轨迹里记（页面才看得见全链）。 */
+          return refreshTraceAndCost();
+        })
+        .catch(function (e) { show($('appr-status'), '🔴 失败：' + e.message); });
+    }
+    $('btn-approve').addEventListener('click', function () { doApprove(true); });
+    $('btn-reject').addEventListener('click', function () { doApprove(false); });
+
+    $('history-load').addEventListener('click', function () {
+      getJSON(A.HISTORY_PATH + '?limit=10').then(function (d) {
+        var box3 = $('history-body');
+        var rows = A.historyRows(d);
+        if (!rows.length) { empty(box3, 'events[]', '还没有裁决记录。'); return; }
+        box3.className = '';
+        box3.textContent = '';
+        rows.forEach(function (e) {
+          box3.appendChild(row2(
+            e.decision + ' · 第 ' + e.rounds + ' 轮 · 代填 ' + e.edited + ' · 工具 ' + e.reason,
+            '会话属主 ' + e.owner + ' · 裁决人 ' + e.actor, true));
+        });
+      }).catch(function (e) { show($('history-body'), '🔴 取不到：' + e.message); });
+    });
+
+    /* ---------- 工具清单（取一次真表） ---------- */
+    function loadTools() {
+      getJSON(A.TOOLS_PATH).then(function (d) {
+        var c = A.toolCatalog(d);
+        show($('tools-count'), c.total + ' 个');
+        var box3 = $('tools-body');
+        box3.textContent = '';
+        box3.className = '';
+        var t = document.createElement('table');
+        t.className = 'tbl';
+        t.innerHTML = '<thead><tr><th>工具</th><th>它做什么</th></tr></thead>';
+        var tb = document.createElement('tbody');
+        c.healthy.forEach(function (x) {
+          var tr = document.createElement('tr');
+          var a = document.createElement('td'); a.className = 'fld'; a.textContent = x.name;
+          var b = document.createElement('td'); b.textContent = x.desc;
+          tr.appendChild(a); tr.appendChild(b); tb.appendChild(tr);
+        });
+        t.appendChild(tb); box3.appendChild(t);
+        if (c.unhealthy.length) {
+          var p = document.createElement('p');
+          p.className = 'dim'; p.style.marginTop = '.6rem';
+          p.textContent = '服务端说这几个不健康：' + c.unhealthy.join('、');
+          box3.appendChild(p);
+        }
+      }).catch(function (e) { empty($('tools-body'), 'error', '🔴 取不到：' + e.message); });
+    }
+    $('tools-pane').addEventListener('toggle', function () {
+      if ($('tools-pane').open && $('tools-body').querySelector('.tbl') === null) { loadTools(); }
+    });
+
+    /* ---------- 记忆：查 + 显式写 ---------- */
+    $('mem-search').addEventListener('click', function () {
+      var query = $('q').value.trim() || $('mem-text').value.trim();
+      if (!query) { show($('mem-status'), '⚠️ 先写一句话（上面那个输入框），拿它去检索。'); return; }
+      show($('mem-status'), '正在查…');
+      getJSON(A.MEM_SEARCH_PATH + '?query=' + encodeURIComponent(query)).then(function (d) {
+        var list = (d && d.memories) || [];
+        var box3 = $('mem-body');
+        if (!list.length) {
+          empty(box3, 'memories[]', '没有检索到相关记忆 —— 可能还没人往里写过。');
+          show($('mem-status'), '✅ 真返回（' + new Date().toLocaleTimeString() + '）· 命中 0 条');
+          return;
+        }
+        box3.className = '';
+        box3.textContent = '';
+        list.forEach(function (m) { box3.appendChild(row2('记忆', A.stripMd(m), true)); });
+        show($('mem-status'), '✅ 真返回 · 命中 ' + list.length + ' 条');
+      }).catch(function (e) { show($('mem-status'), '🔴 取不到：' + e.message); });
+    });
+
+    $('mem-add').addEventListener('click', function () {
+      var text = $('mem-text').value.trim();
+      if (!text) { show($('mem-status'), '⚠️ 先写要它记住的那句。'); return; }
+      show($('mem-status'), '正在写 —— 这一步要叫模型抽事实，约 8 千 token，稍等…');
+      RagAuth.apiFetch(A.MEM_ADD_PATH + '?content=' + encodeURIComponent(text), { method: 'POST', headers: auth() })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          show($('mem-status'), '✅ ' + (d.status || '—') + ' · 空间 ' + (d.memory_space || '—')
+               + '　现在点上面那颗按钮，拿一句话去查，看它记成了什么。');
+          return refreshTraceAndCost();
+        })
+        .catch(function (e) { show($('mem-status'), '🔴 写失败：' + e.message); });
+    });
+
+    /* ⭐ 登录态就位之后再起页面（没登录时先发请求会一片 401 —— 而那不是用户的错） */
+    window.RagAuthBar.mount(function () {
+      if (!key()) { return; }
+      refreshTraceAndCost();
+    });
+
+    pick(chain.id);
+  })();
+  </script>
+</body>
+</html>

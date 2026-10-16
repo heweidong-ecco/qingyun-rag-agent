@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>系统观测 · 青云精工</title>
+<!--
+  ============================================================================
+  形态稿 · ⑤ 的第五处 —— 不是产品页，⛔ 不进 app/static、⛔ 不参与服务
+  · 语言全部取自 `/3`（styles.css 同目录，copy 过来的整份）
+  · 本页的定位：🔴 **系统方视角** —— 输出是【一个判断】，⛔ 不是一堆数
+  · ⛔ 页内没有一个"编的"数 —— 数值位一律「—」
+  ============================================================================
+-->
+<meta name="description" content="系统方视角：服务此刻正常吗 —— 活着、有没有积压、缓存对不对、我这个身份的限。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141B26">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23141B26'/%3E%3Crect x='4' y='4' width='7' height='7' fill='%23B6E63A'/%3E%3Crect x='13' y='4' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='4' y='13' width='7' height='7' fill='none' stroke='%23B6E63A'/%3E%3Crect x='13' y='13' width='7' height='7' fill='%23B6E63A' opacity='.35'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>(function(){var d=document.documentElement;d.classList.add('js');var o=/[?&]reveal=off\b/.test(location.search);var m=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!o&&!m&&'IntersectionObserver' in window)d.classList.add('reveal');})();</script>
+</head>
+
+<body>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainNoise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainNoise)"/>
+</svg>
+
+<header class="site-header">
+  <div class="wrap hi">
+    <a class="brand" href="总览.html"><span class="w">青云精工</span><span class="s">RAG · AGENT API</span></a>
+    <nav class="nav" aria-label="主导航">
+      <a href="总览.html">总览</a>
+      <a href="知识入库.html">知识入库</a>
+      <a href="内部RAG知识库检索及问答.html">内部RAG知识库检索及问答</a>
+      <a href="外部检索与工具Agent编排.html">外部检索与工具Agent编排</a>
+      <a href="系统观测.html" aria-current="page">系统观测</a>
+      <a href="接入指南.html">接入指南</a>
+      <a href="API参考.html">API 参考</a>
+    </nav>
+    <div class="ha">
+      <span class="btn" style="cursor:default">不演示假结果</span>
+      <span class="btn btn--sig" style="cursor:default">形态演示</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═════════ 页首：用意声明（含「这是系统方视角」的直白标注）═════════ -->
+  <div class="wrap" style="padding-block:1.75rem 0">
+    <span class="mark">系统方视角 · 不问问题，只看状态</span>
+    <p class="lead" style="margin-top:.8rem; max-width:72ch">
+      这一页给的是<b>一个判断</b>：此刻正常吗、哪里不对劲、下一步该看哪里。
+      ⛔ 不是把一堆数摆出来让人自己猜。
+    </p>
+    <div class="tools" style="margin-top:1rem">
+      <span>🔴 <b>这是系统方视角，⛔ 不是访客视角</b></span><span class="sep">|</span>
+      <span>判断在前 · 明细在后</span><span class="sep">|</span>
+      <span>取不到的，一律标「取不到」—— ⛔ 不显示 0 来冒充正常</span>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="pane rv">
+      <div class="pane-h"><span>它和「使用者本人那一页」的区别</span></div>
+      <div class="pane-b">
+        <p style="color:var(--fg-2); max-width:82ch">
+          同一个系统，<b>两种人看两种东西</b>：
+        </p>
+        <table class="tbl" style="margin-top:.75rem">
+          <thead>
+            <tr><th>谁在看</th><th>他想知道</th><th>拿到的是什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fld">使用者本人</td>
+              <td>我花了多少、我还剩多少</td>
+              <td>一组<b>结果</b>（数字与明细）—— 在每条链页的"花费"块里</td>
+            </tr>
+            <tr>
+              <td class="fld">系统方（本页）</td>
+              <td>服务此刻正常吗</td>
+              <td>一个<b>判断</b>（正常 / 异常 + 下一步）</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" style="margin-top:.9rem; font-size:var(--fs-xs); line-height:1.8; max-width:82ch">
+          为什么拆开：<b>产出性质不同</b> —— 一个给结果，一个给判断。混在一起，
+          访客会被系统方的信息淹掉，而系统方又拿不到"下一步"。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ 主体：左判断 / 右分项 ═════════ -->
+  <div class="wrap con" style="margin-top:1.5rem">
+
+    <!-- ─────────── 左：此刻 · 判断 ─────────── -->
+    <div>
+      <div class="pane">
+        <div class="pane-h">
+          <span>此刻 · 判断</span>
+          <span class="r"><span class="dot dot--sig">—</span></span>
+        </div>
+        <div class="pane-b">
+          <div class="empty">
+            <span class="mono">verdict</span>还没有探过。探一次之后，这里给<b>一句话结论</b>：
+            <b>正常</b>，或者<b>哪里不对劲 + 下一步看哪里</b>。
+          </div>
+          <dl style="margin-top:.9rem">
+            <div class="metric"><dt>活着吗</dt><dd>—</dd></div>
+            <div class="metric"><dt>有没有积压</dt><dd>—</dd></div>
+            <div class="metric"><dt>缓存对不对</dt><dd>—</dd></div>
+            <div class="metric"><dt>我这个身份的限</dt><dd>—</dd></div>
+          </dl>
+          <p class="dim" style="margin-top:.8rem; font-size:var(--fs-2xs); line-height:1.8">
+            🔴 <b>取不到的东西，这一格显示「取不到」</b>，⛔ <b>不显示 0</b> ——
+            0 会被读成"一切正常"，那是最坏的一种谎。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── 右：分项探针 ─────────── -->
+    <div>
+
+      <div class="pane rv">
+        <div class="pane-h"><span>分项：一件事一条，各自说清"正常长什么样"</span></div>
+        <div class="pane-b" style="padding:0">
+          <table class="tbl" style="padding:0">
+            <thead>
+              <tr><th>看什么</th><th>打谁</th><th class="r">正常长什么样</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fld">服务活着吗</td>
+                <td><code>GET /health</code> · <code>GET /ready</code></td>
+                <td class="r">两个都通</td>
+              </tr>
+              <tr>
+                <td class="fld">有没有人在等</td>
+                <td><code>GET /agent/pending</code></td>
+                <td class="r">条数随事而定 —— ⚠️ 看它是不是在涨</td>
+              </tr>
+              <tr>
+                <td class="fld">缓存对不对</td>
+                <td><code>GET /debug/cache_stats</code> · <code>/debug/count</code></td>
+                <td class="r">⚠️ <b>缓存是 0 ≠ 坏了</b>（冷启动就是 0）</td>
+              </tr>
+              <tr>
+                <td class="fld">我这个身份的限</td>
+                <td><code>GET /debug/quota</code> · <code>/debug/rate_limit</code></td>
+                <td class="r">额度与桶都在生效</td>
+              </tr>
+              <tr>
+                <td class="fld">工具健康</td>
+                <td><code>GET /agent/tool_health</code> · <code>/tool_versions</code></td>
+                <td class="r">每个工具自己的状态</td>
+              </tr>
+              <tr>
+                <td class="fld">接口总数对不对</td>
+                <td><code>GET /metrics</code></td>
+                <td class="r">指标在动</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 嵌套：有意不露 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>有几条数据，我们<span class="tag">有意不露</span></span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p class="dim" style="font-size:var(--fs-2xs); line-height:1.8">
+            下面三条接口<b>确实存在</b>，但这一页<b>不展示它们</b>。理由不是"藏"，是<b>它们不是本人口径</b> ——
+            拿它们当"我自己的用量"会读错。
+          </p>
+          <table class="tbl" style="margin-top:.6rem">
+            <thead><tr><th>接口</th><th>为什么不露</th></tr></thead>
+            <tbody>
+              <tr><td class="fld">/agent/token/recent</td><td>它是<b>全站口径</b> —— 里面<b>含别人的用户名</b>，露了就越权</td></tr>
+              <tr><td class="fld">/agent/token/purpose</td><td>同样是<b>全站口径</b>，⛔ 不是"我的"</td></tr>
+              <tr><td class="fld">/agent/token/thread</td><td>同上</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- 嵌套：做不到的，明确声明（§8.1 模板） -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>有的事，这里<b>做不到</b> —— 明确告诉你</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <p style="color:var(--fg-2); max-width:82ch">
+            这条要管理员权限，线上没有开。
+          </p>
+          <p style="color:var(--fg-2); max-width:82ch; margin-top:.6rem">
+            访客用的是「免费档」的系统用户 —— 只能看到<b>自己的</b>与<b>公共的</b>数据，
+            看不到任何他人的数据：<b>数据按用户隔离，凭据各自独立</b>。
+          </p>
+          <p class="dim" style="margin-top:.7rem; font-size:var(--fs-2xs)">
+            ⇒ 所以这里<b>只做声明，不提供入口</b>。（影响到的：<code>/rag/benchmark-embedding</code>
+            <code>/admin/create_user</code>）
+          </p>
+        </div>
+      </details>
+
+      <!-- 嵌套：工具健康明细 -->
+      <details class="pane rv">
+        <summary class="pane-h" style="cursor:pointer; list-style:none">
+          <span>工具健康 · 明细</span><span class="r dim">默认收起 · 点开 ▾</span>
+        </summary>
+        <div class="pane-b">
+          <div class="empty"><span class="mono">tool_health</span>探一次之后，这里逐条列出每个工具的状态、版本、上次探到的时间。</div>
+          <p class="dim" style="margin-top:.5rem; font-size:var(--fs-2xs)">
+            ⚠️ 有一点必须写清：<b>探活本身会真的去打那个工具</b>（所以它不是免费的）。
+          </p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+  <!-- ═════════ 本页用到的接口 ═════════ -->
+  <div class="wrap" style="margin-top:1.5rem">
+    <div class="tools">
+      <span>本页用到的接口</span><span class="sep">|</span>
+      <span><b>没有主接口</b> —— 这一页是一组探针（上面每行左侧就是它打的端点）</span><span class="sep">|</span>
+      <span>全部只读：⛔ 不写库、⛔ 不改配置</span>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-bottom" style="border-top:0; padding-top:0">
+      <span>© 2026 青云精工</span>
+      <span>形态稿 · 语言取自定稿模板（`/3`）</span>
+      <span class="st"><span class="dot dot--sig">系统观测 · 未接线</span></span>
+    </div>
+  </div>
+</footer>
+
+<script src="app-reveal.js"></script>
+</body>
+</html>

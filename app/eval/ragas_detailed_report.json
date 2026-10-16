@@ -1,0 +1,409 @@
+[
+  {
+    "question": "Python 是一门什么样的编程语言？",
+    "rewritten_query": "Python 属于何种类型的编程语言？",
+    "expected_answer": "Python 是解释型、面向对象的高级编程语言。",
+    "actual_answer": "根据提供的上下文，Python 是一门解释型、面向对象的高级编程语言，广泛应用于数据科学、人工智能和 Web 开发等领域。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 是一门解释型、面向对象的高级编程语言，广泛应用于数据科学、人工智能和 Web 开发。",
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。"
+    ]
+  },
+  {
+    "question": "Python 主要用于哪些领域？",
+    "rewritten_query": "Python 主要应用于哪些领域？",
+    "expected_answer": "Python 主要用于数据科学、人工智能和 Web 开发。",
+    "actual_answer": "根据提供的上下文，Python 主要用于以下领域：\n\n- 数据科学\n- 人工智能（AI）\n- 机器学习\n- Web 开发\n- 自动化脚本\n- 数据分析\n\n上下文提到，这些方向都以 Python 作为主要工具语言。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。",
+      "Python 广泛应用于数据科学、人工智能。"
+    ]
+  },
+  {
+    "question": "FastAPI 是什么？",
+    "rewritten_query": "FastAPI 的定义是什么？",
+    "expected_answer": "FastAPI 是现代、高性能的 Python Web 框架。",
+    "actual_answer": "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+    "retrieved_docs": [
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。",
+      "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+      "FastAPI 与 LangChain 可以一起使用：常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。"
+    ]
+  },
+  {
+    "question": "FastAPI 基于哪些技术？",
+    "rewritten_query": "FastAPI 框架基于哪些技术构建？",
+    "expected_answer": "FastAPI 基于 Starlette 和 Pydantic。",
+    "actual_answer": "FastAPI 基于 **Starlette** 和 **Pydantic**，并支持异步高并发 API 开发。",
+    "retrieved_docs": [
+      "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+      "FastAPI 用于构建 API。LangChain 用于构建大语言模型应用。",
+      "FastAPI基于Starlette和Pydantic,支持异步高并发API开发。"
+    ]
+  },
+  {
+    "question": "FastAPI 的主要用途是什么？",
+    "rewritten_query": "FastAPI 的主要用途是什么？",
+    "expected_answer": "FastAPI 用于构建 API。",
+    "actual_answer": "根据上下文，FastAPI 的主要用途是：**用于构建 API**。它是一个现代、高性能的 Python Web 框架，基于 Starlette 和 Pydantic。\n\n此外，FastAPI 也可以与 LangChain 一起使用，常见做法是：用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。",
+    "retrieved_docs": [
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。",
+      "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+      "FastAPI 与 LangChain 可以一起使用：常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。"
+    ]
+  },
+  {
+    "question": "FastAPI 的性能如何？",
+    "rewritten_query": "FastAPI 的性能表现如何？",
+    "expected_answer": "FastAPI 是高性能的。",
+    "actual_answer": "根据现有资料，FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。除此之外，上下文没有提供更具体的性能指标或对比信息。",
+    "retrieved_docs": [
+      "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。",
+      "FastAPI 与 LangChain 可以一起使用：常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。"
+    ]
+  },
+  {
+    "question": "Docker 的主要作用是什么？",
+    "rewritten_query": "Docker 的主要功能与作用是什么？",
+    "expected_answer": "Docker 用于打包应用及依赖为镜像，实现快速部署和环境隔离。",
+    "actual_answer": "根据上下文，Docker 的主要作用是：作为容器化平台，将应用及其依赖打包成镜像，实现快速部署和环境隔离。",
+    "retrieved_docs": [
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "Docker 是一个容器化平台,可以打包应用及依赖。Redis 是一个内存中的数据存储系统。",
+      "Docker 是一个容器化平台，可以将应用及其依赖打包成镜像，实现快速部署和环境隔离。"
+    ]
+  },
+  {
+    "question": "Docker 能解决什么问题？",
+    "rewritten_query": "Docker 能够解决哪些问题？",
+    "expected_answer": "Docker 解决部署和环境隔离问题。",
+    "actual_answer": "根据现有资料，Docker 能解决以下问题：\n\n- 实现快速部署和环境隔离。\n- 作为容器化平台，可以打包应用及其依赖。\n- 通过 Docker 镜像把应用及依赖打包运行，实现环境隔离与快速部署。\n- 在生产环境中，可用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+    "retrieved_docs": [
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "Docker 可以实现快速部署和环境隔离。",
+      "Docker 是一个容器化平台,可以打包应用及依赖。Redis 是一个内存中的数据存储系统。"
+    ]
+  },
+  {
+    "question": "2025年全球AI市场规模如何？",
+    "rewritten_query": "2025年全球人工智能（AI）市场规模是多少？",
+    "expected_answer": "2025年全球AI市场规模达到数千亿美元。",
+    "actual_answer": "根据上下文，2025年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "2025 年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+      "2026年被普遍视为AI智能体规模化落地的元年。"
+    ]
+  },
+  {
+    "question": "全球AI市场未来增长趋势如何？",
+    "rewritten_query": "全球人工智能市场未来的增长趋势如何？",
+    "expected_answer": "预计未来几年仍将保持高速增长。",
+    "actual_answer": "根据现有资料，2025年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "2025 年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+      "Python 广泛应用于数据科学、人工智能。"
+    ]
+  },
+  {
+    "question": "Python 和 FastAPI 的关系是什么？",
+    "rewritten_query": "Python 与 FastAPI 之间的关系是什么？",
+    "expected_answer": "FastAPI 是用 Python 编写的 Web 框架。",
+    "actual_answer": "根据现有资料，FastAPI 是一个现代、高性能的 **Python Web 框架**，用于构建 API，并基于 Starlette 和 Pydantic。因此，FastAPI 与 Python 的关系是：**FastAPI 是 Python 生态中的 Web 框架**。",
+    "retrieved_docs": [
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。",
+      "FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API，基于 Starlette 和 Pydantic。",
+      "FastAPI 与 LangChain 可以一起使用：常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。"
+    ]
+  },
+  {
+    "question": "Docker 和 Redis 可以如何配合使用？",
+    "rewritten_query": "Docker 与 Redis 可以通过哪些方式配合使用？",
+    "expected_answer": "可以用 Docker 容器化部署 Redis 服务。",
+    "actual_answer": "根据提供的上下文，Docker 和 Redis 可以这样配合使用：\n\n- 使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署。\n- 生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。\n\n同时，Docker 是容器化平台，可以打包应用及依赖；Redis 是内存中的数据存储系统。",
+    "retrieved_docs": [
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "Docker 是一个容器化平台,可以打包应用及依赖。Redis 是一个内存中的数据存储系统。",
+      "Docker 可以实现快速部署和环境隔离。"
+    ]
+  },
+  {
+    "question": "PostgreSQL 和 Redis 有什么区别？",
+    "rewritten_query": "PostgreSQL 与 Redis 有哪些区别？",
+    "expected_answer": "PostgreSQL 是关系型数据库（持久化存储），Redis 是内存存储（高速缓存）。",
+    "actual_answer": "根据上下文，PostgreSQL 和 Redis 的区别是：\n\n- **PostgreSQL**：是开源关系型数据库；在本系统中用于存储文档元数据与业务数据，承担关系存储职责。\n- **Redis**：是内存中的数据结构存储系统，也是内存数据库；在本系统中用作缓存、会话与限流计数，承担内存缓存等职责。\n\n因此，二者的定位不同：PostgreSQL 偏关系型数据存储，Redis 偏内存数据库与缓存等用途。上下文未提及其他区别。",
+    "retrieved_docs": [
+      "PostgreSQL 是一个开源关系型数据库。Redis 是一个内存中的数据结构存储系统。",
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "本系统使用的三种数据库：① PostgreSQL —— 关系型数据库，存储文档元数据与业务数据；② Redis —— 内存数据库，用作缓存、会话与限流计数；③ 向量数据库 —— 存储并检索文档的向量表示，支撑相似性检索。三者分别承担关系存储、内存缓存与向量检索的职责，合计三种数据库。"
+    ]
+  },
+  {
+    "question": "FastAPI 和 LangChain 能一起使用吗？",
+    "rewritten_query": "FastAPI 与 LangChain 是否可以集成使用？",
+    "expected_answer": "可以用 FastAPI 为 LangChain 应用提供 API 接口。",
+    "actual_answer": "可以。根据提供的资料，FastAPI 与 LangChain 可以一起使用。常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。FastAPI 用于构建 API，LangChain 用于构建大语言模型应用。",
+    "retrieved_docs": [
+      "FastAPI 与 LangChain 可以一起使用：常见做法是用 FastAPI 为 LangChain 应用提供 API 接口，由 FastAPI 负责接收 HTTP 请求、鉴权与参数校验，再调用 LangChain 的链或 Agent 完成推理并把结果返回。",
+      "FastAPI 用于构建 API。LangChain 用于构建大语言模型应用。",
+      "LangChain 提供了检索等抽象。向量数据库用于相似性搜索。FastAPI 用于构建 API。"
+    ]
+  },
+  {
+    "question": "向量数据库在 RAG 中的作用是什么？",
+    "rewritten_query": "向量数据库在检索增强生成（RAG）中承担何种作用？",
+    "expected_answer": "向量数据库在 RAG 中用于存储文档向量和进行相似性检索。",
+    "actual_answer": "向量数据库在 RAG 中的作用是：在 RAG 的检索环节中，从大量文档中找出与用户问题语义最相关的片段。它负责存储文档的向量表示并建立索引，通过相似性搜索（近似最近邻检索）在毫秒级返回 top-k 个相关片段，作为大模型生成答案的依据。没有它，RAG 只能退化为关键词精确匹配，无法理解同义与近义表达。",
+    "retrieved_docs": [
+      "向量数据库在 RAG 中的作用：RAG 的检索环节需要从大量文档中找出与用户问题语义最相关的片段。向量数据库负责存储文档的向量表示并建立索引，通过相似性搜索（近似最近邻检索）在毫秒级返回 top-k 个相关片段，作为大模型生成答案的依据。没有它，RAG 只能退化为关键词精确匹配，无法理解同义与近义表达。",
+      "PostgreSQL 是一个功能强大的开源关系型数据库。Redis 是一个内存中的数据结构存储系统。向量数据库是一种专门存储和检索高维向量的数据库。",
+      "向量数据库用于存储和检索高维向量,常用于相似性搜索。"
+    ]
+  },
+  {
+    "question": "Python 在AI开发中的优势是什么？",
+    "rewritten_query": "Python 在人工智能开发中的主要优势是什么？",
+    "expected_answer": "Python 在AI开发中的优势是应用广泛，生态丰富。",
+    "actual_answer": "根据上下文，Python 在 AI 开发中的优势包括：\n\n1. **生态完善**：拥有 PyTorch、TensorFlow、scikit-learn 等成熟的 AI 框架与工具链。\n2. **应用广泛**：Python 广泛应用于数据科学、机器学习和人工智能工程实践。\n3. **语法简洁、社区活跃**：便于快速做实验与原型迭代。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 在 AI 开发中的优势：① 生态完善 —— 拥有 PyTorch、TensorFlow、scikit-learn 等成熟的 AI 框架与工具链；② 应用广泛 —— Python 广泛应用于数据科学、机器学习和人工智能工程实践；③ 语法简洁、社区活跃，便于快速做实验与原型迭代。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。"
+    ]
+  },
+  {
+    "question": "Docker 部署的优势有哪些？",
+    "rewritten_query": "Docker 部署具备哪些优势？",
+    "expected_answer": "Docker 部署的优势是快速部署和环境隔离。",
+    "actual_answer": "根据上下文，Docker 部署的优势包括：\n\n1. **快速部署**  \n2. **环境隔离**  \n3. 可以将应用及其依赖打包成镜像，便于运行和部署。  \n4. 在与 Redis 配合时，可以通过 Docker 将 Redis 容器化部署，并通过 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+    "retrieved_docs": [
+      "Docker 可以实现快速部署和环境隔离。",
+      "Docker 是一个容器化平台，可以将应用及其依赖打包成镜像，实现快速部署和环境隔离。",
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。"
+    ]
+  },
+  {
+    "question": "RAG 系统需要哪些核心技术？",
+    "rewritten_query": "检索增强生成（RAG）系统需要哪些核心技术？",
+    "expected_answer": "RAG 需要 LangChain、向量数据库、FastAPI 等技术。",
+    "actual_answer": "根据现有资料，RAG 系统涉及的相关核心技术包括：\n\n1. **向量数据库**：用于存储文档的向量表示并建立索引，通过相似性搜索（近似最近邻检索）在毫秒级返回 top-k 个相关片段，作为大模型生成答案的依据，支撑 RAG 的检索环节。\n2. **查询改写（Query Rewriting）**：用于解决用户原始问题过于简短、表述模糊或过于口语化导致检索召回效果差的问题，把口语化提问转成更规范的书面表达，并补全省略的指代，从而提升召回质量。\n\n现有资料未提供 RAG 系统核心技术的完整清单。",
+    "retrieved_docs": [
+      "向量数据库在 RAG 中的作用：RAG 的检索环节需要从大量文档中找出与用户问题语义最相关的片段。向量数据库负责存储文档的向量表示并建立索引，通过相似性搜索（近似最近邻检索）在毫秒级返回 top-k 个相关片段，作为大模型生成答案的依据。没有它，RAG 只能退化为关键词精确匹配，无法理解同义与近义表达。",
+      "查询改写（Query Rewriting）解决的问题：用户的原始问题往往过于简短、表述模糊，或过于口语化，直接拿去检索时召回效果很差。查询改写把口语化的提问转成更规范的书面表达，并补全省略的指代，从而让检索意图更清晰，显著提升召回质量。",
+      "本系统使用的三种数据库：① PostgreSQL —— 关系型数据库，存储文档元数据与业务数据；② Redis —— 内存数据库，用作缓存、会话与限流计数；③ 向量数据库 —— 存储并检索文档的向量表示，支撑相似性检索。三者分别承担关系存储、内存缓存与向量检索的职责，合计三种数据库。"
+    ]
+  },
+  {
+    "question": "多用户数据隔离如何实现？",
+    "rewritten_query": "如何实现多用户数据隔离？",
+    "expected_answer": "通过在所有查询中加入用户ID过滤条件实现。",
+    "actual_answer": "根据现有资料，多用户数据隔离的实现方式是：所有查询和修改都带上当前用户的ID进行过滤，从而实现多用户数据隔离。",
+    "retrieved_docs": [
+      "所有查询和修改都带上当前用户的ID进行过滤,从而实现多用户数据隔离。",
+      "Docker 可以实现快速部署和环境隔离。",
+      "Docker 可以将应用及其依赖打包成镜像,实现快速部署和环境隔离。"
+    ]
+  },
+  {
+    "question": "混合检索比纯向量检索好在哪里？",
+    "rewritten_query": "混合检索相较于纯向量检索具有哪些优势？",
+    "expected_answer": "混合检索结合语义理解和关键词匹配，互补短板。",
+    "actual_answer": "根据现有资料，混合检索相比纯向量检索的好处在于：向量检索擅长理解语义，BM25 擅长精确匹配关键词，两者结果互补。因此混合检索可以同时结合语义检索和关键词精确匹配，比纯向量检索多出关键词精确匹配方面的互补能力。资料未提及其他优势。",
+    "retrieved_docs": [
+      "向量数据库用于存储和检索高维向量,常用于相似性搜索。",
+      "向量检索理解语义,BM25 精确匹配关键词,两者结果互补。",
+      "向量数据库是一种专门存储和检索高维向量的数据库，常用于相似性搜索和推荐系统。"
+    ]
+  },
+  {
+    "question": "RRF 融合的原理是什么？",
+    "rewritten_query": "RRF 融合的基本原理是什么？",
+    "expected_answer": "RRF 通过排名倒数求和来融合多路结果，不依赖原始分数。",
+    "actual_answer": "根据现有资料，RRF 融合的原理是：不关心分数绝对值，只看排名。其公式为：\n\n**1 / (k + rank)**",
+    "retrieved_docs": [
+      "RRF 不关心分数绝对值,只看排名。公式为 1 / (k + rank)。",
+      "Docker 是一个容器化平台,可以打包应用及依赖。Redis 是一个内存中的数据存储系统。",
+      "PostgreSQL 是一个开源关系型数据库。Redis 是一个内存中的数据结构存储系统。"
+    ]
+  },
+  {
+    "question": "查询改写能解决什么问题？",
+    "rewritten_query": "查询改写能够解决哪些问题？",
+    "expected_answer": "查询改写将模糊问题优化为清晰书面语，提升检索效果。",
+    "actual_answer": "查询改写主要解决：用户原始问题往往过于简短、表述模糊或过于口语化，直接拿去检索时召回效果很差。它通过把口语化提问转成更规范的书面表达，并补全省略的指代，使检索意图更清晰，从而显著提升召回质量。",
+    "retrieved_docs": [
+      "测试文档二",
+      "查询改写（Query Rewriting）解决的问题：用户的原始问题往往过于简短、表述模糊，或过于口语化，直接拿去检索时召回效果很差。查询改写把口语化的提问转成更规范的书面表达，并补全省略的指代，从而让检索意图更清晰，显著提升召回质量。",
+      "所有查询和修改都带上当前用户的ID进行过滤,从而实现多用户数据隔离。"
+    ]
+  },
+  {
+    "question": "AI 行业目前处于什么阶段？",
+    "rewritten_query": "人工智能行业当前处于何种发展阶段？",
+    "expected_answer": "AI 行业处于智能体规模化落地的元年。",
+    "actual_answer": "根据提供的上下文，AI 行业正从技术验证阶段进入规模化落地阶段。业界普遍认为大模型带来了 AI 应用落地的元年，企业的关注点也从“能不能做”转向“如何稳定、低成本地规模化部署”。",
+    "retrieved_docs": [
+      "AI 行业的发展阶段：业界普遍认为大模型带来了 AI 应用落地的元年，行业正从技术验证阶段进入规模化落地阶段，企业的关注点也从“能不能做”转向“如何稳定、低成本地规模化部署”。",
+      "2025 年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+      "机器学习是人工智能的一个分支，通过从数据中学习模式来做出预测或决策。"
+    ]
+  },
+  {
+    "question": "向量检索和关键词检索各有什么优劣？",
+    "rewritten_query": "向量检索与关键词检索各自具有哪些优势与劣势？",
+    "expected_answer": "向量检索理解语义，关键词检索精确匹配，两者互补。",
+    "actual_answer": "根据现有资料：\n\n- **向量检索**\n  - 优势：理解语义。\n  - 劣势：忽略精确关键词。\n\n- **关键词检索**\n  - 优势：精确匹配关键词（如 BM25）。\n  - 劣势：不理解语义。\n\n两者结果互补。",
+    "retrieved_docs": [
+      "向量检索理解语义但忽略精确关键词,关键词检索精确匹配但不理解语义。",
+      "向量检索理解语义,BM25 精确匹配关键词,两者结果互补。",
+      "向量数据库用于存储和检索高维向量,常用于相似性搜索。"
+    ]
+  },
+  {
+    "question": "为什么要用 Docker 部署 AI 应用？",
+    "rewritten_query": "采用 Docker 部署 AI 应用的原因是什么？",
+    "expected_answer": "Docker 确保环境一致性，简化部署流程。",
+    "actual_answer": "根据现有资料，未专门说明“为什么要用 Docker 部署 AI 应用”。仅从与 Docker 部署相关的通用内容看：\n\nDocker 是一个容器化平台，可以将应用及其依赖打包成镜像，实现快速部署和环境隔离。因此，如果把 AI 应用视为一般应用，使用 Docker 部署可以借助这些通用特性：将应用及其依赖打包成镜像、快速部署、实现环境隔离。\n\n但现有资料没有提供 AI 应用特有的部署原因。",
+    "retrieved_docs": [
+      "Docker 是一个容器化平台，可以将应用及其依赖打包成镜像，实现快速部署和环境隔离。",
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "Docker 可以将应用及其依赖打包成镜像,实现快速部署和环境隔离。"
+    ]
+  },
+  {
+    "question": "文档中提到了几种数据库？",
+    "rewritten_query": "文档中提及了哪几种数据库？",
+    "expected_answer": "文档中提到了关系型数据库、内存数据库和向量数据库三种类型。",
+    "actual_answer": "文档中提到三种数据库：PostgreSQL、Redis、向量数据库。",
+    "retrieved_docs": [
+      "本系统使用的三种数据库：① PostgreSQL —— 关系型数据库，存储文档元数据与业务数据；② Redis —— 内存数据库，用作缓存、会话与限流计数；③ 向量数据库 —— 存储并检索文档的向量表示，支撑相似性检索。三者分别承担关系存储、内存缓存与向量检索的职责，合计三种数据库。",
+      "LangChain 提供了检索等抽象。向量数据库用于相似性搜索。FastAPI 用于构建 API。",
+      "PostgreSQL 是一个功能强大的开源关系型数据库。Redis 是一个内存中的数据结构存储系统。向量数据库是一种专门存储和检索高维向量的数据库。"
+    ]
+  },
+  {
+    "question": "Python 适合哪些人学习？",
+    "rewritten_query": "Python 编程语言适合哪些人群学习？",
+    "expected_answer": "文档未明确说明，但适用于数据科学、AI和Web开发领域的学习者。",
+    "actual_answer": "根据提供的上下文，Python 适合以下人群学习：\n\n① 想进入数据科学领域的人；  \n② 从事 Web 开发的人；  \n③ 对人工智能与机器学习感兴趣的人；  \n④ 需要做自动化脚本与数据分析的职场人。  \n\n这些方向都以 Python 作为主要工具语言。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。",
+      "Python 是一门解释型、面向对象的高级编程语言，广泛应用于数据科学、人工智能和 Web 开发。"
+    ]
+  },
+  {
+    "question": "Python 创始人的名字是什么？",
+    "rewritten_query": "Python 编程语言的创始人的姓名是什么？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 是一门解释型、面向对象的高级编程语言，广泛应用于数据科学、人工智能和 Web 开发。",
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。"
+    ]
+  },
+  {
+    "question": "Docker 和 Kubernetes 有什么区别？",
+    "rewritten_query": "Docker 与 Kubernetes 有哪些区别？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "Docker 与 Redis 的配合方式：可以使用 Docker 将 Redis 容器化部署，即通过 Docker 镜像把 Redis 及其依赖打包运行，实现环境隔离与快速部署；生产环境中通常用 Docker Compose 同时编排应用与 Redis 容器，便于统一管理网络与持久化卷。",
+      "Docker 可以实现快速部署和环境隔离。",
+      "Docker 是一个容器化平台,可以打包应用及依赖。Redis 是一个内存中的数据存储系统。"
+    ]
+  },
+  {
+    "question": "什么是深度学习？",
+    "rewritten_query": "深度学习的定义是什么？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "机器学习是人工智能的一个分支，通过从数据中学习模式来做出预测或决策。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。"
+    ]
+  },
+  {
+    "question": "微软公司的主要产品是什么？",
+    "rewritten_query": "微软公司的主要产品有哪些？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "苹果公司是美国的一家高科技公司，以 iPhone、Mac 等产品闻名于世。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。"
+    ]
+  },
+  {
+    "question": "2024年全球GDP增长率是多少？",
+    "rewritten_query": "2024年全球GDP增长率是多少？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "2025 年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。",
+      "2026年被普遍视为AI智能体规模化落地的元年。"
+    ]
+  },
+  {
+    "question": "如何制作意大利面？",
+    "rewritten_query": "意大利面的制作方法是什么？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 是一门解释型、面向对象的高级编程语言。FastAPI 是一个现代、高性能的 Python Web 框架。",
+      "FastAPI 用于构建 API。LangChain 用于构建大语言模型应用。"
+    ]
+  },
+  {
+    "question": "亚马逊公司的创始人是谁？",
+    "rewritten_query": "亚马逊公司的创始人是谁？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "苹果公司是美国的一家高科技公司，以 iPhone、Mac 等产品闻名于世。",
+      "阿里云百炼是阿里云的大模型服务平台,提供qwen系列模型和embedding服务。"
+    ]
+  },
+  {
+    "question": "量子计算的基本原理是什么？",
+    "rewritten_query": "量子计算的基本原理是什么？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "Python是一门强大的编程语言,广泛应用于AI和数据科学领域。",
+      "Python 广泛应用于数据科学、人工智能。",
+      "PostgreSQL 是一个功能强大的开源关系型数据库。Redis 是一个内存中的数据结构存储系统。向量数据库是一种专门存储和检索高维向量的数据库。"
+    ]
+  },
+  {
+    "question": "如何学习弹吉他？",
+    "rewritten_query": "如何学习弹奏吉他？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "测试集成专用:紫色长颈鹿在月球上跳芭蕾舞。",
+      "Python 适合哪些人学习：① 想进入数据科学领域的人；② 从事 Web 开发的人；③ 对人工智能与机器学习感兴趣的人；④ 需要做自动化脚本与数据分析的职场人。这些方向都以 Python 作为主要工具语言。",
+      "机器学习是人工智能的一个分支，通过从数据中学习模式来做出预测或决策。"
+    ]
+  },
+  {
+    "question": "2024年夏季奥运会在哪里举办？",
+    "rewritten_query": "2024年夏季奥林匹克运动会的举办地点是哪里？",
+    "expected_answer": "根据现有资料，无法回答此问题。",
+    "actual_answer": "根据现有资料，无法回答此问题。",
+    "retrieved_docs": [
+      "公司2025年第四季度营收为5800万元,同比增长23%。",
+      "2026年被普遍视为AI智能体规模化落地的元年。",
+      "2025 年全球人工智能市场规模达到数千亿美元，预计未来几年仍将保持高速增长。"
+    ]
+  }
+]
