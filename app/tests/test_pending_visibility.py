@@ -3,12 +3,6 @@
 **改动前是什么样**：端点的唯一依赖是 `get_current_user_hybrid`，实现是 `rows = list_pending`，
    `pending_approvals.list_pending` **一处过滤都没有** ⇒ **任何登录用户都能看到所有人的
    待批会话**（含别人的 `tool_calls` 与 `raw_thread_id`）。
-
-**它能活到现在的原因**：`app/tests/test_pending_approvals.py` 与
-   `app/tests/test_pending_approvals_wiring.py` 里**没有任何属主 / 可见性用例** ——
-   本文件补的就是这个洞。同族的 `/agent/traces` 在  修过，它没跟上。
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_pending_visibility.py -q -p no:warnings`
 """
 import asyncio
 

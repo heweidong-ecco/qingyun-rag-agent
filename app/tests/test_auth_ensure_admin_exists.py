@@ -1,31 +1,4 @@
 """启动自检 `ensure_admin_exists` 必须问【和认证侧同一个问题】。
-
-## 本文件要钉的那条缺陷（2026-10-06 核实、真库 + 事务 + 回滚复现）
-
-`ensure_admin_exists` 原先只数**行数**：
-
-```
-app/access/auth.py:46   SELECT COUNT(*) FROM api_keys WHERE user_name = 'admin'
-```
-
-而认证侧 `verify_api_key` 要的是 `COALESCE(is_active, 1) = 1` **且**未过期。
-⇒ **两个门量的不是同一件事**。真库里跑
-（它按用户名撤，撤的是**该用户名下的全部行**）之后：
-
-```
-门① 启动自检看到                      ⇒ 1     ⇒ 日志:「管理员账户已存在，跳过自动创建」
-门② 认证时真能通过的                  ⇒ 0     ⇒ 没有一把 key 能认证
-```
-
-**admin 锁死，而日志说一切正常。** 近失不在假设里：2026-10-06 本机真跑过那个
-`--revoke`（撤掉了 `id=2` 那把 09-10 建的主 key），当时靠**手工**
-`UPDATE api_keys SET is_active = 1 WHERE id = 2` 才复原。
-
-## 本文件的尺子
-
-**不照抄谓词**（同族：`app/tests/test_auth_api_key_active.py` 2026-10-06 那次事故 ——
-测试手写一张"心里那张表"，产品代码改成什么都照样绿）。
-本文件的 SQL 侧用例一律**抓产品代码产出的真 SQL**，丢进真 `sqlite3` 原地跑。
 """
 import datetime
 import re
@@ -243,7 +216,7 @@ def test_数可用那半句真的过滤了_is_active(monkeypatch):
     """**尺子**：把产品产出的那句查询丢进真 sqlite 跑 —— 撤销的行必须**数不进去**。
 
     不许改成"测试自己写一句带 `is_active` 的 SQL"：那样测的是**我抄对没有**，
-       产品代码把过滤删掉它照样绿（2026-10-06 那次事故就是这么骗过去的）。
+       产品代码把过滤删掉它照样绿（那次事故就是这么骗过去的）。
     """
     _counting, usable_sql = _captured_admin_sqls(monkeypatch)
     rows = [
@@ -307,7 +280,7 @@ def test_自检在建表之后调用():
 
     **为什么**：`is_active` 这一列在**老库**里是靠 `create_table` 里那句
     `ALTER TABLE api_keys ADD COLUMN` 补上的。自检若跑在它前面，
-    对着老库就是 `UndefinedColumn` ⇒ **应用起不来**（比 2026-10-06 那次"认证 503"更早、更响）。
+    对着老库就是 `UndefinedColumn` ⇒ **应用起不来**（比 那次"认证 503"更早、更响）。
     """
     src = (REPO / "app" / "main.py").read_text(encoding="utf-8")
     m = re.search(r"@app\.on_event\(\"startup\"\)\s*\nasync def \w+\(\):(.*?)(?=\n@app\.|\Z)", src, re.S)

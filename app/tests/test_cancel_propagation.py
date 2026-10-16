@@ -1,38 +1,4 @@
-""" —— **服务端 cancel 传播到上游**。
-
-## 这个文件测的是「最难假完成」的那一件事
-
-硬门 C 的三条判据里，前两条（前端停 / 日志有 cancel）**都能在"其实没停"的情况下成立** ——
-前端停可能只是前端不再显示，而后端**还在烧钱**。
-⇒ 所以这里**一条都不测前端**，只测**服务端与上游之间**发生了什么。
-
-## 判据为什么钉在 ASGI 层（不是"自己造一个取消"）
-
-**取消是谁发起的？** 不是我们的代码 —— 是 **Starlette 收到 `http.disconnect` 后
-取消 `stream_response` 任务**。uvicorn 实测报 `spec_version: "2.3"` ⇒ 走的是
-`create_collapsing_task_group` + `listen_for_disconnect` 那条路。
-
-⇒ 如果测试自己 `task.cancel`，那测的是**我假想的取消**，不是**线上真会发生的那次取消**。
-本文件直接把 `StreamingResponse` 当成 ASGI app 跑一遍（`await resp(scope, receive, send)`），
-`receive` 在**第 N 帧发出之后**回 `http.disconnect` —— 与真服务器走的是**同一段代码**。
-
-## 假上游为什么是「手动迭代器」而不是 async generator
-
-写了 `async def` + `yield` 的假上游，**红不出来**：`asyncio.run` 收尾时会
-`shutdown_asyncgens`，把没人关的异步生成器**顺手关掉** ⇒ `finally` 照跑
-**"被我们关了"和"被事件循环收尾关了"长得一模一样**（实测：改前 5 条里有 3 条因此假绿）。
-
-⇒ 假上游实现 `__aiter__` / `__anext__` / `aclose`，**故意不是 async generator**。
-这样 `closed` 为真就**只能**是**我们的代码调了 `aclose`**。
-
-## 两条链的观测对象不一样，别混
-
-| 链 | 落在哪 | 数什么 |
-|---|---|---|
-| Prometheus | `app/core/metrics.py` | **本轮新加的 `stream_cancelled_total`** |
-| PG（`token_usage_logs`） | `app/billing/token_tracker.py` | **流式生成阶段不记账** ⇒ 拿它当判据**看不到任何东西**（本任务踩过） |
-
-裁定与理由
+"""—— **服务端 cancel 传播到上游**。
 """
 
 import asyncio
@@ -146,7 +112,7 @@ class _AsyncSpyStream:
         return self.item_factory()
 
     async def aclose(self):
-        """**真服务实测（2026-10-03）**：这一句会被**二次投递的取消**打断 ⇒ 抛 `CancelledError`。
+        """**真服务实测**：这一句会被**二次投递的取消**打断 ⇒ 抛 `CancelledError`。
 
         旧版假流在这里**只是把 `closed` 置真、然后正常返回** —— 于是
            `finally` 里排在它后面的三件收尾（计数 / 日志 / 半截落盘）**照跑**，
@@ -294,17 +260,9 @@ def _call_rag_stream(monkeypatch, llm, history=None, get_history=None, **kw):
     monkeypatch.setattr(rag_mod, "get_embedding", lambda text, **k: [0.0] * 8)
     monkeypatch.setattr(rag_mod, "get_llm_stream", lambda: llm)
     monkeypatch.setattr(rag_mod, "get_db", lambda: _FakeConn())
-    # 2026-10-03 补丁的**第二个** `get_db` —— 为什么一个不够（乙段）。
-    #
     # 乙段把 `/rag/stream_search` 从「自己写 SQL」改成「调共享层 `db.search_similar`」。
     # 连接点**换了模块**：原先 `get_db()` 解析到 `api_v1_rag` 的模块全局（上一行能挡），
     # 现在解析到 **`db.py` 的模块全局** —— 上面那行 monkeypatch **够不着它**。
-    #
-    # **这个洞在本机是看不见的**：本机 postgres 真开着 ⇒ 真连上去、`fetchall` 回 `[]`
-    #    ⇒ 12 条用例照样全绿。CI 没有 postgres ⇒ `Connection refused` ⇒ 12 条全红。
-    #    ⇒ **判据不能是「本机跑绿」**，得跑 CI 等价物：
-    #       `POSTGRES_PORT=59999 venv/bin/python -m pytest app/ -q -m "not integration and not needs_db"`
-    #    复现与根因
     monkeypatch.setattr(db_mod, "get_db", lambda: _FakeConn())
     kw.setdefault("thread_id", THREAD)
     kw.setdefault("user_name", "tester")
@@ -426,10 +384,6 @@ def test_rag_normal_completion_is_not_counted_as_cancel(monkeypatch):
 
 
 # ============ RAG 端：中断时那半截答案怎么办 ============
-#
-# 核出来的事实：取消时 `collected_parts` 是**直接丢**的，
-# 而且不是"决定"，是"碰巧" —— `append_chat_history` 写在循环之后，取消在它之前 `raise`。
-# ⇒ 这里把「丢」改成「存」，并把**存的形态**钉死。
 
 
 def _seen_content(sent):
@@ -476,7 +430,7 @@ def test_rag_persists_partial_answer_when_cancelled(monkeypatch):
 
 
 def test_rag_bookkeeping_survives_interrupted_aclose(monkeypatch):
-    """**2026-10-03 真服务实测抓到的**：`await stream.aclose` **会被二次投递的取消打断**。
+    """**真服务实测抓到的**：`await stream.aclose` **会被二次投递的取消打断**。
 
     打断之后，`finally` 里排在它后面的三件收尾**一件都不会执行** ——
     计数不涨、日志没有、半截不落盘。**而单测当时全绿**（假流的 `aclose` 不抛）。
@@ -738,8 +692,7 @@ def test_agent_records_cancel_event_when_aclose_interrupted(monkeypatch):
     assert any("断开" in line for line in lines), f"日志里没有取消事件：{lines}"
 
 
-# -------- （2026-10-04）：Agent 端两条"没走完"的出口也要留痕 --------
-#
+# -------- （）：Agent 端两条"没走完"的出口也要留痕 --------
 # **判据（可打印）**：`grep -n "on_incomplete" app/routing/api_v1_agent.py` ⇒ 改前**零命中**
 #    （5 条 Agent 链只传 `on_complete`）⇒ 取消/异常时**一个字都不留**。
 

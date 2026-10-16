@@ -1,37 +1,4 @@
 """WebSocket 首帧认证 —— 「**要用就做完整**」的那条链。
-
-## 为什么有本文件
-
-`/api/v1/ws/agent` **整条没有鉴权**（遗留·1）：它**真花钱**（跑 LangChain Agent、
-调 chat LLM、还能 `web_search`），却是全站唯一一个**匿名可达、又真的花钱**的入口。
- 只是把它**从看不见变成看得见**（补进  的扫描口径），
-没有修它 —— 那是"把灯打开"，不是"把门装上"。
-
-## 浏览器为什么不能照抄 HTTP 那套
-
-`new WebSocket(url)` **不能自定义请求头** ⇒ `X-API-Key` / `Authorization` 两条路都走不通
-（照抄 HTTP 是本仓最容易踩的形态：**看着像接了鉴权，其实客户端根本送不上来**）。
-
-## 三层判据（别混，缺一层就挡不住"看起来像有门"）
-
-| 层 | 钉什么 | 要 DB 吗 | 进 CI 吗 |
-|---|---|---|---|
-| ① 纯函数 | 首帧怎么解析成身份、**哪种失败给哪个关闭码** | | |
-| ② 依赖 | `require_ws_user` 的**顺序**（先 `accept` 才让浏览器看得到 1008）、超时 | | |
-| ③ 端点 | 真 `app` 上**两条 WS 路由都真的挂了这道依赖**，且**认证前端点体一次都不跑** | （打桩验证器） | |
-
-**③ 是重点**：①② 全绿而端点没接线，**本仓有前科**
-（：「**门挂在别处，就等于没有门**」）。
-
-**本仓没装 `pytest-asyncio`** ⇒ 协程一律用下面那个 `_run` 跑，
-别写 `@pytest.mark.asyncio`（它不会失败，它会让用例**看起来没跑**）。
-
-## 判据（可打印）
-
-```bash
-venv/bin/python -m pytest app/tests/test_ws_auth.py -q -p no:warnings
-venv/bin/# ⇒ 无鉴权路由 1 条（只剩 /api/v1）
-```
 """
 import asyncio
 import json
@@ -303,7 +270,7 @@ def test_the_ws_route_carries_the_auth_dependency():
     它与  **不是重复**：那个脚本靠 `AUTH_NAMES` 名单认人
     （名单漂了它就静默失效），这条直接钉**具体那一条依赖**。
 
-    **2026-10-05 起是 1 条不是 2 条** —— `/ws/test` 已删（§十）。
+    **是 1 条不是 2 条** —— `/ws/test` 已删（§十）。
     **别在这里加回 `/ws/test`** —— 那条路径的守卫在
     `app/tests/test_removed_endpoints.py::test_ws_test_stays_removed`（它的判据是**不存在**，
     与这条的判据「存在且挂着鉴权依赖」**恰好相反**，别合并）。

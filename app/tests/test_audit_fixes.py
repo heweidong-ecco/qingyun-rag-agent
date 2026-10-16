@@ -1,12 +1,9 @@
-"""全仓审计的 A / B 两条修复的回归测试（2026-09-20）
+"""全仓审计的 A / B 两条修复的回归测试
 
 | # | 位置 | 问题 |
 |---|---|---|
 | **A** | `app/main.py:440` | **`/ready` 在 DB/Redis 挂掉时返回 500 而非 503** —— `health_check` 不健康时 `return JSONResponse(...)`，而 `/ready` 对它调 `health.get("status")` ⇒ **`JSONResponse` 没有 `.get`** ⇒ `AttributeError` ⇒ 全局处理器返回 500 |
 | **B** | `app/routing/api_v1.py:136,144` · `app/routing/schemas.py:86` | **公开 `/docs` 上的安全声明与代码相反** —— 原文三句「还没有加入初始管理员」「当前版本暂未强制校验管理员身份」「管理接口…暂不加权限控制」，而代码里 `api_v1.py:156` = `Depends(require_admin)`、`main.py:466` 启动即 `ensure_admin_exists` |
-
-这两条都是**"声明与事实不符"**型 —— 靠跑一遍端点**发现不了 B**（它只出现在 `/docs` 与 Postman 导入里），
-   所以 B 的用例直接查 **OpenAPI 文档对象**，而不是发请求。
 """
 import ast
 import contextlib
@@ -19,7 +16,7 @@ import pathlib
 def test_ready_returns_503_not_500_when_unhealthy(monkeypatch):
     """/ready 在底层不可用时必须回 **503**（"暂时不可用"），**不能是 500**（"服务内部错误"）。
 
-    实测根因（2026-09-20）：`health_check` 有**两种返回类型** ——
+    实测根因：`health_check` 有**两种返回类型** ——
        健康时返回 `dict`，不健康时 `return JSONResponse(status_code=503, ...)`。
        而 `/ready` 无条件对它调 `.get("status")`
        ⇒ `JSONResponse` 没有 `.get` ⇒ `AttributeError: 'JSONResponse' object has no attribute 'get'`
@@ -76,7 +73,7 @@ _CONTRADICTORY_CLAIMS = (
 def test_openapi_descriptions_do_not_deny_admin_enforcement():
     """`/docs`（= `app.openapi`）里不能出现"未加管理员/未鉴权"这类**与代码相反**的声明。
 
-    实测（2026-09-20）：`/api/v1/admin/create_user` 的 `description` 里有三句
+    实测：`/api/v1/admin/create_user` 的 `description` 里有三句
        「这个系统内**还没有加入初始管理员**」「当前版本**暂未强制校验管理员身份**」
        「管理接口（仅供管理员使用，**暂不加权限控制**）」——
        而代码事实是：`app/routing/api_v1.py:156` = `Depends(require_admin)`（非 ADMIN 直接 403）、
@@ -112,7 +109,7 @@ def test_openapi_descriptions_do_not_deny_admin_enforcement():
 def test_no_duplicate_method_definitions_in_preprocessor():
     """`document_preprocessor.py` 的类里，**同名方法不能定义两次**。
 
-    实测（2026-09-20）：`remove_noise_markers` 被定义了**两次** ——
+    实测：`remove_noise_markers` 被定义了**两次** ——
        `:85-86` 是**只有一句 docstring 的空壳**，`:88-103` 才是真实现。
        Python **后者胜出** ⇒ 当前行为是对的，**但改 `:85` 那份不会生效** ——
        下一个人照着上面那份改，改完"没反应"，且**没有任何报错**。
@@ -152,7 +149,7 @@ def test_no_duplicate_method_definitions_in_preprocessor():
 def test_no_stray_docstrings_in_function_bodies():
     """`app/` 下**不允许**出现"孤立的 docstring" —— 函数体里【不是首句】的裸字符串表达式。
 
-    实测（2026-09-20）：全仓有 **8 处**这种写法（审计只列了 6 处，`ast` 检查又抓出 2 处 ——
+    实测：全仓有 **8 处**这种写法（审计只列了 6 处，`ast` 检查又抓出 2 处 ——
        `api_v1_rag.py:261` 的 `upload_document`、`main.py:503` 的 `graceful_shutdown`）。
        它们**全是空操作**（Python 求值后丢弃），典型来历是**docstring 被后插入的代码挤开**：
 
@@ -201,7 +198,7 @@ def test_no_stray_docstrings_in_function_bodies():
 def test_cached_tool_does_not_recurse_forever_when_lock_never_acquired(monkeypatch):
     """`cached_tool` 在**始终抢不到锁**时，必须**有上限**，不能无限递归。
 
-    实测（2026-09-20）：原实现在 `else` 分支里
+    实测：原实现在 `else` 分支里
            time.sleep(0.1); return wrapper(*args, **kwargs)
        ⇒ 如果锁**一直**拿不到（持有者崩了没删锁、或一直被别的请求续上），
          **递归没有上限** ⇒ 栈溢出 / 无限等待。
@@ -241,7 +238,7 @@ def test_cached_tool_does_not_recurse_forever_when_lock_never_acquired(monkeypat
 def test_markdown_image_rule_is_not_dead():
     """`document_preprocessor.remove_noise_markers` 里那条 markdown 图片规则，**不是死代码**。
 
-    **登记文件原写「这条规则从未生效」—— 实测证明那是错的**（2026-09-21）：
+    **登记文件原写「这条规则从未生效」—— 实测证明那是错的**：
        它在 `legal` / `medical` 两个域**正在干活**（那两个域的配置里【没有】图片规则）
        ⇒ **删掉它，那两个域的图片处理会坏。**
 
@@ -284,17 +281,9 @@ def test_markdown_image_rule_is_not_dead():
 
 
 # ===========================================================================
-# 2026-10-09（模块化重构）：**产品模块的枚举口径**
 # ===========================================================================
 # **为什么不能再用 `api_dir.glob("*.py")`**：
-#   2026-10-09 把 60 个模块按组收进了 `app/<组>/`（core · routing · access
 #   billing · agent · rag · tools）⇒ **根目录下再也扫不到它们** ⇒ `glob` 返回
-#   **空列表** ⇒ 下面那些「对每个模块…」的断言**全部为真**。
-#   ⇒ 本仓原话：「**空跑 = 静默假通过**」（`pre-commit-gates.py` / `test_web_pages.py` 都栽过）。
-#   ⇒ 所以这里改成**递归**，并且**递归之后必须排掉两处**：
-#       · `tests/`  —— 测试不是产品模块
-#       · `alembic/` —— 迁移脚本，**重构前就扫不到**（原来 `glob("*.py")` 只看 app/ 根）
-#   ⇒ 并且带一条**防空跑断言**：真扫到 0 个 ⇒ 当场红，不许静默变绿。
 def _product_py(api_dir):
     """`app/` 下的**产品 .py**（`app/` 根 + 七个模块组）。"""
     ps = [p for p in api_dir.rglob("*.py")

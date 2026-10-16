@@ -12,7 +12,7 @@
 - `rewrite_query` —— 口语转书面语、**按对话历史消解指代**（"它"/"这个" ⇒ 明确对象）、省略句补全
 - `expand_query` —— 生成 `num_variants` 个语义相同、表述不同的变体，扩大召回
 - 两条都**带 Redis 缓存**（命中即早退，不再调 LLM）
-- 🔴 **2026-10-05：两条各记一笔 `record_usage`**
+- 🔴 **：两条各记一笔 `record_usage`**
   （`expand_query` 在 `:75` · `rewrite_query` 在 `:175`），
   且签名加**必填** keyword `user_name`（`:43` / `:123`）
 
@@ -32,7 +32,7 @@
 |---|---|
 | 「本模块和其它模块一样用 `ChatOpenAI`」 | 🔴 **不是** —— 它是**全仓唯一**用**裸 `openai.OpenAI`** 的地方（另 15 处走 `llm_factory.make_llm` ⇒ `ChatOpenAI`）。<br>⇒ **直接后果**：它的响应只有 **`.usage`**，**没有 `usage_metadata`**。 |
 | 「记账调 `record_from_response` 就行」 | 🔴 **不行，会静默不记** —— `record_from_response` 的判据是 `usage_metadata`，对裸客户端的响应**恒返回 `False`**（不抛异常）。<br>⇒ 本模块**只能**走 `record_usage`（吃 `prompt_tokens` / `completion_tokens`）。<br>📌 守卫：`app/tests/test_rag_billing_wiring.py::test_query_rewriter_uses_record_usage_not_record_from_response` |
-| 「`:98` 那个 `import record_usage` 是没用的死 import」 | 🔴 **它曾经就是** —— 自建立起 import 在、**一次都没被调用过**（的病根之一）。**2026-10-05 起它被用了两次**。<br>⚠️ 这也是「**grep 到 `record_usage` ≠ 它被调用**」的现成例子：本仓那几条 AST 守卫就是为这件事写的。 |
+| 「`:98` 那个 `import record_usage` 是没用的死 import」 | 🔴 **它曾经就是** —— 自建立起 import 在、**一次都没被调用过**（的病根之一）。**它被用了两次**。<br>⚠️ 这也是「**grep 到 `record_usage` ≠ 它被调用**」的现成例子：本仓那几条 AST 守卫就是为这件事写的。 |
 | 「改写成空 ⇒ 这次没花钱」 | 🔴 **花了** —— 「空结果回退原问题」（`:190`）是**在调用之后**发生的。⇒ 记账点必须排在**那条早退分支之前**，⛔ 不是 `return` 之前"碰巧"就行。⛔ **别把记账挪到 `return` 上方** —— 那条口子会吞掉它。 |
 | 「命中缓存也会记一笔」 | ⚠️ **反了** —— 命中缓存 ⇒ `expand_query` 在 `:57` 早退、`rewrite_query` 在 `:142` 早退 ⇒ **不调 LLM ⇒ 不记账**。那**是故意的**（没花钱就不该记），⛔ 别当漏记去"修"。<br>📌 守卫：`test_cache_hit_does_not_record` |
 | 「`user_name` 有默认值，可以不传」 | 🔴 **没有默认值** —— 它是**必填 keyword**（`:43` / `:123`）。漏传 = `TypeError`，⛔ 不是"静默记成 `unknown`"。<br>⇒ 这是**有意的**（明文把 `.get(...,"unknown")` 当反例）。 |

@@ -1,33 +1,4 @@
-"""mem0 那一路的**记账归属**（2026-10-11）。
-
-## 改前是什么样
-
-`app/agent/memory_store.py` 让 mem0 用**它自己的** LLM 与 embedder
-⇒ 那条路的 token **一个都没记**。实测：`/agent/memory/add` 回 200，
-而**LLM 用量、embedding 用量都没动**、`token_usage_logs` 里**0 行**。
-
-**影响不止那两个端点** —— `advanced_chat` / `mcp_chat` 的 `inject_memories_to_prompt`
-**每一轮**都调一次 mem0 检索。
-
-## 改后是什么样
-
-mem0 的 LLM 与 embedder **都换成 `langchain` provider**，塞进去的是**我们自己的**对象：
-· embedder ⇒ 走 `rag.embedding_client.get_embedding`（与 RAG 侧同一份实现 + 同一份缓存 + 同一份记账）
-· LLM ⇒ 我们 `make_llm` 造的那个 + 一个 `on_llm_end` 回调记账
-
-**「算谁的」靠一个 `ContextVar`** —— mem0 内部调它们时**不把 user 传进来**。
-那条路走得通是**实测过的**：mem0 **就在调用方的执行上下文里**调它们，不是另起线程。
-
-## 本文件钉什么
-
-| # | 钉什么 | 不钉会怎样 |
-|---|---|---|
-| 1 | embedder 拿到的是**当前用户** | 又回到"记在假人头上" |
-| 2 | LLM 回调把用量记成 `memory_extract` + 当前用户 | mem0 的 LLM 白花 |
-| 3 | **两个入口函数都设了/复原了** ContextVar | 不设 ⇒ 全记 `system`；不复原 ⇒ **并发串账** |
-| 4 | 端点里**不算库**的那条路不编数 | 印没有数据源的数 |
-
-本文件**不连库、不连网、不调真模型**。
+"""mem0 那一路的**记账归属**。
 """
 import pytest
 

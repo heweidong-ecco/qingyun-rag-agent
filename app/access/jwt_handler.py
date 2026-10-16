@@ -1,5 +1,4 @@
 import jwt
-# 2026-09-20 删（§三·C3 的连带）：`import os` 已无使用者 ——
 #    原来只有 C3 删掉的那两行 `os.getenv(...)` 在用它。属 §三·D1（未使用导入）范畴，顺手清掉。
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,12 +9,9 @@ SECRET_KEY = JWT_SECRET_KEY
 ALGORITHM = "HS256"
 
 # Token 有效期
-# 2026-09-20 删（§三·C3）：此处原有用 `os.getenv` **重新赋值**的两行，
 #    把上面 `from config import` 进来的同名常量**覆盖**了 ⇒ 那个 import 是**死导入**。
 #    已核实**两边默认值相同**（`config.py:32-33` 也是 15 / 7）、且读的是**同一个 env 变量**
 #    ⇒ **行为完全等价**，所以直接删掉这两行、**让 `config.py` 成为唯一来源**
-#    （与 C2 同一原则：**一处定义**；也免得本文件成为第二处读同一个 env 的地方）。
-#    另外 `os` 若因此变成未使用导入，属 §三·D1（未使用导入）的范畴，不在本条处理。
 
 
 

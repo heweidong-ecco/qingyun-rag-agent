@@ -1,42 +1,8 @@
-""" · ANN 索引「先扫索引、后套 WHERE」那个坑 —— **真库往返**（`needs_db` · ⛔ 不进 CI）。
+"""· ANN 索引「先扫索引、后套 WHERE」那个坑 —— **真库往返**（`needs_db` · ⛔ 不进 CI）。
 
 ```bash
 POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_ann_iterative_scan.py -q -m needs_db
 ```
-
-## 🔴 这个文件为什么长这样（⛔ 别照"常规"把它简化掉）
-
-**旧版是装饰门** —— 它断言 `SHOW ivfflat.iterative_scan == relaxed_order` +
-`len(hits) == 3`，而实测**把防护摘掉，它在 `rag_test` 上 80/80 结果一字不变**。
-两个根因，都是 2026-10-16 实测出来的：
-
-1. `rag_test` 里 301 行**全是 `admin`** ⇒ `WHERE requested_by = 'admin' OR 'public'`
-   **全通过** ⇒ 根本不进"过滤 + 截断"那个场景；
-2. `rag_test` 上 planner 对宽过滤**选 `Seq Scan`**（实测 `EXPLAIN` 原文），
-   而过滤一变窄它又改走 `documents_requested_by_idx`（btree）+ 排序 —— **那条路天生精确**。
-   ⇒ **两条路都被堵死：端到端"靠数据自然触发"在这里做不到。**
-
-⚠️ **试过并失败的**（⛔ 别以为没人试）：临时 schema + `SET LOCAL search_path` 把
-`search_similar()` 引到一张"只有 ANN 索引"的表上、`enable_seqscan=off` +
-`enable_sort=off` 强逼、`hnsw.ef_search` 压到 1、过滤从 2% 到 100%、`top_k` 从 3 放到 50
-—— **planner 始终坚持 `Seq Scan`**（小表上"扫到够 `LIMIT` 就停"比走近似索引更便宜）。
-⇒ **能不能逼 planner 用 ANN 索引不由我们控制**，把门建在那上面本身就是脆的。
-   ⛔ **别为了"看着更像端到端"再加一条依赖 planner 脾气的用例。**
-
-⇒ 所以本文件把那条属性**拆成四道各自能红的门**，⛔ 不依赖 planner 的随机选择：
-
-| 用例 | 钉住什么 | 它怎么红 |
-|---|---|---|
-| `test_索引类型与代码一致` | 活库索引的 access method == 代码声明的那个 | 自愈段坏了 / 索引被手工改过 |
-| `test_防护真的写进去了_而且不是占位符` | 那两句 `SET LOCAL` 的**效果** | 摘掉 / 改名写错 / 值写错 / 跑在旧 pgvector 上 |
-| `test_search_similar_确实接了防护` | 那两处**接线** | 删掉 `search_similar` 里那一行 |
-| `test_版本自检的边界` | 启动自检的**判据边界** | 阈值写错 / 判据改成会被占位符骗的 `SHOW` |
-
-⚠️ **中间两条是一对，少一条都不成立**：第二条证"有效果"、第三条证"接上了"。
-⛔ 只留其中一条，就是本仓 `CLAUDE.md` §六 说的「**拿「动作成功」当「结果正确」**」。
-
-🔴 **不进 CI**：`ci.yml` 跑的是 `-m "not integration and not needs_db"`
-⇒ 这四条**只在本机带 `POSTGRES_DB=rag_test` 时跑**。⛔ **别在任何文档里写成"CI 会拦它"**。
 """
 from contextlib import contextmanager
 

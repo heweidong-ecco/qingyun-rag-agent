@@ -6,15 +6,15 @@ import billing.token_config as token_config
 
 
 def test_single_call_caps_are_the_agreed_values():
-    """作者 2026-09-30 裁的起始值。终值等前端做完、浏览器实测后再调。"""
+    """作者 裁的起始值。终值等前端做完、浏览器实测后再调。"""
     assert token_config.MAX_TOKENS_ANSWER == 2000
     assert token_config.MAX_TOKENS_AGENT == 1024
 
 
 def test_admin_is_no_longer_infinite():
-    """作者 2026-09-30 裁：「admin 也要同样上限」⇒ 不许是 inf。
+    """作者 裁：「admin 也要同样上限」⇒ 不许是 inf。
 
-    **2026-10-11靶子改过**：日额度按【池】分成两张表
+    **靶子改过**：日额度按【池】分成两张表
     这条**对两张表各判一遍**（不是删断言）—— 「admin = premium」是**口径**，
     它必须**每一张表里都成立**，否则会冒出一个"admin 在某一池里比 premium 低"的怪状态。
     """
@@ -29,7 +29,7 @@ def test_single_call_cap_does_not_depend_on_role():
     assert not hasattr(token_config, "ROLE_MAX_TOKENS")
 
 
-# ==================== 兜底额度必须是【最低档】，不是最高档（丁 · 2026-10-04） ====================
+# ==================== 兜底额度必须是【最低档】，不是最高档（丁 · ） ====================
 
 def test_every_role_has_a_registered_budget():
     """推导型守卫：`permission.UserRole` 里**每一个**角色都必须登记在 `ROLE_DAILY_TOKEN`。
@@ -44,7 +44,6 @@ def test_every_role_has_a_registered_budget():
        它钉的是**不变量**，不是"修了某个 bug" —— 别把它读成"抓到过什么"。
     """
     from access.permission import UserRole
-    # 2026-10-11：**两张表都要登记** —— 少登记一张，
      #    那个角色在**那一池**里就静默落进兜底值。
     for name, table in (("LLM_DAILY_TOKEN", token_config.LLM_DAILY_TOKEN),
                         ("EMBEDDING_DAILY_TOKEN", token_config.EMBEDDING_DAILY_TOKEN)):
@@ -58,13 +57,12 @@ def test_every_role_has_a_registered_budget():
 def test_unregistered_role_falls_back_to_the_LOWEST_tier_not_the_highest():
     """兜底额度必须 ≤ **现存最低档** —— 本仓取向是 fail-closed，这条是它的下限。
 
-    **改前的事实**（2026-10-04 实测）：兜底值是 `100_000`，**等于 `premium`（最高档）**
+    **改前的事实**（实测）：兜底值是 `100_000`，**等于 `premium`（最高档）**
     ⇒ 角色名拼错 / 新角色忘了登记，用户**静默拿到最高额度**，且**没有任何东西会响**。
 
     判据是**推导的**（不是把 `10_000` 写死）：`兜底 ≤ min(各档)`。
     ⇒ 将来真加了比 `free` 还便宜的一档，兜底**必须跟着降**，否则本条转红。
     """
-    # 2026-10-11：两池分成两张表 ⇒ 兜底那个常量**对两个池都用**
     #    ⇒ 它必须 ≤ **两张表合起来的最低档**（只比一张会漏掉另一张里更低的档）。
     lowest = min(
         min(token_config.LLM_DAILY_TOKEN.values()),
@@ -87,7 +85,7 @@ def test_an_unregistered_role_actually_gets_the_lowest_budget(monkeypatch):
        ⇒ 那条会走**正常路径**，**根本碰不到兜底**，改前也是绿的（= 一条测不出东西的用例）。
        ⇒ 必须**强行**让取角色那步返回一个不存在的角色。
 
-    **2026-10-11（两个额度池）靶子改过一次** —— **不是删断言，是换靶子**：
+    **（两个额度池）靶子改过一次** —— **不是删断言，是换靶子**：
     日额度拆成两个池之后，`get_user_token_budget` 返回的是**两池之和**
     ⇒ 未登记角色的总额 = **2 × 最低档**，而老断言写的是 `== lowest`（那时只有一份额度）。
     ⇒ 现在钉**两件**（都比老的那条更硬）：
@@ -101,7 +99,6 @@ def test_an_unregistered_role_actually_gets_the_lowest_budget(monkeypatch):
 
     monkeypatch.setattr(permission, "get_user_role", lambda _user: "unregistered_role")
     fallback = token_config.DEFAULT_DAILY_TOKEN_BUDGET
-    # 2026-10-11：两池两张表 ⇒ **逐个池**判它落的是不是那个兜底值
     #    （不是和某一个"全局最低档"比 —— 那个数现在不存在了）。
     for pool in qp.LIMITED_POOLS:
         got = qp.pool_daily_limit(pool, "unregistered_role")
@@ -138,7 +135,7 @@ def test_models_actually_in_use_have_explicit_pricing():
 def test_embedding_model_still_priced():
     """**在用的** embedding 模型必须登记（`rag/embedding_client` 按 model 记账）。
 
-    2026-10-11 改成**推导型**（改前写死 `"text-embedding-v2"`）。
+    改成**推导型**（改前写死 `"text-embedding-v2"`）。
     **为什么必须改**：  的 反证 写着「把新模型那行注释掉 ⇒ 上面那条守卫必须红」——
        **实测它不红**（`test_models_actually_in_use_have_explicit_pricing` 只管
        `LLM_MODEL_FAST` / `LLM_MODEL_CHAT`，**不管 embedding**；而这条写死了旧模型名，
@@ -157,10 +154,10 @@ def test_embedding_model_still_priced():
 def test_all_registered_prices_are_positive():
     """登记的单价不许是 0 或负数 —— 那会**静默把花费记成 0**。
 
-    **本条替代了原先的 `test_default_pricing_is_not_lower_than_models_in_use`**（2026-10-01 删）。
+    **本条替代了原先的 `test_default_pricing_is_not_lower_than_models_in_use`**（删）。
        那条断言「兜底价 >= 在用模型价」，**在 CI 上直接红**：
        CI 没有 `.env` ⇒ `config.LLM_MODEL_CHAT` 落到**代码里的默认值**
-       （**当时**是 `config.py:55` 的 `qwen-plus`；**2026-10-02 起已改成 `deepseek-v4-flash`**，
+       （**当时**是 `config.py:55` 的 `qwen-plus`；**已改成 `deepseek-v4-flash`**，
        见  —— 这条记的是**那天**的事实）
        ⇒ 0.008/0.016 **本来就高于**兜底 0.003/0.006 ⇒ `assert 0.003 >= 0.008` 失败。
     **根因不是"CI 配置特殊"，是那条不变量本身不成立** ——
@@ -217,7 +214,7 @@ def test_tracker_aliases_point_at_token_config():
     光比值分不出"搬了"还是"抄了一份" —— 抄的那份**下次改价时不会跟着动**，
        而这正是这个 Task 要解决的问题本身。
 
-    **2026-10-11（两个额度池）：`ROLE_TOKEN_BUDGET` 那条【换了落点】** ——
+    **（两个额度池）：`ROLE_TOKEN_BUDGET` 那条【换了落点】** ——
     改成两个池之后 `get_user_token_budget` 不再读角色额度（它读 `quota_pools.total_daily_limit`）
     ⇒ 那条别名在 `token_tracker` 里**变成死导入**（`ruff` 的，被提交门当场拦下并删掉了）。
     **不是把这条检查删掉** —— 它**搬到真正读它的地方**（`billing/quota_pools.py`），
@@ -230,7 +227,6 @@ def test_tracker_aliases_point_at_token_config():
     assert token_tracker.MAX_SINGLE_CALL_COST is token_config.MAX_SINGLE_CALL_COST
     assert token_tracker.MAX_THREAD_COST is token_config.MAX_THREAD_COST
     # 角色额度那两个 ⇒ 现在的读法是 `quota_pools`（每池各取一次）
-    # 2026-10-11：日额度按池分成两张表 ⇒ 这里**两张都要指回同一个对象**
     #    （不是删掉这条 —— 它钉的是"没有抄一份出来"，而抄一份**下次改价不会跟着动**）。
     assert quota_pools.LLM_DAILY_TOKEN is token_config.LLM_DAILY_TOKEN
     assert quota_pools.EMBEDDING_DAILY_TOKEN is token_config.EMBEDDING_DAILY_TOKEN
@@ -275,17 +271,9 @@ def test_rate_limiter_actually_reads_token_config():
 
 
 # ===========================================================================
-# 2026-10-09（模块化重构）：**产品模块的枚举口径**
 # ===========================================================================
 # **为什么不能再用 `api_dir.glob("*.py")`**：
-#   2026-10-09 把 60 个模块按组收进了 `app/<组>/`（core · routing · access
 #   billing · agent · rag · tools）⇒ **根目录下再也扫不到它们** ⇒ `glob` 返回
-#   **空列表** ⇒ 下面那些「对每个模块…」的断言**全部为真**。
-#   ⇒ 本仓原话：「**空跑 = 静默假通过**」（`pre-commit-gates.py` / `test_web_pages.py` 都栽过）。
-#   ⇒ 所以这里改成**递归**，并且**递归之后必须排掉两处**：
-#       · `tests/`  —— 测试不是产品模块
-#       · `alembic/` —— 迁移脚本，**重构前就扫不到**（原来 `glob("*.py")` 只看 app/ 根）
-#   ⇒ 并且带一条**防空跑断言**：真扫到 0 个 ⇒ 当场红，不许静默变绿。
 def _product_py(api_dir):
     """`app/` 下的**产品 .py**（`app/` 根 + 七个模块组）。"""
     ps = [p for p in api_dir.rglob("*.py")
@@ -306,8 +294,7 @@ def _mod_name(api_dir, path):
     return path.relative_to(api_dir).with_suffix("").as_posix().replace("/", ".")
 
 
-# ==================== 额度键改名（2026-10-11） ====================
-#
+# ==================== 额度键改名（） ====================
 # 日额度按【池】分开 ⇒ 旧的 `DAILY_TOKEN_FREE` / `_PREMIUM` / `_ADMIN` **不再被读**。
 # 留在 `.env` 里**不会报错**，只是额度悄悄变成别的数 —— 所以必须**点名拒绝启动**。
 

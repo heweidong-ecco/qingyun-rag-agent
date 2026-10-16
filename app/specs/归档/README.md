@@ -21,7 +21,7 @@
 
 | 文件 | 原模块 | 归档日期 | 为什么删 | 那一层现在在哪 |
 |---|---|---|---|---|
-| [`quota_limiter.md`](./quota_limiter.md) | `app/quota_limiter.py` | 2026-10-03 |：撤掉调用点后**零调用者** | `app/main.py` 的 `QuotaMiddleware`（**原位**换成 token 口径）· 取数在 `app/billing/token_tracker.py` |
+| [`quota_limiter.md`](./quota_limiter.md) | `app/quota_limiter.py` | |：撤掉调用点后**零调用者** | `app/main.py` 的 `QuotaMiddleware`（**原位**换成 token 口径）· 取数在 `app/billing/token_tracker.py` |
 
 ---
 

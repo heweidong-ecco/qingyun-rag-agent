@@ -1,52 +1,7 @@
 """SSE（Server-Sent Events）**共享层** —— 本仓所有流式端点的骨架。
 
-> 2026-10-04 新建（剩余 4 条链）。**在它之前，"这幅骨架"在本仓被内联抄了 2 遍**
 > （`api_v1_agent.py::langgraph_chat_stream` · `api_v1_rag.py::stream_search`），
 > 而**第 3 遍就要开始抄了** —— 本模块把"抄不得的那部分"收成一个地方。
-
----
-
-## 这个模块**存在的理由**：那 5 条**不能交给调用方**的约束
-
-骨架里凡是"顺序"和"关流方式"，**都是实测撞出来的**，不是设计偏好。
-交给调用方自己写 ⇒ **一定会有人写反**（本仓**已经写反过一次**，）。
-
-| # | 约束 | 出处（都是实测，不是推断） |
-|---|---|---|
-| ① | **同步收尾（计数 → 日志 → `on_incomplete`）必须排在【任何 `await` 之前】** |：`await stream.aclose` 会被**二次投递的取消**打断 ⇒ 排在它后面的收尾**一件都不跑**，而**单测全绿**（假流的 `aclose` 不抛）。只在**晚切**（用户已看到字再点停止）时露出来 |
-| ② | **关上游必须包 `anyio.CancelScope(shield=True)`** | 同上。取消作用域在**每个 await 点反复投递** ⇒ 不护住，"关"这个动作每次都半途而废 |
-| ③ | `except asyncio.CancelledError: raise` —— **不吞 · 不在里面 `yield`** | /：旧实现在取消时还发了一帧 `[DONE]`，**实测真发得出去**（接收方已走，发出去只会让"已取消"与"正常收尾"在**帧层面长得一样**） |
-| ④ | `X-Accel-Buffering: no` **不可省** | 有反代（Nginx / Cloudflare）时它会把 SSE **攒着发** ⇒ 本地直连一切正常、**上线后变成假流式** |
-| ⑤ | 汇总/状态**只从图的最终状态取**（`aget_state`），**不是"把流过的块攒起来"** |  **真服务**撞出来的：攒块会让上一轮的 `tool_calls` 混进来 ⇒ 判成 `pending_approval`，而图**早就跑完了** ⇒ 前端**永远等一个不会来的批准** |
-
-**③ 有两副面孔**：Starlette 2.3 抛 `CancelledError`，2.4 走 `GeneratorExit`（**不是** `Exception` 的子类）。
-⇒ `outcome` **默认按「被取消」算**，只有跑到收尾才改 `"done"` —— 这样**两条分支都记得上**。
-
----
-
-## 它**不**负责什么（别往里塞）
-
-| 不进共享层 | 为什么 |
-|---|---|
-| `check_session_token_budget` / `circuit` | 必须在**建生成器之前**拒（触顶要回 4xx，不是"HTTP 200 + 流一半断"）；且两条 AST 守卫钉着它们在**端点函数体**里（`app/tests/test_session_budget_wiring.py` · `app/tests/test_breaker_wiring.py`） |
-| `register` / `resolve`（待接管队列） | 四条链各不同；且靠**模块全局**查找，挪进来 `monkeypatch` 就够不着了 |
-| `summarize_agent_result` / status 口径 | 只有 Agent 链有 status；`plan_execute` 根本没有 |
-| `session_key` 拼身份 · 原 `thread_id` 回显 | 端点特有（**两条轴**：预算用原值、图用拼过的，别合并） |
-| 检索 / prompt 构建 / LLM 单例 | 各链专有 |
-| **`[DONE]` 与其它收尾帧的先后** | 那是**每条链自己的契约**（RAG 是 `内容 → [DONE] → sources`，很反直觉但是现状）⇒ 整条尾巴交给 `on_complete`，**骨架不自动补 `[DONE]`** |
-| **节点名** | 见 `graph_message_text(..., nodes=...)` —— 四条链的节点名不同，别在这里写死 |
-
----
-
-## 调用方必须知道的两件事
-
-1. **`extract` 的入参形状取决于图的 `subgraphs` 开关**（实测）：
-   `subgraphs=False` ⇒ `(chunk, meta)`；`subgraphs=True` ⇒ `(namespace, (chunk, meta))`。
-   `graph_message_text` 已经把这个归一化掉了，别在端点里再解一次。
-2. **聚合与发帧是两件事**：本模块只管**发帧**。节点内部要把流**聚合成一条完整消息**去记账时，
-   **必须对【所有】块做 `+`，不许跳过 `content` 为空的块** ——
-   实测本仓 provider 把 `usage_metadata` 挂在**最后一块**（`content=''`）上，跳过它**账就没了**
-   （判据见 `qingyun-rag-agent-TODO待办/探针-流式与记账.py`）。
 """
 
 from __future__ import annotations
@@ -55,7 +10,7 @@ import asyncio
 import json
 from typing import AsyncIterator, Callable, Collection, Optional
 
-#  （2026-10-03 · 真服务实测）：关上游的流要用它护住（约束②）。
+#  （· 真服务实测）：关上游的流要用它护住（约束②）。
 import anyio
 
 from fastapi.responses import StreamingResponse
@@ -152,8 +107,6 @@ def graph_message_text(
     #    (ns, chunk, meta)    ← 另一些版本
     #    (ns, (chunk, meta))  ← subgraphs=True（本版本实测。`ns` 自己是 tuple）
     #    (chunk, meta)        ← subgraphs=False
-    # **先看长度**：`ns` 本身就是个 tuple，所以"首元素是 tuple"**分不出**前两种
-    #    （`isinstance(item[0], tuple)` 对它们**都为真**）—— 顺序写反 ⇒ 把 3 元组解成 2 个 ⇒ ValueError。
     if len(item) == 3:
         _, chunk, meta = item
     elif isinstance(item[0], tuple):
@@ -265,7 +218,7 @@ async def sse_stream(
         return
 
     finally:
-        # **顺序 = 2026-10-03 真服务实测改的**（约束①）：
+        # **顺序 = 真服务实测改的**（约束①）：
         #    `await upstream.aclose()` 会被**二次投递的取消**打断 ⇒ 排在它后面的收尾**一件都不跑**。
         #    ⇒ 三件**全同步**，任何 `await` 都在它们**后面**。
         if outcome == "cancelled":

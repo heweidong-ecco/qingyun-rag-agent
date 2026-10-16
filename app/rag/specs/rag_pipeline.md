@@ -119,7 +119,7 @@ if self.enable_rerank and candidates:
 它把 `AIMessage` **剥成 `str`**，`usage_metadata` 随之丢光 ⇒ **记账拿不到数**。
 🔒 守卫 ⇒ `app/tests/test_rag_billing_wiring.py`（`:304` 那条钉的是 `generate_answer=False` ⇒ **不该记一笔**）。
 
-### 5. 🔴 `thread_id` 是**必填关键字**（`:66`），⛔ 不给默认值 —— 2026-10-16修的
+### 5. 🔴 `thread_id` 是**必填关键字**（`:66`），⛔ 不给默认值 —— 修的
 
 **改前**：`search_async` **根本没有 `thread_id` 形参**，而
 `record_from_response(..., thread_id="default")` 是**硬编码**（`:207`，引用分支由

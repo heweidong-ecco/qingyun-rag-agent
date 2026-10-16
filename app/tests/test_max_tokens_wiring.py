@@ -2,30 +2,6 @@
 
 为什么不能只测常量值：常量对了、**没接上**，等于没有上限。
    本文件钉的是"构造点真的走工厂、且两个轴的角色对"。
-
-不碰 DB / Redis —— 只看代码的 AST。
-
-## ①b （2026-10-02）把本文件从「钉 15 处 `ChatOpenAI`」改成「钉工厂」
-
-原来钉的是"每个 `ChatOpenAI(...)` 带没带 `max_tokens`、接的是哪个常量"。
-⇒ 那套写法**天然允许 15 个直连点继续存在**，只求它们各自写对。
- 把构造收进 `app/core/llm_factory.py` 之后，**更强的那句话才成立**：
-
-> **`app/core/llm_factory.py` 以外，全仓不许再出现裸 `ChatOpenAI(`。**
-
-所以本文件现在是**三条**：
-  1. 工厂以外**零** `ChatOpenAI(`（第 1 条）
-  2. 每个 `make_llm(...)` 的两个轴，与该文件的**分类裁定**一致（第 2 条）
-  3. `MAX_TOKENS_ANSWER > MAX_TOKENS_AGENT`（第 3 条）
-
-**本文件同时是"哪些调用点存在"的清单** ——
-   加新 `make_llm(...)` 而没进 `EXPECTED_ROLES` ⇒ 第 2 条会红，
-   **逼你当场决定它属于「答案」还是「中间步骤」**（而不是默认填一个）。
-
-**不在本文件射程内的两处**（别以为漏了）：
-   · `query_rewriter.py` 用的是**裸 `openai.OpenAI(`**（不是 `ChatOpenAI`），
-     它的上限是 `MAX_TOKENS_REWRITE_VARIANTS` / `_INTENT`，另有其表。
-   · `embedding_client.py` 走 `OpenAIEmbeddings` —— **没有 `max_tokens` 这个概念**。
 """
 import ast
 import pathlib
@@ -56,7 +32,7 @@ def _calls_in(fname: str, func_name: str):
 def _source_files():
     """`app/` 下的产品 `.py`，**返回相对 `app/` 的路径**（如 `core/llm_factory.py`）。
 
-    2026-10-09：原先返回 `p.name`（裸名）—— 重构后同名文件在不同组里会**撞名**，
+    ：原先返回 `p.name`（裸名）—— 重构后同名文件在不同组里会**撞名**，
        且与 `FACTORY` / `EXPECTED_ROLES` 的键**对不上**（它们现在写的是相对路径）。
     """
     return [p.relative_to(API).as_posix() for p in sorted(_product_py(API)) if not p.name.startswith("test_")]
@@ -111,12 +87,10 @@ def test_no_raw_chatopenai_outside_the_factory():
 # **这不是"从代码里推出来的规律"，是把 【改动前】的取值原样固化** ——
 #     是**零行为变化**的收口，所以这张表必须等于改动前 15 处的实际取值
 #    （`agent_graph.py` 那类"用 fast"的地方**不许被顺手改成 chat**）。
-#    分类【为什么】这么分 ⇒ `app/billing/specs/token_tracker.md` 的分类表。
 EXPECTED_ROLES = {
     # ---- 答案生成类：要完整答案 ⇒ answer(2000) ----
     "routing/api_v1_rag.py": ("chat", "answer"),          # get_llm_stream 流式答案 · WS agent 对外答案
     "rag/rag_pipeline.py": ("fast", "answer"),        # answer_llm（模型轴是 fast，与下面不同）
-    # 2026-10-01 补：**本行是计划里【漏掉】的那处**（`①b`  的 Files 清单没有它）。
     #    它是**离线评测脚本**：生成"被评的答案"、又当 RAGAS judge ⇒ 两处都是长输出。
     #    不收敛的话会绕开工厂；接小（1024）则**judge 输出可能被截断 ⇒ 评分静默失真**。
     "eval/evaluate_with_ragas.py": ("chat", "answer"),
@@ -126,7 +100,6 @@ EXPECTED_ROLES = {
     "agent/agent_graph_advanced.py": ("chat", "agent"),
     "agent/agent_graph_advanced_learning.py": ("chat", "agent"),   # 主 llm + 三个子图 llm + REACT 子图
     "agent/plan_execute.py": ("chat", "agent"),                    # planner / executor / quality_checker
-    # 2026-10-11：**mem0 抽事实**那次 LLM —— 它此前**根本没走工厂**
     #    （mem0 用自己那个 openai provider，而且**不记账**）。
     # **归「中间步骤」**：它的输出是一串**事实**，不是给用户看的答案。
     # 改前那版**没设 `max_tokens`**（吃端点默认）⇒ 接小是**行为变更**；
@@ -182,17 +155,9 @@ def test_the_two_budgets_are_distinct_and_answer_is_larger():
 
 
 # ===========================================================================
-# 2026-10-09（模块化重构）：**产品模块的枚举口径**
 # ===========================================================================
 # **为什么不能再用 `api_dir.glob("*.py")`**：
-#   2026-10-09 把 60 个模块按组收进了 `app/<组>/`（core · routing · access
 #   billing · agent · rag · tools）⇒ **根目录下再也扫不到它们** ⇒ `glob` 返回
-#   **空列表** ⇒ 下面那些「对每个模块…」的断言**全部为真**。
-#   ⇒ 本仓原话：「**空跑 = 静默假通过**」（`pre-commit-gates.py` / `test_web_pages.py` 都栽过）。
-#   ⇒ 所以这里改成**递归**，并且**递归之后必须排掉两处**：
-#       · `tests/`  —— 测试不是产品模块
-#       · `alembic/` —— 迁移脚本，**重构前就扫不到**（原来 `glob("*.py")` 只看 app/ 根）
-#   ⇒ 并且带一条**防空跑断言**：真扫到 0 个 ⇒ 当场红，不许静默变绿。
 def _product_py(api_dir):
     """`app/` 下的**产品 .py**（`app/` 根 + 七个模块组）。"""
     ps = [p for p in api_dir.rglob("*.py")

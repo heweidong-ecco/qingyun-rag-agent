@@ -1,19 +1,8 @@
-"""待接管会话的注册表（B5 · 硬门 D）。
+"""待接管会话的注册表。
 
 **为什么需要它**：`MemorySaver`（`agent_graph.py` 里 `build_agent_graph` 的末行）
    **没有"列出所有 thread"的 API** —— 它只按 `thread_id` 取。
    ⇒ **没法从 checkpoint 反查"谁卡在审批"** ⇒ 只能自己记账。
-
-**已知限制（v1）**：本表在**内存**里 ⇒ **进程重启即清空**。
-   与**默认的** `MemorySaver` **是一致的**（那个也在内存）⇒ 两边一起丢，不会对不上。
-
-   **但若设了 `AGENT_CHECKPOINT_BACKEND=sqlite`**：**图的状态落盘了、本表还在内存**
-      **重启后图仍在等审批，而队列里查不到** ⇒ 会话变孤儿（谁也找不到它，它自己也走不下去）。
-      **这个组合不会自己报错** —— 要等人重启后去队列里找才发现。
-      ⇒ 启动时由 `warn_if_backend_mismatch` 给警告（唯一的防线）。
-
-计划 / 裁定 ⇒ `app/routing/specs/api_v1_agent.md` 的「实施计划 ② · 」·
-   模块 spec ⇒ `app/agent/specs/pending_approvals.md` · 判据 ⇒ `app/tests/test_pending_approvals.py`
 """
 import threading
 import time
@@ -23,7 +12,7 @@ import time
 _lock = threading.Lock()
 _pending: dict[str, dict] = {}
 
-# 一次会话允许的人工审批轮次上限（作者 2026-10-05 裁「上限 3 轮」）。
+# 一次会话允许的人工审批轮次上限（作者 裁「上限 3 轮」）。
 # 可用 env `MAX_APPROVAL_ROUNDS` 覆盖 —— 见 `approval_round_cap`。
 _DEFAULT_MAX_APPROVAL_ROUNDS = 3
 
@@ -53,7 +42,7 @@ def register(session_key: str, user_name: str, tool_calls: list, *,
              rounds: int = 1) -> None:
     """登记一个卡在审批的会话。同一键重复登记 ⇒ **覆盖**（不产生两条）。
 
-    **2026-10-03（丙段）**：第一个形参由「裸 `thread_id`」改成**会话键**
+    **（丙段）**：第一个形参由「裸 `thread_id`」改成**会话键**
        （`session_key(user_name, thread_id)`）—— 理由：登记表原先也按裸 `thread_id` 记账
        ⇒ 两个人用同一个 `thread_id` **在队列里也串号**，`/agent/approve` 会拿着
        别人的键去续跑。形参**改名**了（`thread_id` → `session_key`）是**故意的**：
@@ -66,7 +55,7 @@ def register(session_key: str, user_name: str, tool_calls: list, *,
       不传 ⇒ 退回等于 `session_key`（**只为兼容老调用点 / 测试**；新代码一律显式传）。
 
     `graph`：这条会话**停在【哪张图】**的审批点上（`"agent_graph"` / `"checkpointer_agent"`）。
-      **必须有它**（作者 2026-10-03 裁）：`/agent/approve` 早先把 `agent_graph` **写死**了，
+      **必须有它**（作者 裁）：`/agent/approve` 早先把 `agent_graph` **写死**了，
          而 `/agent/memory_chat` 走的是 `checkpointer_agent` ⇒ 光给它加审批门，
          **那个会话会永远停在审批点、没人放行**（比不加门还糟）。
          默认值 `"agent_graph"` 只是**兼容老调用点**；新调用点**一律显式写**。

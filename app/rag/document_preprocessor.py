@@ -82,15 +82,12 @@ class DocumentPreprocessor:
         lines = [line.strip() for line in text.splitlines()]
         return '\n'.join(lines)
 
-    # 2026-09-20 删掉了一份**空壳定义**（审计 §二）：
     #    这里原先有**两个** `remove_noise_markers` —— 上一份只有一句 docstring
     #    （`"""去除常见的噪声标记（新增 URL、邮箱过滤）"""`），下一份才是真实现。
     #    Python **后者胜出** ⇒ 当前行为是对的，**但改上面那份不会生效、也不会报错**。
     #    与 `CLAUDE.md` 修复记录 #7 同型（`db.py` 的 `get_db` 重复定义 ⇒ 写入不提交）。
-    #    回归测试:app/tests/test_audit_fixes.py::test_no_duplicate_method_definitions_in_preprocessor
     def remove_noise_markers(self, text: str) -> str:
         """去除噪声标记（从配置文件加载规则）"""
-        #
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
         # 先应用配置文件中的正则规则
         text = self.rule_loader.apply_rules(text, self.domain)
@@ -99,26 +96,6 @@ class DocumentPreprocessor:
         # 特殊情况处理:例如第二条去除控制字符（除了换行和制表符）
         # 控制字符规则 留在 Python 代码中更合适,
         # 理由：控制字符是不可、不可打印的，配置文件里写出来反而容易出错。
-        # 这类规则是底层基础清洗，与领域无关，不应该频繁修改。放在代码中一目了然，维护成本更低。
-        # 注意：raw string 中括号不需要双重转义（\\[ 是字面反斜杠+开括号，会损坏正则）
-        #
-        # 2026-09-21 注（登记 §三·3.7 / N14）：**这条规则不是死代码 —— 它在 `legal`/`medical` 域正在生效。**
-        #    登记文件原写「这条规则**从未生效**」——**那是错的**，已按实测更正。
-        #
-        #    实测（三个域各跑一次，判据可复跑）：
-        #      · `legal` / `medical` 域 —— **它正在干活**：这两个域的配置里【没有】图片规则，
-        #        图片收敛**靠的就是这一条** ⇒ **删不得**（删了这两个域的图片处理会坏）
-        #      · `default` 域 —— 配置里有一条**逐字等价**的规则（`cleanup_rules.json` 的 `default` 第 5 条），
-        #        而且**先跑** ⇒ 这一条在 default 域是**多余的**
-        #      · 但 `default` 域的 URL 规则（`https?://\S+`）**排在图片规则之前**，
-        #        会把 `![alt](http://…)` 打成 `![alt](` —— **残废后两条图片规则都不匹配**
-        #        ⇒ **`default` 域的 `http://` 图片才是真问题**（输出残留 `![图](`）
-        #
-        #    ⇒ 准确的一句话：**「在 legal/medical 生效；在 default 被 URL 规则打残」**。
-        #    这条行为**有回归用例锁着**（`test_audit_fixes.py::test_markdown_image_rule_is_not_dead`）——
-        #       有人删它，用例会红。
-        #    要**修** `default` 域（把图片规则提到 URL 规则之前）会**改变文本预处理输出**
-        #       影响已有语料 ⇒ 属**行为变更**，**待作者裁**（见 `docs/待办登记…` §三·3.7）。
         text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'\1', text)  # Markdown图片语法
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)  # 去除控制字符
         return text
@@ -182,7 +159,6 @@ class DocumentPreprocessor:
         return '\n'.join(result)
 
     def deduplicate_chunks(self, chunks: List[str], threshold: float = 0.85) -> List[str]:
-        # 2026-10-08 改：`0.9` → **`0.85`** —— 对齐 `docs/说明/语料要求.md` §一#3
         #    定死的那个数（「语义去重阈值 0.85」）。
         #    **这一改动【当前零影响】** —— 本方法没有任何调用方（见 docstring 里那三条）。
         """
@@ -191,7 +167,7 @@ class DocumentPreprocessor:
 
         注意：这个方法需要 sentence-transformers。
 
-        2026-09-20 核实（§三·B4）：**当前无任何调用方** ——
+        核实（§三·B4）：**当前无任何调用方** ——
            唯一的调用点（`app/routing/api_v1_rag.py` 的批量入库路径）**已被注释掉**：
                # chunks = preprocessor.deduplicate_chunks(chunks)
            ⇒ 原 docstring 写「**只在批量入库时使用**」是**半真半假**：批量入库的代码还在，

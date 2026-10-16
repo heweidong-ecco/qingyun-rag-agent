@@ -1,11 +1,4 @@
 """embedding 模型名必须**从 env 读** —— 不许再写死在签名里（§二·2）。
-
-## 为什么
-`get_embedding(text, model="text-embedding-v2")` 把模型名写死在**形参默认值**里
-换模型要改代码。而 embedding 的模型名**必须与新变量的维度一起管**（§2.1）。
-
-> 与 `test_embedding_client_lazy.py` 分开：那份管**惰性构造**（缺 key 别炸 import 链），
-> 这份管**模型名的来源**。两件事，别合并。
 """
 
 

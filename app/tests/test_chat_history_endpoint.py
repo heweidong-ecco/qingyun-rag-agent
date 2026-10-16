@@ -1,25 +1,7 @@
-"""`GET /api/v1/rag/chat_history` —— **读回对话历史**（前端整体调整 · 批 5 · 2026-10-11）。
+"""`GET /api/v1/rag/chat_history` —— **读回对话历史**（前端整体调整 · 批 5 · ）。
 
 本文件**不连库、不连 Redis**（裸 `TestClient(app)` + 把取历史那个函数打桩）——
    `check.txt` 那族的理由是：别写成 `with TestClient(app) as client:`，那会触发 lifespan。
-
-## 为什么会有这条端点
-
-改前**全仓没有任何"读回对话历史"的出口** —— `get_chat_history` 只被服务端用来喂模型，
-而对话页**从来没做过回显**。⇒ 访客换个页面再回来，**页面上是空的、而模型还记得**
-（那页自己写着「本页不显示历史消息；这个会话的上下文模型仍然记得」）。
-**那不是创空间的限制**（那只是单容器）。作者 2026-10-11 实测报的：
-「进行了一个对话，然后点执行轨迹，再点会话，**原来的对话就没有了**」。
-
-## 本文件管什么
-
-| # | 钉什么 | 不钉会怎样 |
-|---|---|---|
-| 1 | 没凭据 ⇒ 401 | 对话历史成了**公开可读**的 |
-| 2 | **不带 `thread_id` ⇒ 422**（不是回一个默认桶） | 「忘了传」会**静默读回另一个会话**，而页面上看着像"历史空了" |
-| 3 | **它去取的是【调用者自己】的历史** —— `get_chat_history` 收到的第一个参数**必须来自鉴权依赖**，不是请求里给的任何东西 | **那是一条越权读别人对话的口子** |
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_chat_history_endpoint.py -q -p no:warnings`
 """
 from fastapi.testclient import TestClient
 
@@ -30,7 +12,7 @@ from routing.deps import get_current_user_hybrid
 def _as(user_name: str):
     """**不碰库**地把"调用者是谁"固定下来。
 
-    2026-10-11 实测栽过：一开始用 `create_user_api_key(...)` 真发一把——
+    实测栽过：一开始用 `create_user_api_key(...)` 真发一把——
        它**要写库**，于是**本机绿、`ci-local`/CI 红**（那边没有 Postgres）。
        ⇒ 用 FastAPI 自己的 `dependency_overrides`，一个字节都不碰库。
     """

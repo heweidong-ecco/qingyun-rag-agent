@@ -4,9 +4,6 @@
   ① **查不到 TTL 必须报错** —— 不许 `.get(name, 60)` 那种静默默认值
   ② **`0` = 不缓存**，且**一次 redis 都不碰**（`date_today` 靠它躲开跨天那一小时）
   ③ **失败结果不入缓存** —— 由 `should_cache` 谓词显式决定，不靠"猜哪些结果算失败"
-
-它还兼一个**新工具登记网**：`test_every_mcp_registered_tool_has_a_ttl` ——
-   以后往 `mcp_server.TOOLS` 加工具却忘了登记 TTL，**只有这条用例会红**。
 """
 import pytest
 import redis
@@ -114,10 +111,9 @@ def test_failure_result_is_not_cached(fake):
 
 
 # ==================== fail-open：Redis 不通不拒服务====================
-# 作者 2026-10-08 裁定。**为什么必须 fail-open**：接上缓存后，`web_search` /
+# 作者 裁定。**为什么必须 fail-open**：接上缓存后，`web_search` /
 #    `calculator` 会从"不需要 Redis"变成"需要 Redis" ⇒ Redis 一挂它们就 500。
 #    **缓存是优化，不该因为它拿不到就拒服务**（本仓 `app/tools/tool_cache.py` 文件头那句）。
-# 同形先例：`app/access/rate_limiter.py` 的  兜底。
 
 
 class _DownRedis:

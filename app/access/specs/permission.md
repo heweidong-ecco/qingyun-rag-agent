@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **已接 DB**—— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
+| **状态** | ✅ **已接 DB**（· B1）—— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
 | **对外提供** | `UserRole`（`str, Enum`：`FREE` / `PREMIUM` / `ADMIN`）· `get_user_role(user_name) -> UserRole` · 🆕 **`invalidate_role_cache(user_name=None)`**（**写侧改完角色必须调它**） |
 | **谁在用** | **11 处**：`deps.py:76`（`require_admin`）· `api_v1.py:244` · `api_v1_rag.py:383` · `api_v1_agent.py` **7 处**（admin 判定）· `token_tracker.py:513`（`get_user_token_budget` —— 🔴 **配额热路径**，一个请求最多调 10 次） |
 | **测试** | 🆕 `app/tests/test_user_role_from_db.py`（**19 条，本模块自己的用例**，⭐ 含反向守卫与"非数据库异常必须冒泡"）· `test_isolation.py` · `test_pending_visibility.py` · `test_approve_ownership.py` · `test_trace_isolation.py` · `test_quota_middleware.py` · `test_token_config.py` · `test_rate_limit_identity.py`（`_no_db` 守卫也拦本模块 —— 见那里 fixture 的说明） |
@@ -30,8 +30,8 @@ def get_user_role(user_name: str) -> UserRole:
 
 | 缺口 | 说明 |
 |---|---|
-| ✅ ~~角色表没接 DB~~ | **2026-10-09 已接**（B1）—— `api_keys.role` 为权威 + 60s 缓存 + 写侧失效。⚠️ **旧文的挂起理由与落点已作废，⛔ 别照旧读**： 🅱️「后端先行」**早已满足**； 写的 /`R1.3` **`R1.3` 当天就随  落地了** |
-| ✅ ~~没有"改角色"的入口~~ | **2026-10-09 已有两处**： · `POST /admin/create_user` 的 `role` 字段。⚠️ **⚠️ 没有"改已有用户的角色"入口** —— 两个入口都是**发新 key 时**写；改现有用户的角色**目前只能再发一把** |
+| ✅ ~~角色表没接 DB~~ | **已接**（B1）—— `api_keys.role` 为权威 + 60s 缓存 + 写侧失效。⚠️ **旧文的挂起理由与落点已作废，⛔ 别照旧读**： 🅱️「后端先行」**早已满足**； 写的 /`R1.3` **`R1.3` 当天就随 落地了** |
+| ✅ ~~没有"改角色"的入口~~ | **已有两处**： · `POST /admin/create_user` 的 `role` 字段。⚠️ **⚠️ 没有"改已有用户的角色"入口** —— 两个入口都是**发新 key 时**写；改现有用户的角色**目前只能再发一把** |
 | ⚠️ **没有"不存在的用户"这一档** | 任何没被特判的字符串**都是 FREE**，包括拼错的用户名 ⇒ 见 §⚠️ 第 1 条 |
 | ⚠️ **脏值只在读侧兜** | 写侧**⛔ 不校验**取值（`role` 是 TEXT）⇒ `role='胡说八道'` 能写进去，读侧靠 `UserRole(raw)` 转不出来 ⇒ **回退**。⛔ **这是有意的**：多一处白名单 = 多一处会与 `UserRole` 分叉的事实源 |
 
@@ -58,7 +58,7 @@ def get_user_role(user_name: str) -> UserRole:
 
 ### 3. 🔴 `isolation_c` / `test_user` 是**【测试身份】，⛔ 不是业务角色**
 
-作者 2026-10-03 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——就是下面这三个：
+作者 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——就是下面这三个：
 
 | 身份 | 属于哪一档 |
 |---|---|
@@ -74,28 +74,28 @@ def get_user_role(user_name: str) -> UserRole:
 ### 4. 🔴 那张**次数配额表已删** —— 看 git 历史会看到它，⛔ 别以为还在
 
 本文件原先有 `ROLE_QUOTA = {FREE: 100, PREMIUM: 10000, ADMIN: inf}` 与 `get_user_quota()`。
-**2026-10-03 整张表连入口一起删**（→）。
+**整张表连入口一起删**（→）。
 
 **删的理由（判据可打印）**：那是**一套独立的「每日请求次数」配额**，与 `token_config` 的 **token 日额度**（token）
 **互不知情** ——  实测**两者口径差 35 倍**（`plan_execute` 一次 ~3346 token ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）。
 
 ⚠️ ** 原写「降级为接口权重、不删」—— 该条已被  推翻。**
-⚠️ **配额表现在的家在 `token_config`**（🔴 2026-10-11 起是**两张池表**：`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN` —— 旧名 `ROLE_DAILY_TOKEN` **已删**，），判定在 `token_tracker`，全路径那层挂在 `main.QuotaMiddleware`。
+⚠️ **配额表现在的家在 `token_config`**（🔴 是**两张池表**：`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN` —— 旧名 `ROLE_DAILY_TOKEN` **已删**，），判定在 `token_tracker`，全路径那层挂在 `main.QuotaMiddleware`。
 
 ### 5. ⚠️ `UserRole` 是 `str, Enum` ⇒ 与字符串键**直接可比**
 
 所以 `token_config` 里那张表**用字符串当键**（`"free"` / `"premium"` / `"admin"`）也能对上。
 ⚠️ 代价：**写错字符串不会报错**，只会**查不到** ⇒ 见 `app/billing/specs/token_config.md`。
 
-### 6. ⚠️ 缓存（**2026-10-09 起有了 —— 但⛔ 不是 `@lru_cache`**）
+### 6. ⚠️ 缓存（**有了 —— 但⛔ 不是 `@lru_cache`**）
 
-**原文（2026-10-09 之前，⛔ 保留，它说的担心是真的）：**
+**原文（之前，⛔ 保留，它说的担心是真的）：**
 
 > `get_user_role` 无 `lru_cache`。⚠️ **看着像"该缓存没加"，其实是有意的**：一旦缓存，
 > `monkeypatch` 改角色对**已经调过**的代码路径就失效，本仓大量用例靠这个机制。
 > ⇒ ⛔ **别顺手加 `@lru_cache`**。
 
-**2026-10-09（B1）换了缓存，结论如下 —— 🔴 这是【实测】，⛔ 不是推理：**
+**（B1）换了缓存，结论如下 —— 🔴 这是【实测】，⛔ 不是推理：**
 
 * **为什么非加不可**：接 DB 之后不缓存 = **每请求最多 10 次同一条查询**
   （`token_tracker:513` 在配额热路径上；`api_v1_agent` 一个请求 7 处 admin 判定）

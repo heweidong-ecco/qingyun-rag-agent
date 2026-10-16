@@ -4,31 +4,6 @@
 >   ① 造探针身份（`isolation_a` / `isolation_b` = FREE · `isolation_c` = PREMIUM）；
 >   ② 身份**用显式形参**贯穿到下游，不用 contextvar。
 >   本文件把它们钉成可打印的判据，**先看它红，再动生产码**（`test-driven-development`）。
-
-## 本文件的三层，别混
-
-| 层 | 钉什么 | 要什么 | 进 CI 吗 |
-|---|---|---|---|
-| ① 探针身份 | 三个测试用户的角色 | 无 | |
-| ② **结构守卫** | 检索层必须**要求**身份（漏传 = `TypeError`，不是"静默查全库"） | 无（纯 `inspect`） | |
-| ③ **行为用例** | 判据 = **看得见 / 看不见**（决策 3） | 真 Postgres | （标 `needs_db`） |
-
-## 为什么先钉「结构」再钉「行为」
-
-真正的判据当然是 ③。但**根因**（§二）是「**没有中间授权层 ⇒ 默认 fail-open**」——
-新写的端点**默认就是"不过滤、查全库"**。修根因不能靠"每个端点记得加过滤"（那还是靠人记），
-而是让**忘记传身份这件事在结构上做不到**：身份 = **必填形参**。
-② 就是这条的守卫；③ 证明它**真的生效**（而不是"加了个参数但没人用"）。
-
-## 判据（可打印）
-
-```bash
-# ①②（CI 也跑这条）
-venv/bin/python -m pytest app/tests/test_isolation.py -q -m "not needs_db" -p no:warnings
-
-# ③ —— 必须带库名，否则 fixture 会 skip（防误写真库，见 §③ 的说明）
-POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_isolation.py -q -m needs_db -p no:warnings
-```
 """
 import inspect
 
@@ -38,11 +13,6 @@ import pytest
 # ===========================================================================
 # ① 探针身份 ——  §七 裁决 1「加一个 isolation_c，role 是 premium」
 # ===========================================================================
-#
-# `get_user_role` 现在**仍是硬编码**（`admin` / `test_user` 特判，其余 FREE）——
-#    这是既定事实，本段**不**顺手把它接 DB（后端先行 +
-#     §遗留 4 另有落点）。本段只是把三个**探针身份**加进那张硬编码表，
-#    并在代码里注明它们是谁。
 
 def test_isolation_c_is_premium():
     """`isolation_c` 必须是 PREMIUM —— 用来测「跨角色」那一档。
@@ -90,16 +60,6 @@ def test_unknown_user_still_defaults_to_free():
 # ===========================================================================
 # ② fail-closed 结构守卫 —— 检索层必须**要求**身份
 # ===========================================================================
-#
-#  §六 ③ 的原话判据：
-#   「不传身份调用检索函数 ⇒ 断言【抛错】，不是"静默返回全库"」
-#
-# 为什么用 `inspect` 而不是直接调用：直接调用会在**缺参数之前**就先跑
-#    `get_embedding(...)`（真连 DashScope）⇒ 红的原因变成网络错误，
-#    那不是我们要钉的东西。签名是**确定性**的，且它正是"漏传还能编译过"的根因。
-#
-# 关键点：**必须是必填**（`default is empty`）。带默认值 `user_id=None` 等于
-#    "可以忘记传"，就还是 fail-open —— 所以下面每条都额外断言"没有默认值"。
 
 _REQUIRED_IDENTITY_PARAM = "user_id"
 
@@ -134,7 +94,7 @@ def test_rerank_search_requires_identity():
 def test_hybrid_search_with_rewrite_requires_identity():
     """带查询改写的入口 —— 端点里走这条的是 **`/rag/rewrite_search`**（`rewrite_search_api`）。
 
-    2026-10-03 更正：本行原先写「走这条的是 `jwt_ask` / `stream_search`」—— **说反了**。
+    更正：本行原先写「走这条的是 `jwt_ask` / `stream_search`」—— **说反了**。
     那两条**自己写 SQL**，从不经过 `hybrid_search_with_rewrite`（这正是乙段要单独修它们的原因）。
     判据（可打印）：`grep -rn 'hybrid_search_with_rewrite' app/*.py` ⇒ 调用点只有 `api_v1_rag.py:472`。
     """
@@ -172,23 +132,8 @@ def test_db_search_layer_requires_identity():
 # ===========================================================================
 # ③ 跨用户行为用例 —— 真库层（判据 = **看得见 / 看不见**， 决策 3）
 # ===========================================================================
-#
-# **为什么打在 `db.py` 而不是 HTTP 端点**：
-#   · 端点层要真 API key + 真 embedding（DashScope）⇒ 那是【端到端验收】，见文件末；
-#   · 而「**谁的文档**」这件事**就是在这层决定的** —— 过滤加在这里，
-#     4 条端点（`/rag/hybrid_search` · `/rag/rerank_search` · `/rag/rewrite_search` · `/rag/search`）一起修好。
-#
-# **为什么本文件自己多一道 `POSTGRES_DB=rag_test` 的闸**（本仓其它 `needs_db` 文件没有）：
-#    本仓有前科 —— 某次冒烟忘带库名，往**真库 `rag_db`** 写了 4 行（`app/pytest.ini` 记着）。
-#    本文件的 fixture 会 **INSERT / DELETE `documents`**，误写真库的后果比那次重
-#    ⇒ **宁可多一道闸**（宁可 skip，不要误写）。
-#
-# `source` 用专用前缀 ⇒ 事后可精确清理：
-#    `DELETE FROM documents WHERE source = 'isolation-probe-test';`
-#    作者 2026-10-03 裁的「**数据不大就长期保留**」只针对**探针身份**（用户 / key），
-#       **不含**测试自己造的文档 —— 那些每次跑完就删（测试卫生，见  §遗留·7）。
 
-_PROBE_DIM = 1024  # `documents.embedding` = `vector(1024)`（2026-10-14 B 段实测的维度）
+_PROBE_DIM = 1024  # `documents.embedding` = `vector(1024)`（B 段实测的维度）
 _PROBE_SRC = "isolation-probe-test"
 _PROBE_A = "隔离测试数据 · ALPHA-DOC · 归属 isolation_a · 不含任何真实资料"
 _PROBE_B = "隔离测试数据 · BETA-DOC · 归属 isolation_b · 不含任何真实资料"
@@ -301,17 +246,6 @@ def test_search_similar_rejects_explicit_none_identity(probe_docs):
 # ===========================================================================
 # ④ 端到端 —— **HTTP 端点**层（证"身份真的传下去了"）
 # ===========================================================================
-#
-# ③ 证的是「**共享层会过滤**」；本段证的是「**端点真的把身份传下去了**」。
-#    **两件事** —— 少了本段，"共享层能过滤"和"端点没传"可以同时成立
-#    （那正是  §二 那个"上面有身份、下面没人用"的形状）。
-#
-# 只把**外部依赖**（embedding / torch / LLM）换成假的，**DB 与 HTTP 栈全是真的**
-#    ⇒ 走的是「TestClient → 中间件 → 端点 → hybrid_search → db → pgvector」整条链。
-#
-# **用的 key 是【临时】的**，不是 `.env` 里那三把长期身份：
-#    `needs_db` 跑在 `rag_test`，而长期身份在 `rag_db`（§遗留·7 的裁决）。
-#    本段要验的是"**HTTP 认不认身份 + 传不传得下去**"，临时 key 一样能验，且不碰真库。
 
 _ENDPOINT_PROBE_USERS = ("isolation_a", "isolation_b")
 
@@ -325,7 +259,7 @@ def probe_api_keys(probe_docs):
     def _drop():
         # ⚠️ **⛔ 别改成 PG 的 `= ANY(%s)`** —— 那是**数组**语法，语义与下面的 `IN` 不同
         #    （`IN` 是"等于列表里任意一个"，`= ANY(array)` 是"等于数组里任意一个"）。
-        #    ⚠️ 2026-10-14 这里原写的是「SQLite 没有它」—— 🔴 **那个理由 2026-10-15 已经没了**
+        #    ⚠️ 这里原写的是「SQLite 没有它」—— 🔴 **那个理由 已经没了**
         #    （SQLite 通道整个删掉）⇒ 现在留着它的理由**只剩上面那条语义**。
         placeholders = ", ".join(["%s"] * len(_ENDPOINT_PROBE_USERS))
         with get_db() as conn:
@@ -420,7 +354,6 @@ def test_rewrite_search_endpoint_does_not_leak_across_users(probe_api_keys, monk
     monkeypatch.setattr(
         hybrid_search, "get_embedding", lambda text, model=None, **kw: _probe_vector(0.11)
     )
-    # 2026-10-12 修：替身一律**收 `**kw`** —— 真实调用现在会带 `user_name=`
     #    （记账归属）⇒ 写死签名的替身会 `TypeError`。别再跟着真签名一起改：
     #    这批用例带 `needs_db`、**CI 筛不到**，真签名每加一个参数它们就再烂一次。
     monkeypatch.setattr(hybrid_search, "rewrite_query", lambda q, h=None, **kw: q)
@@ -455,12 +388,6 @@ def test_retrieval_endpoint_rejects_missing_identity(probe_api_keys):
 # ===========================================================================
 # ⑤ 乙段 —— 自己写 SQL 的那两条（§1.2 第 7 / 8 条）
 # ===========================================================================
-#
-# 这两条与 ③④ 是**两种形态**：它们**不走共享层**，SQL 就写在端点上
-#    ⇒ `search_similar` 那些判据**碰不到它们** —— 这正是它们能一直漏着的原因。
-#    ⇒ 各配一条**端点级**用例，否则「共享层过滤对了」与「端点照旧查全库」可以同时为真。
-#
-# 只把**外部依赖**（embedding / LLM / Redis / 预算）换假的，**DB 与 HTTP 栈全是真的**。
 
 
 class _CapturingLLM:
@@ -497,7 +424,6 @@ def _system_prompt_of(llm) -> str:
 
 def _stub_rag_externals(monkeypatch, rag_mod, llm):
     """把**外部依赖**换假的：embedding · LLM · Redis 历史 · 会话预算 · 全站熔断。"""
-    # 2026-10-12 修：原签名写死 `(text, model=None)` —— 而 `get_embedding`
     #    现在还会收到 `user_name=`（记账归属）⇒ **TypeError**。
     #    ⇒ 这里放一个 `**kw`：**替身只要"不管调用方多给什么参数都能接住"**，
     #      不必跟着真签名一起改（否则真签名每加一个参数，这批 `needs_db` 用例就再烂一次，
@@ -510,12 +436,10 @@ def _stub_rag_externals(monkeypatch, rag_mod, llm):
     #    ⇒ 写死单参数的 `lambda user:` 会 `TypeError`。本文件带 `@pytest.mark.needs_db`
     #    ⇒ **CI 那条命令筛不到它**，坏掉也不会有东西响（判据不能是「本机跑绿」）。
     monkeypatch.setattr(rag_mod, "get_chat_history", lambda *a, **k: [])
-    # 2026-10-12 修：这里原先 patch 的是 `append_chat_history` ——
-    #    而那个名字**本模块早就不 import 了**（`api_v1_rag.py:36` 记着 2026-10-07 删的那批），
+    #    而那个名字**本模块早就不 import 了**（`api_v1_rag.py:36` 记着 删的那批），
     #    现在**写历史走 `persist_turn`**（`api_v1_rag.py:73` 有 import）。
     #    ⇒ `monkeypatch.setattr` 默认 `raising=True` ⇒ **AttributeError** ⇒ 4 条端点级用例整体 error。
     #    **为什么烂了没人发现**：这批用例带 `@pytest.mark.needs_db` ⇒ **CI 那条命令筛不到它们**
-    #       （这正是本文件上面那句注释预言过的事）。
     monkeypatch.setattr(rag_mod, "persist_turn", lambda *a, **k: None)
     monkeypatch.setattr(rag_mod, "check_session_token_budget", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "circuit", lambda *a, **k: (True, ""))
@@ -569,17 +493,4 @@ def test_stream_search_endpoint_does_not_leak_across_users(probe_api_keys, monke
 # ===========================================================================
 # 【已移除】`test_jwt_ask_endpoint_does_not_leak_across_users`
 # ===========================================================================
-# 2026-10-04 移除 —— 它守的端点 `/rag/jwt_ask` **本身已被删除**（
 #    作者裁「N7 删」）。守着一个不存在的端点，用例只会变成 `404 != 200` 的噪音。
-#
-# **它不是"因为失效才删的"** —— 它在 2026-10-03 乙段当时**是有效的**
-#    （判据是【条数】：`rag_test` 里 isolation_b 只有 1 篇，未加 `WHERE` 时它会拿回 20 篇）。
-#    **它顺带记下了一件仍然成立的事**：那条端点的 SQL **没有 `ORDER BY`**
-#    ⇒ 未加过滤时返回哪 20 篇取决于**物理顺序** ⇒ 「断言内容里没有 A」这种写法
-#    **在修之前就是绿的**（假绿）。**这条推理对任何"无 `ORDER BY` 的 `LIMIT` 查询"都成立**，
-#    与端点存不存在无关 —— 所以留在本注释里，不要当成"随端点一起作废"而丢掉。
-#
-# **本文件的条数随之变化**：19 → **18**（离线 **9** · `needs_db` **10 → 9**）。
-# **别再把这两个数抄进别的文档** —— 现算：
-#    `venv/bin/python -m pytest app/tests/test_isolation.py --collect-only -q | tail -3`
-#  · `app/tests/test_removed_endpoints.py`（反向守卫）

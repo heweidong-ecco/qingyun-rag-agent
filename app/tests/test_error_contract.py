@@ -3,8 +3,6 @@
 为什么要有这个文件：本仓**有一条文案是说反的** ——
    `app/main.py` 全局限流触发时返回 429，`error` 字段却写着 "Internal server error"。
    那正是 `通用方法 §7.1` 的 R3.3 要防的：「熔断时静默/白屏/500 → 对方以为你的系统坏了」。
-
-本文件**不需要 DB / Redis** —— 只测异常对象与处理器产出的契约。
 """
 from core.exceptions import AppException, ErrorCode
 

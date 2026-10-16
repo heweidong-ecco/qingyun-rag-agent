@@ -1,26 +1,4 @@
-""" 成本可见（`①b`）· **离线可跑的那一半**。
-
-## 本文件钉的是【实跑核出来的两个真问题】
-
-2026-10-03 按  的判据实跑了一遍（起服务 → 看 4 个面），核出两处
-**"看代码会误判"** 的错。两处都**不报错、测试全绿、界面照常出数** ——
-所以必须用静态判据钉住，不能指望"下次注意"。
-
-| # | 问题 | 静态判据（本文件） |
-|---|---|---|
-| ① | `/agent/cost/overview` 的三个总数读的是**进程内存**（`get_user_summary` / `get_purpose_summary`）⇒ **重启归零**。实测 admin 在 `token_usage_logs` 里有 **4216 tokens**，它答 `0` | 该端点的函数体**必须**调 `get_user_overview`，**不许**再调那两个内存函数 |
-| ② | / 的**全站日级额度**（超了全站吃 429）**没有任何出口** —— `get_global_daily_token_usage` 全仓只被 `breaker` 调过 | `/agent/token/budget` **必须**带 `global_*` 字段；看板的 `get_dashboard_summary` **必须**读它 |
-
-## 用 AST 取调用名 / SQL 字面量，不用 grep
-
-`get_user_summary` / `user_name` / `CURRENT_DATE` 这些词**在注释和 docstring 里也会出现**
-（本仓栽过 —— `docs/规范/开发规范.md` §3.1：批量替换后按【位置】核，别只数次数）。
-grep 会把「注释里提到」误判成「代码里用了」。
-
-## 与 `test_cost_visibility_db.py` 的分工
-
-本文件**不连库**（进 CI）。"数字真地对得上库"那一半在那边（`@needs_db`，不进 CI）。
-⇒ **本文件全绿 ≠ 数字是对的** —— 它只保证"数据源换成了库"，别读成"已验证"。
+"""成本可见（`①b`）· **离线可跑的那一半**。
 """
 import ast
 import pathlib

@@ -1,32 +1,4 @@
-""" 的**扫描覆盖**守卫 —— 补 WebSocket 的结构盲区。
-
-## 这条测试为什么存在（2026-10-05）
-
- 是本仓"新端点必须带鉴权依赖"的机械判据
-（`docs/规范/开发规范.md` §1.5）。但它**结构上看不见 WebSocket** ——
-它的收集函数只认 `APIRoute`（`_collect_apiroutes`）。
-
-这条盲区  已经**写在文字里**了。但**文字不是门** —— 实测（**2026-10-04 当时**）：
-
-```
-/api/v1/ws/agent    dependant.dependencies == []   # 无鉴权
-/api/v1/ws/test     dependant.dependencies == []   # 无鉴权
-                    而该脚本对 /api/v1/ws/* 零输出
-```
-
-**上面那段是【当时的实测记录】，不是现在的事实** ——
-2026-10-05`/ws/agent` 已挂 `require_ws_user`，`/ws/test` **已删**。
-⇒ 现在真 app 上只剩 **1 条 WS，且带鉴权**。保留这段是因为它是**盲区存在过的证据**，
-别拿它当现状读（同型： 那条墓碑也是保留的当时事实）。
-
-⇒ 本文件把"看得见"做成结构：**WS 路由也必须进那份「无鉴权路由」清单**。
-
-## 两个刻意的设计
-
-1. **本文件不自己抄一份 `AUTH_NAMES`** —— 从脚本里 import。
-2. 本文件**不启服务、不连 DB/Redis**，也**不 `chdir`** ——
-   脚本的 `scan` 会 `os.chdir(app/)`，在 pytest 进程里调它会污染整个会话的工作目录。
-   ⇒ 只测它的**纯函数**那一半（`find_routes_without_auth`）。
+"""的**扫描覆盖**守卫 —— 补 WebSocket 的结构盲区。
 """
 import importlib.util
 from pathlib import Path
@@ -50,8 +22,8 @@ def _scan(routes, exempt=frozenset()):
 def test_scanner_sees_websocket_routes():
     """扫描口径必须覆盖 WS —— 用**合成**路由钉死，不拿真 app 那两条当样本。
 
-    **为什么不用真 app 当样本了**（2026-10-05）：
-    2026-10-04 写这条时，`/api/v1/ws/agent` 与 `/api/v1/ws/test` **都是无鉴权的**，
+    **为什么不用真 app 当样本了**：
+    写这条时，`/api/v1/ws/agent` 与 `/api/v1/ws/test` **都是无鉴权的**，
     于是「扫描器看得见 WS」与「它俩在清单里」恰好是同一件事。
     现在它俩**已经有鉴权**（`require_ws_user`）⇒ **样本没了**。
 
@@ -77,7 +49,7 @@ def test_real_websocket_routes_are_protected_now():
     那条钉「路由上挂的是不是 `require_ws_user` 这一条依赖」，
     这条钉「**扫描器**也认账」—— 两条一起才挡得住"挂了但名单里没登记"的漂移。
 
-    **2026-10-05 起是 1 条不是 2 条** —— `/ws/test` 已删（§十）。
+    **是 1 条不是 2 条** —— `/ws/test` 已删（§十）。
     删它「不靠这条用例兜着」：兜它的是 `app/tests/test_removed_endpoints.py::test_ws_test_stays_removed`。
     """
     from main import MIDDLEWARE_EXEMPT_PATHS, app
@@ -133,7 +105,7 @@ def test_old_collector_would_have_missed_websockets():
     判据：用**只认 `APIRoute`** 的老口径去扫同一个真实 app，
     WS 必须**一条都扫不到**；而新口径看得见（上面那条已断言）。
 
-    **2026-10-05 起真 app 只剩 1 条 WS**（`/ws/test` 已删 ·  §十）——
+    **真 app 只剩 1 条 WS**（`/ws/test` 已删 · §十）——
     样本变少了，但**这条自证仍然成立**：只要 WS 还有一条，老口径就该漏掉它。
     """
     from main import app

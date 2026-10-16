@@ -19,15 +19,12 @@ redis_client = redis.Redis(
 )
 
 # ==================== TTL 表（**唯一一份**）====================
-# 2026-10-07：本表从 `agent_graph_advanced.CACHE_TTL_MAP` **搬过来并收口** ——
 #    此前那份只盖住 `/agent/mcp_chat` 一条路，落在那个模块里。
-#
 # **`0` = 不缓存**，是有意写的，不是漏填。
 TTL_BY_TOOL: Dict[str, int] = {
     # 纯函数：同一表达式结果永远一样 ⇒ 可长缓存
     "calculator": 86400,
 
-    # 2026-10-08：三个新工具**全是纯函数** ⇒ 86400。
     # **`date_calc` 能安全给 86400 的唯一理由**：它的 `start_date` **必填**
     #    （`simple_tools_impl.date_calc_impl` 的红线）⇒ **没有"今天"这种隐藏输入**。
     #    若哪天给它加了"默认今天" ⇒ **必须同时把这一行改成 0** —— 与 `date_today` 同因：
@@ -90,26 +87,13 @@ def set_cached_tool_result(tool_name: str, result, expire_seconds: int = 300, *a
 
 # ==================== 缓存装饰器 ====================
 
-# 2026-09-20 加（§三·C5 · 作者裁「需要调整，不能无限递归」）：
 #    **抢不到锁时最多等多久**；超了就**降级为直接执行**（这次不写缓存）。
-#
-#    原实现在 `else` 分支里是 `time.sleep(0.1); return wrapper(*args, **kwargs)`
-#    ⇒ **递归没有上限**：锁一直拿不到（持有者崩了没删锁、或一直被别的请求续上）时，
-#      **把栈打爆** —— 实测 `RecursionError: maximum recursion depth exceeded`。
-#    这是**并发正确性**问题、且是**进程级**故障：一旦触发就把整个请求打死。
-#
-#    正确取舍：**缓存是优化，不该因为它拿不到就拒服务。** 等一小段（有上限）后
-#       直接执行工具函数 —— 结果照常返回，只是这次不写缓存。
 _LOCK_WAIT_SECONDS = 2.0
 
-# 2026-10-08（作者裁）：**Redis 不可用 ⇒ fail-open**。
 #    **只捕 `redis.RedisError`**，**不是 `except Exception`** ——
 #    后者会把**代码 bug** 伪装成"Redis 不通"，真 bug 就永远查不出来。
 #    同形先例：`app/access/rate_limiter.py` 的  兜底
 #      （守卫：`app/tests/test_rate_limiter_resilience.py::test_只捕获redis错误_别的异常要照样冒泡`）。
-#    为什么缓存要 fail-open：**缓存是优化，不该因为它拿不到就拒服务**（本文件 §文件头那句）。
-#    代价（知道再选）：Redis 挂掉时**静默降级** —— 机器痕迹上「缓存从不命中」与
-#      「根本没在缓存」长得一样 ⇒ 只能靠这条 ERROR 日志与健康检查发现。
 def _warn_redis_down(tool_name: str, exc: Exception) -> None:
     logger.error(
         f"🔴 工具缓存 Redis 不可用 ⇒ `{tool_name}` 本次【直通执行】、缓存【已失效】："

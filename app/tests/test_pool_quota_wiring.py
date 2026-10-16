@@ -1,17 +1,8 @@
-"""两个额度池**接上了没有**（· 2026-10-11）。
+"""两个额度池**接上了没有**（· ）。
 
 `app/tests/test_quota_pools.py` 测的是**归池表本身**（纯函数、覆盖面）。
 本文件测的是**接线** —— 那条表**真的被用上了吗**：
 归池表全绿、而中间件忘了调它，是完全可能的（本仓那类"写了但没接上"栽过多次）。
-
-## 还钉一条**最容易漏的**：总上限
-
-/ 批6 **漏了 11 处图内总额闸**（`check_token_budget`，在 `agent_graph*.py` 等）。
-不处理的话：中间件按池放行到 2×，**图内闸仍在 1× 处拦住** ⇒ **"翻倍"根本不会发生**，
-而页头显示的却是 2× ⇒ **两个数对不上**。
-⇒ 本文件钉住：`get_user_token_budget`（那 11 处共用的那一个）**= 两池之和**。
-
-本文件**不连库、不连 Redis**。
 """
 import asyncio
 
@@ -124,7 +115,7 @@ def test_a_total_that_is_exhausted_does_not_block_a_pool_that_is_not(monkeypatch
 
 
 def test_paths_outside_the_table_are_not_gated(monkeypatch):
-    """作者 2026-10-11 裁「**表外路径不进池**」⇒ 两池全空**也照常放行**。
+    """作者 裁「**表外路径不进池**」⇒ 两池全空**也照常放行**。
 
     拿 `/api/v1/agent/token/budget` 当样本是**故意的** —— 它是一条**真路由**、
     又不是豁免路径（豁免那条路在第一行就返回了，测不到"按池判"这件事）。
@@ -169,7 +160,7 @@ def test_user_budget_is_the_sum_of_the_pools(monkeypatch):
 def test_total_is_the_sum_of_the_two_tables(monkeypatch):
     """**走真函数**逐角色核：总额 = LLM 表 + Embedding 表。
 
-    **2026-10-11本条改过一次** —— 它原先钉的是"两池同源 ⇒ 恰好 2×"
+    **本条改过一次** —— 它原先钉的是"两池同源 ⇒ 恰好 2×"
     （并且自己写着"将来某一池调小了，该改的是这一条"）。**那一天就是今天。**
     不是删断言：现在钉的是**加法**本身，不写倍数。
     走真函数（`get_user_token_budget`）—— 这样"拆了两张表、总额还在拿老数"那种假完成**测得出**。

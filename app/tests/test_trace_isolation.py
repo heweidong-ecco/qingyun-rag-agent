@@ -1,19 +1,4 @@
-"""追踪轴（`tool_visualizer`）的**归属与键**（N4）。
-
-**改动前是什么样**：`_traces` 是 `Dict[str, AgentTrace]`，**只按裸 `thread_id` 做键**。
-   ⇒ 三处跨用户可：
-   ① `GET /agent/traces` 调 `get_all_traces` —— **一处过滤都没有**，
-      返回值里带 `user_query[:100]` ⇒ **任何登录用户拿到别人的提问原文**；
-   ② `GET /agent/trace/{thread_id}` 调 `get_trace(thread_id)` —— **不查属主**；
-   ③ `mcp_agent_chat` 的 `thread_id` **默认是 `"default"`**
-      不传 `thread_id` 的人**共用同一个槽**，**后问的覆盖先问的**。
-
-**为什么它不是"丙段顺手就能修"的**：丙段动的是 **checkpoint 轴**（LangGraph 的
-   `config`），这条是**进程内存的另一份存储**，读写在**另外**几个函数里。
-   同型的病、不同的键面。
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_trace_isolation.py -q -p no:warnings`
+"""追踪轴（`tool_visualizer`）的**归属与键**。
 """
 import asyncio
 

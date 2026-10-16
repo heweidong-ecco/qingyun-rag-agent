@@ -33,27 +33,15 @@ class AgentState(TypedDict):
     user_name: str          # 新增：当前对话的用户名
     memory_space: str       # 新增：当前使用的记忆空间
     thread_id: str          # 新增：当前会话的 thread_id
-    # 2026-10-05：本轮的预算拦截原因（`None` = 没被拦）。
-    #
     # **它是「拦没拦住」通往【端点层】的唯一通道** —— 端点据此回 429 / error 帧。
     # **别拿末条 `ToolMessage` 的中文文案当判据**（那是子串判据，`plan_execute` 的
     #    刚把同型写法清掉：改一个字的措辞就静默失效，工具正文里恰好出现那四个字就误判）。
-    #
-    # 它**没有**挂 `operator.add`（不像 `messages`）⇒ **last-write-wins + 落 checkpoint**
-    #    ⇒ **必须每轮清零**（`agent_decide` 开头），否则上一轮被拦会让下一轮的**正常提问**
-    #    也返回 429。守卫：`app/tests/test_budget_hard_intercept.py::test_上一轮的拦截标志不会串到下一轮`
     budget_intercept: Optional[str]
 
 # ==================== 初始化模型 ====================
-# 2026-10-01 补：本处原先**没有 `timeout` / `max_retries`** ——
 #    同型问题 `plan_execute.py:70-76` 早就修过，**这里漏了**。
 #    ⇒ **没 timeout = 上游挂了就一起挂着**；而 SDK 默认 `max_retries=2`
 #      ⇒ 一次失败**静默重试 2 次、烧 3 倍额度**，可这条链上本来就带 token 预算检查。
-# **秒数【不抄】 `plan_execute` 的 30/20/15**：那三处是**单步**（planner / executor / 质检各一次），
-#    这里是**多轮工具对话**（`:345` 每次 invoke 一轮，且带 MCP 工具 schema）。
-#    ⇒ 取 planner 的两倍 = **60s**：① 输出上限 1024，比 planner 那份 JSON 长；
-#      ② 工具 schema 更大 ⇒ 首 token 更慢。
-#    **这个 60 是我的判断，不是业务裁定** —— 要改就改这一个数（就这一处用）。
 AGENT_LLM_TIMEOUT = 60
 # 角色 = 「模型轴 chat」+「长度轴 agent(1024)」—— 见 `app/core/llm_factory.py` 的模块 docstring。
 #    `timeout` / `max_retries` 走 `make_llm` 的 `**extra` 透传（本处不再自己写 model/max_tokens）。
@@ -81,14 +69,10 @@ def inject_memories_to_prompt(original_prompt: str, state: AgentState) -> str:
         user_query = ""
 
     user_id = f"{user_name}:{memory_space}"
-    # 2026-10-13：**必须 fail-open** —— 与 `memory_store.memory_block`
     #    同一条道理：记忆是「有更好」的锦上添花，检索失败（key 不对 / 网络不通 /
     #    mem0 或向量库挂了…）只该**少一段上下文**，不许把整条链打挂。
     #    改前这里是**裸调用** ⇒ `/agent/mcp_chat`（走本文件的 `mcp_agent`）在 embedding
     #       取不到时**整条 500**；本机看不见（有真 key ＋ Redis 里有 embedding 缓存）。
-    #    **为什么不把这处与 `agent_graph_advanced_learning.py` 那份合并成一份**：
-    #       本函数是 **5 个测试文件**在用的 monkeypatch 缝 —— 合并 = 挪缝 =
-    #       那些补丁**静默失效**（本仓  就是这么烂的）。
     try:
         memories = search_user_memory(user_id, user_query)
     except AssertionError:
@@ -115,10 +99,6 @@ def inject_memories_to_prompt(original_prompt: str, state: AgentState) -> str:
 # 曾经的方案是「`_mcp_session` 全局单例，所有请求共享同一个会话」，它有两个毛病：
 #   并发阻塞：全局单例是同步的，一个请求正在调用工具时，另一个请求必须等待。
 #   状态污染：不同用户的调用可能互相影响。
-#
-# 2026-09-20 修（原下一行写的是「**新增会话池**，避免并发阻塞，和状况污染」）：
-#    那条路**走过、又被推翻了** —— 见下面这段 docstring：会话池**从未真正生效、且架构上不可行**，
-#    现已**移除**，改为**单 task 自开自关**。⇒ 原注释描述的方案**不是当前实现**，已改写。
 """
 MCP Client 连接管理（**单 task 自开自关**版）
 
@@ -142,13 +122,10 @@ MCP Client 连接管理（**单 task 自开自关**版）
 
    回归测试：`app/tests/test_agent_repairs.py::test_call_mcp_tool_keeps_session_lifecycle_inside_one_task`
 """
-# 2026-09-20:此处原先**重复 import 了一遍** `asyncio` / `mcp` / `stdio_client`
 #    （本文件 :8 与 :27-28 已经有了）—— 已删除。`sys` / `asynccontextmanager` /
 #    `Path` 是本段新增、别处没有，故只补这三个。
-# **2026-10-08 更正**：那句「**本文件 :8 已经有 `asyncio`**」**是假的** ——
+# **更正**：那句「**本文件 :8 已经有 `asyncio`**」**是假的** ——
 #    去重时把**唯一**那一处也删掉了，而当时**没有任何代码用它**，所以一直没暴露。
-#    -B 的 actor 一用 `asyncio.*` 就 `NameError` ⇒ **现已补在文件顶部**。
-#    教训：**「这段注释说别处有」不等于「别处真有」** —— 去重时得核，不能只信注释。
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -175,25 +152,7 @@ async def mcp_session():
     server_params = StdioServerParameters(
         command=sys.executable,
         args=[str(_MCP_SERVER_SCRIPT)],
-        # 🔴 2026-10-15**必须显式传 env，⛔ 千万别删**。
-        #
-        # MCP 的 `stdio_client` 默认**只给子进程继承【6 个变量】**
-        # （Linux 白名单 = `HOME` / `LOGNAME` / `PATH` / `SHELL` / `TERM` / `USER`，
-        #  见 `mcp/client/stdio.py::DEFAULT_INHERITED_ENV_VARS`）。
-        # ⇒ 我们那份 `.env` 里的东西**一个都到不了子进程**，尤其：
-        #    · **`DOCKER_ENV`** —— 它不在白名单 ⇒ 子进程里 `IS_DOCKER=False`
-        #      ⇒ `core/config.py` 的「本地开发覆盖」把
-        #      **`REDIS_HOST` 与 `POSTGRES_HOST` 双双改成 `localhost`**
-        #      ⇒ **容器里那两个服务叫 `redis` / `postgres`** ⇒ **子进程连不上**。
-        #    · 所有 `*_API_KEY` 同理。
         # 🔴 **它在本地【永远看不出来】** —— 本机 `localhost:6379` 恰好是对的
-        #    ⇒ 只有部署到容器里才现形（实测：容器日志刷
-        #    `工具缓存 Redis 不可用 ⇒ Error 111 connecting to localhost:6379`）。
-        # ⚠️ **为什么可以直接给全量 env**：MCP 那份白名单是给**不受信任的第三方 MCP 服务**用的；
-        #    而**下面这个子进程是我们自己的脚本**（`app/tools/mcp_server.py`），
-        #    它本来就要读同一份配置 —— ⛔ 不是"绕过安全设计"。
-        #    （MCP 的语义是 `get_default_environment() | server.env` ⇒ 这里等于**全覆盖**。）
-        # 📌 判据（可打印）：进容器 `docker logs qingyun-rag-agent-api-1 | grep 'localhost:6379'` ⇒ **0 条**
         env={**os.environ},
     )
     async with stdio_client(server_params) as (read, write):
@@ -202,15 +161,10 @@ async def mcp_session():
             yield session
 
 
-# ==================== 长驻会话 · actor 模式（2026-10-08 · -B）====================
-# **为什么是 actor，不是会话池**（2026-09-20 栽过的那次记在上面那段 docstring 里）：
+# ==================== 长驻会话 · actor 模式（· -B）====================
+# **为什么是 actor，不是会话池**（栽过的那次记在上面那段 docstring 里）：
 #    `stdio_client` 基于 anyio，其 cancel scope 要求「**进入与退出在同一个 task**」。
 #    · 池化 = 「启动 task 建 · 请求 task 用 · 归还 task 关」⇒ **横跨 3 个 task** ⇒ 炸
-#      （实测 `RuntimeError: Attempted to exit cancel scope in a different task…`，
-#       而且它让**应用启动直接失败**）
-#    · actor = 「**一个 holder task 独占整个 `async with`**」⇒ **横跨 1 个 task** ⇒ 不炸
-#    **可复用的判据**：anyio 只管「进入与退出在**不在**同一个 task」，**不管中间被谁 await 过**。
-#    实测（含三轮计数）⇒ `docs/说明/mcp长驻会话-调研-20261008.md` §四
 class _McpSessionActor:
     """持有唯一一个长驻 MCP 会话；调用方**投请求、等 future**，一个字节都不碰 session。"""
 
@@ -236,7 +190,6 @@ class _McpSessionActor:
         #    这一条是【实测撞出来的】：旧 holder 退出时若去读 `self._tx` / `self._ready`，
         #    读到的**已经是被新一代换掉的那两个** ⇒ 它的 `finally` 会把**新会话的启动**
         #    打成 `RuntimeError: MCP 会话起不来`。
-        #    现象：`kill -9` 子进程后**紧接着**再调 ⇒ 报 `MCP 会话起不来：None`（再下一次才好）。
         tx = asyncio.Queue()
         ready = self._loop.create_future()
         self._tx, self._ready = tx, ready
@@ -342,16 +295,6 @@ class _McpSessionActor:
 #: **按 loop 认领**：`asyncio.run` 每次都开一个新 loop，而 actor 的 `Queue` / `Future`
 #: **绑在创建它的那个 loop 上** ⇒ 不能跨 loop 复用（本仓大量调用点就是 `asyncio.run`）。
 #: **「传输没了」这一类异常** —— **别与"工具自己报错"混为一谈**。
-#:
-#: **这一条是【验证时才发现的】补丁**（2026-10-08 -B）。改前 `_hold` 把两者混在一个
-#:    `except Exception` 里 ⇒ **子进程被杀之后 holder task 照样活着** ⇒ `is_alive()` 恒 True
-#:    ⇒ **永远不重建** ⇒ 之后每一次调用都拿同一条死会话，**一直** `MCPError: Connection closed`。
-#: 实测复现：先调一次（返回 2）⇒ `kill -9` 子进程 ⇒ 再调 ⇒ 不恢复。
-#:
-#: **为什么要分开**：`CallToolResult` 的官方 docstring 写着 —— 工具自身的错误**应当**
-#:    包在结果里（`is_error=true`）返回，**不是**抛协议级错误。⇒ 从 `session.call_tool`
-#:    **抛出来**的，基本都意味着**这条会话本身有问题**；但其中只有**连接级**的那几个才该作废会话，
-#:    `INVALID_PARAMS` 之类的协议错不该让整个会话重启（那要付 ~2s 重建成本）。
 def _is_transport_gone(exc: BaseException) -> bool:
     """这条异常是不是在说「**传输断了**」（区别于「工具自己报错」）。"""
     if isinstance(exc, (
@@ -402,7 +345,7 @@ async def get_mcp_tools():
 async def call_mcp_tool(tool_name: str, arguments: dict) -> str:
     """通过 MCP Client 调用工具。
 
-    **2026-10-08：改走【长驻会话】** —— 改前每次调用自开自关，
+    **：改走【长驻会话】** —— 改前每次调用自开自关，
     实测 **~2 秒/次**（2.42 / 2.09 / 1.93），成本几乎全在**起子进程 + 重新 import langchain**。
     现在由 `_McpSessionActor` 的 **holder task 独占**那个 `async with`，本函数只投请求、等结果
     ⇒ 实测 **4–7 毫秒**（首次 ~22ms，含握手）。`docs/说明/mcp长驻会话-调研-20261008.md`
@@ -419,7 +362,7 @@ from tools.tool_visualizer import record_tool_start, record_tool_end,record_agen
 async def tool_execute(state: AgentState):
     """执行节点：通过 MCP Client 调用工具。
 
-    2026-10-05：**预算拦截从"软"变"硬"**。
+    ：**预算拦截从"软"变"硬"**。
 
     **改前**：被拦时只塞一条 `ToolMessage` 就 `continue` ⇒ 图照常往下走
     ⇒ `/agent/mcp_chat` **HTTP 200**，只有 **LLM 自己**看得见那句"预算拦截"
@@ -468,7 +411,6 @@ async def tool_execute(state: AgentState):
             continue
 
         # 通过 MCP Client 调用工具。
-        # 2026-10-08：**缓存不在这里做了** —— 已收到工具函数体
         #    （`app/tools/tool_cache.py`），在 **MCP server 进程里**生效 ⇒ 四条执行路径共享同一份。
         #    **可见行为变了**：以前命中会返回 `"{结果}\n[缓存命中]"`，现在**没有这个后缀**。
         result = await call_mcp_tool(tool_name, tool_args)
@@ -490,12 +432,12 @@ async def tool_execute(state: AgentState):
 async def get_llm_with_mcp_tools():
     """获取绑定了 MCP 工具的 LLM 实例。
 
-    2026-09-20 修（依赖漂移）:此前写的是 `for mcp_tool in tools:` —— 而
+    修（依赖漂移）:此前写的是 `for mcp_tool in tools:` —— 而
        `session.list_tools` 返回的是 **`ListToolsResult`**（列表在 `.tools`），
        **不是列表本身**。直接遍历它 ⇒ pydantic 模型迭代出的是 **(key, value) 元组**
        ⇒ `AttributeError: 'tuple' object has no attribute 'name'`
        ⇒ `/agent/mcp_chat`（三代）**500**。
-       2026-10-08**去掉了这里的版本号**（原写「`mcp 1.30.0` 的」）——
+       **去掉了这里的版本号**（原写「`mcp 1.30.0` 的」）——
        结论与 mcp 版本无关（2.x 仍是 `ListToolsResult` / `.tools`），而**版本号会过期**：
        本仓  的教训就是"别把话说死在一个会变的东西上"。
        回归测试:`app/tests/test_agent_repairs.py::test_get_llm_with_mcp_tools_unpacks_list_tools_result`
@@ -507,22 +449,18 @@ async def get_llm_with_mcp_tools():
         langchain_tools.append({
             "name": mcp_tool.name,
             "description": mcp_tool.description,
-            # 2026-10-08：**`inputSchema` → `input_schema`**（mcp 2.x）。
             #    这是个**只读属性名变了**的坑，别读成"整个类型换了"：
             #      · **构造**仍然两种都能写（`Tool(inputSchema=…)` 也行 —— `populate_by_name`）
             #      · **读属性**只认**字段名** `input_schema` ⇒ 写 `.inputSchema` 会
             #        `AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?`
-            #      · 要**线上拼法**就 `model_dump(by_alias=True)["inputSchema"]`
             "parameters": mcp_tool.input_schema
         })
     return llm.bind_tools(langchain_tools)
 
-# ==================== 流式白名单（B1 · 2026-10-04）====================
+# ==================== 流式白名单（B1 · ）====================
 # **：可流节点名单放在【图模块里】，端点不许自己抄一份字面量**（理由见
 #    `app/agent/agent_graph.py` 同名常量处 —— 一个名字两个来源必然漂移，而漂移是**静默**的）。
 # 必须放在**模块级**（不能放进 `build_mcp_agent`）：端点是按
-#    `agent_graph_advanced.STREAMABLE_NODES` 取的，函数体里的是局部名，外面拿不到。
-# `tools` **不在**里面：它不调 LLM（无字可流），且会把 `ToolMessage` 当"新消息"发出来。
 STREAMABLE_NODES = frozenset({
     "agent",   # 决策节点：答案 + `tool_calls`（那个「多轮」场景的主角）
     "chat",    # 兜底对话节点：**最终答案就是它生成的** ⇒ 不流它，流式端点等于白开
@@ -545,13 +483,9 @@ def build_mcp_agent():
 
         # 预算检查必须在**任何花钱的调用之前** —— 不只是 `llm.invoke`：
         #    下面那句 `inject_memories_to_prompt` 会去打一次 DashScope embedding（**也是花钱的**）。
-        #    2026-10-05（批 7）：改前这两行排在门**之上** ⇒ 预算已被拒的那一轮
         #       仍然花掉一笔 embedding，而结果**当场被丢弃**（走不到 `messages`）。
         #       这是本批的判据在 CI（dummy key）里**真打网络**才暴露出来的。
-        #    （2026-09-16 上移；）
-        # 预估本次调用消耗（经验值：决策通常消耗200-500 tokens）
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：**同时置 `budget_intercept`** ——
             #    改前只把它当一句正常答案返回，端点照常回 **HTTP 200** ⇒ 调用方看不出被拒了。
             #    `chat_node` **不是入口节点** ⇒ 清零不在这里（在 `agent_decide`）。
             #    **不许在这里 `raise`**（§二 的 checkpoint 污染实测）。
@@ -571,7 +505,6 @@ def build_mcp_agent():
         #    不是 `content +=` —— 那会丢掉碎片化的 `tool_calls`。
         # **必须遍历【所有】块**，不许跳过 `content` 为空的块：provider 把
         #    `usage_metadata` 挂在**最后一块**（`content=''`）上（实测，`探针-流式与记账.py`）
-        #    ⇒ 跳过它，**下面那段记账静默失效**，而接口一切正常。
         response = None
         async for chunk in llm.astream(messages, config=config):
             response = chunk if response is None else response + chunk
@@ -580,7 +513,6 @@ def build_mcp_agent():
         if hasattr(response, "usage_metadata"):
             usage = response.usage_metadata
             record_usage(
-                # 2026-10-01 修（S4）：原写死 `"qwen-turbo"`，而 `.env` 里实际是 DeepSeek
                 #    ⇒ `token_usage_logs.cost` 按**错的单价**记 ⇒ 连带 `MAX_THREAD_COST`（元）也判错。
                 #    改从对象取（照抄 `plan_execute.py:154` 的写法）。
                 model=getattr(llm, "model_name", None) or getattr(llm, "model", "unknown"),
@@ -598,37 +530,27 @@ def build_mcp_agent():
     # ==================== agent_decide 节点（保持原有逻辑） ====================
     # 定义 agent_decide 节点（异步版本，动态绑定工具）
     async def agent_decide(state: AgentState, config: RunnableConfig):
-        """决策节点（2026-10-04 改真流式）。
+        """决策节点（改真流式）。
 
         与 `chat_node` 同一条：**async 节点用 `astream` + 转发 `config`**。
         **`+` 聚合在这里是【必须】的，不是风格问题**：`tool_calls` 是碎片化到达的，
            只拼 `content` 会把它们丢掉 ⇒ `should_continue` 判不出 `"tools"`
            ⇒ 直接跳去 `chat` 出最终答案，**工具永远不会被执行**，而接口一切正常。
         """
-        # 2026-10-05：**每一轮开头清零**上轮的预算拦截标志。
-        #
         # 为什么必须有这一句：`budget_intercept` 是**普通 state 键**
         # （没挂 `operator.add`）⇒ **last-write-wins + 落 checkpoint**
         # ⇒ 不清零的话，"上一轮被拦"会让**下一轮不需要工具的正常提问也返回 429**。
-        #
-        # 为什么放在**入口节点**：本图 `set_entry_point("agent")` ⇒ 每轮第一个跑的就是它
-        #    ⇒ 这是唯一一个"每轮必然经过"的地方（`tools` 未必跑到）。
-        #    守卫：`app/tests/test_budget_hard_intercept.py::test_上一轮的拦截标志不会串到下一轮`
-        #       （**删掉这一句它必红**）。
-        # **本节点的两个出口都要带上它** —— 只带一个的话，走另一个出口的那一轮会留着上轮的值。
         cleared = {"budget_intercept": None}
 
         # 预算检查必须在 invoke **之前** —— 放在之后钱已经花了，只能丢弃结果、拦不住
-        #    （2026-09-16 上移；）
+        #    （上移；）
         # 预估本次调用消耗（经验值：决策通常消耗200-500 tokens）
         user_name = state.get("user_name", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：本出口**从"清零"翻成"写原因"**。
             #     当时写的是 `**cleared`（= 置 `None`）—— 那是因为当年**只有**
             #       工具触发那一种拦截（写在 `tool_execute` 里），入口节点这一处
             #       的任务只是"别让上轮的值串过来"。**本批新增的正是这一种**
             #       它必须自己写原因，不能再是 `None`。
-            #    语义翻转的守卫：`app/tests/test_budget_soft_return.py` 里那条「软返回时置原因而不是清零」
             return {
                 "final_output": "今日Token预算已用完，请明天再试。",
                 "messages": [AIMessage(content="今日Token预算已用完，请明天再试。")],
@@ -661,7 +583,6 @@ def build_mcp_agent():
                 tool_args = response.tool_calls[0]["args"]
             
             record_usage(
-                # 2026-10-01 修（S4）：同上 —— 别再写死模型名。
                 #    记**实际被调用的那个对象**（`:345` 调的是 `llm_with_tools`）。
                 #    实测 `llm.bind_tools(...)` 后 `.model_name` 仍是 `deepseek-v4-flash`。
                 model=getattr(llm_with_tools, "model_name", None)
@@ -707,7 +628,6 @@ def build_mcp_agent():
     workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", "chat": "chat"})
     
     # tools 执行完后，回到 agent 继续判断（可能需要更多工具，也可能直接去 chat）。
-    # 2026-10-05：**被预算拦下那一轮例外** —— 直接 `END`（理由见 `after_tools`）。
     workflow.add_conditional_edges(
         "tools", after_tools, {"blocked": END, "continue": "agent"})
     # chat 节点执行完后，结束

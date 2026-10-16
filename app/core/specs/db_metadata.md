@@ -45,7 +45,7 @@ grep -rn 'CREATE TABLE\|create_table' app/core/db.py | head
 
 ⇒ **改这个文件不会改任何运行行为**；反过来，**照着它改库结构会改错**。
 
-### 2. 🔴 `api_keys.is_active` 的"既有差异"**已经没有了**（2026-10-06 更正）
+### 2. 🔴 `api_keys.is_active` 的"既有差异"**已经没有了**（更正）
 
 本模块的 docstring 原先举例说「而 `api_keys` 多一个 `is_active`」。🔴 **那句现在不成立**：
 `is_active` 已补进 `db.py:create_table()` 的建表语句**与**老库补列那句 `ALTER TABLE api_keys ADD COLUMN`。
@@ -80,3 +80,23 @@ grep -rn 'CREATE TABLE\|create_table' app/core/db.py | head
 | `app/core/specs/db.md` | ⭐ **真正建表/连接/检索的那个模块** —— 找表结构以它为准 |
 | `docs/契约/数据模型.md` · `app/schema.sql` | 表结构的**契约文档**与**导出快照** |
 | `app/alembic/env.py` | 全仓唯一使用者 |
+
+
+---
+
+## 📎 原先写在代码 docstring 里的设计说明
+
+> 来源 = `app/core/db_metadata.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+
+**依赖方向是单向的**：本模块**不依赖** `db.py`（只用 sqlalchemy），
+所以 `db.py` 可以安全地引用它，不会成环。
+
+**以下的声明与 `db.py:create_table` 里的 DDL 并不完全一致** ——
+例如 `documents` 缺 `requested_by`、`embedding` 写成 `Text`。这是**既有差异**，
+本次切模块**原样搬移、未做任何修正**（修正属裁决工作）。
+**更正**：原文这里还举了「而 `api_keys` 多一个 `is_active`」——
+   **那句现在不成立了**：`is_active` 已补进 `db.py:create_table` 的建表语句**与**老库补列那句
+   `ALTER TABLE api_keys ADD COLUMN`。⇒ **这一列两边一致了**，别再把「多一个 is_active」当既有差异。
+
+运行时**真正的建表语句是 `db.py:create_table` 的 DDL**；本模块只是给
+Alembic autogenerate 用的声明式镜像，两者不一致时**以 DDL 为准**。

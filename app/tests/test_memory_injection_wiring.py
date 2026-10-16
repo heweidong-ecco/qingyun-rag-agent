@@ -1,28 +1,4 @@
-"""**LangGraph 那条链补的「长期记忆注入」—— 接线判据**（2026-10-13）。
-
-## 为什么要有这一份
-
-`/agent/langgraph_chat`（图 = `agent_graph`）**原先一分记忆都不注入**
-（改前判据：`grep -c inject_memories_to_prompt app/agent/agent_graph.py` ⇒ **0**），
-而「外部检索与工具Agent编排」那一页**要拿它当主链**、页面上写着「记忆」。
-
-作者 2026-10-13 定：**这条链补上（读）** ⇒ 补在 `agent_graph.agent_decide` 开头那一段。
-
-## 这一份为什么不是"跑绿就算"
-
-`agent_graph.py` 是本仓**被最多东西导入**的那个图模块（`api_v1.py` · `api_v1_rag.py`
-`api_v1_agent.py` · 一堆测试）⇒ 在这里加一句调用，**别处全绿也说明不了它对**。
-⇒ 下面每一条都配一个**反证**（把注入拿掉 / 让它没有记忆 / 把门改回放行）：
-   本文件里**必须**有那几条反向用例，否则这些断言**恒为真**也看不出来。
-
-## 三条口径（都钉在下面）
-
-1. **有记忆 ⇒ 拼在模型【这一次】输入的最前面**（`SystemMessage`）；
-2. **没有记忆 ⇒ 一个字节都不变**（把原来的 messages **原样**交给模型）；
-3. **只在本任务的【第一步】注入一次** —— 且**必须排在那道预算门【之后】**
-   （理由：`memory_block` 要花一次 embedding， 的教训是"门之前花掉的钱会被当场丢弃"）。
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_memory_injection_wiring.py -q -p no:warnings`
+"""**LangGraph 那条链补的「长期记忆注入」—— 接线判据**。
 """
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
@@ -129,7 +105,7 @@ def test_没有记忆时_交给模型的还是原来那串(monkeypatch):
 def test_记忆检索失败时_只降级不抛(monkeypatch):
     """**记忆是锦上添花，不许成为承重件** —— 它失败只该少一段上下文。
 
-    这条是拿一次**真实的 CI 全红**换来的（2026-10-13）：本图补上这个调用之后，
+    这条是拿一次**真实的 CI 全红**换来的：本图补上这个调用之后，
     CI 里 **14 条"驱动真图"的用例全红** —— 根因是 CI 的 DashScope key 是**占位值**
     检索抛 401 ⇒ **异常从图节点里穿出来** ⇒ 整条请求挂。
     **本机看不见这一次**：本机有真 key ＋ Redis 里有 embedding 缓存（同问句早算过）

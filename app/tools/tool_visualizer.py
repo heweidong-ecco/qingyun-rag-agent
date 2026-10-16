@@ -1,17 +1,9 @@
-"""
-工具调用可视化模块
+"""工具调用可视化模块
 记录和展示 Agent 工具调用的完整过程。
 
-**2026-10-03（N4）：键从「裸 `thread_id`」改成「拼了身份」**。
+**：键从「裸 `thread_id`」改成「拼了身份」**。
    改之前有三处跨用户可见（见  的 N4）：`get_all_traces` 谁都给、
    `get_trace` 不判属主、且 `thread_id` 默认就是 `"default"` ⇒ **后问的盖先问的**。
-
-**两条轴别混**：本模块是**追踪**轴（进程内存）。
-   `token_tracker.check_session_token_budget(user_name, thread_id)` 是**成本**轴 ——
-   它**本来就带 `user_name`**，没这个病，**别去"顺手统一"它**。
-
-**身份是必填形参、没有默认值** —— 与 `session_key`（决策 8-1）同一取向：
-   **漏传要崩（`TypeError`），不是悄悄记到公共桶里。**
 """
 import time
 from typing import Dict, List

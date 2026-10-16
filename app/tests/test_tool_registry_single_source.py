@@ -2,26 +2,6 @@
 
 **为什么用 AST 而不是 grep**：注释和 docstring 里也写着这些工具名，
    正则会把**说明文字**当成违规（本仓栽过 —— 见 `app/tests/test_tool_dispatch.py` 的表头）。
-
-## 2026-10-08： Step 1 那条判据是**坏的**，这里换了尺子
-
-让写「找 `tools = [...]` 里的**字符串字面量**」。**实测本仓不成立**：
-
-```
-$ python -c "<AST 扫 app/*.py 的 tools 赋值>"
-  agent_checkpointer.py:60             tools = ... 元素类型=['Name']
-  agent_graph.py:55                    tools = ... 元素类型=['Name']
-  api_v1_rag.py:973                    tools = ... 元素类型=['Name']
-  agent_graph_advanced_learning.py:64  tools = ... 元素类型=['ListComp']   ← 已派生
-```
-
-⇒ **四处元素全是 `ast.Name`（对象），一个字符串字面量都没有**
-⇒ 那条判据**一开始就是绿的**，什么都没测
-⇒ **反证检验**：把结论取反（"还在手抄"）⇒ 那条命令**打出来的还是空**
-⇒ **尺子没在量它该量的事**。
-
-⇒ 本文件改成量**真正重复的那个东西**：`@tool` 装饰的**函数定义**。
-   判据（可打印）：`grep -rn '@tool' app/*.py` 里每个工具名**只该出现一次**。
 """
 
 import ast
@@ -33,7 +13,7 @@ import pytest
 API = Path(__file__).resolve().parents[1]   # app/ —— tests/ 的上层
 
 #: 交给 LLM 的工具名（= `mcp_server.TOOLS` 里那些）。
-#: 2026-10-08：4 → **7**。
+#: ：4 → **7**。
 #: **新增工具时必须同时改这里** —— 本集合是 `_tool_definitions` 的**过滤条件**，
 #:    名字不在里面 ⇒ 那条守卫对这个工具**是瞎的**（不是"少登记一条测试"，是"尺子量不到"）。
 TOOL_NAMES = {
@@ -45,7 +25,6 @@ TOOL_NAMES = {
 #: 新增一个工具 ⇒ 在 `mcp_server.TOOLS` 加一行 + 在这里登记它的**定义处**
 #:       （不是"到处都能定义"）。
 #: **「加工具要加几处」的【完整】清单** ⇒  §六·1（**五处** + 两处此前零守卫的
-#:       元数据，已由 `app/tests/test_tool_registration_completeness.py` 补上）。别再传"两处"那个旧数。
 DEFINITION_HOMES = {
     "tools/simple_tools.py": {"calculator", "date_today", "date_calc", "json_extract", "stats"},
     "tools/search_tools.py": {"web_search"},
@@ -127,7 +106,7 @@ def test_module_tools_are_derived_from_registry(modname):
 def test_execute_python_is_in_every_graph_tool_table():
     """`execute_python` **要**在那两张图的工具表里。
 
-    **本用例 2026-10-08 翻过面**（原名 `..._not_yet_in_unisolated_graphs`，断言的是「**不在**」）。
+    **本用例 翻过面**（原名 `..._not_yet_in_unisolated_graphs`，断言的是「**不在**」）。
 
     ## 为什么当初排除
 
@@ -135,7 +114,7 @@ def test_execute_python_is_in_every_graph_tool_table():
       ① 那两张图里它**没有容器隔离**（跑在宿主同进程树里，只有白名单 + 5 秒硬杀）
       ② 它**不在 `SENSITIVE_TOOLS`** 审批名单（默认只有 `web_search`）
 
-    ## 为什么现在放开（作者 2026-10-08 同意「甲」）
+    ## 为什么现在放开（作者 同意「甲」）
 
     · **①  解决了** —— 现在是**硬化容器**（只读根 · 无网 · 非 root · 无 cap · 5s/256MB/pids 限制）
     · **② 根本不是那两张图特有的** —— `execute_python` 从 `plan_execute`
@@ -225,7 +204,7 @@ def test_execute_python_is_registered():
     """`execute_python` **必须注册着**（走独立的执行器容器）。
 
     **为什么保留它**：它原先是一条**正向对照** —— 当年还有一条
-    「单容器部署模式下**不**注册它」（那个分支 2026-10-16 已随那套部署一起删，见 `mcp_server.py`）。
+    「单容器部署模式下**不**注册它」（那个分支 已随那套部署一起删，见 `mcp_server.py`）。
     正向对照留着的理由在当年就写清楚了，现在照样成立：
     **没有它，一个"把 `TOOLS` 清空"的实现也能让别的断言绿** ——
     那正是本仓反复栽的「**尺子量不到它该量的事**」。
@@ -240,17 +219,9 @@ def test_execute_python_is_registered():
 
 
 # ===========================================================================
-# 2026-10-09（模块化重构）：**产品模块的枚举口径**
 # ===========================================================================
 # **为什么不能再用 `api_dir.glob("*.py")`**：
-#   2026-10-09 把 60 个模块按组收进了 `app/<组>/`（core · routing · access
 #   billing · agent · rag · tools）⇒ **根目录下再也扫不到它们** ⇒ `glob` 返回
-#   **空列表** ⇒ 下面那些「对每个模块…」的断言**全部为真**。
-#   ⇒ 本仓原话：「**空跑 = 静默假通过**」（`pre-commit-gates.py` / `test_web_pages.py` 都栽过）。
-#   ⇒ 所以这里改成**递归**，并且**递归之后必须排掉两处**：
-#       · `tests/`  —— 测试不是产品模块
-#       · `alembic/` —— 迁移脚本，**重构前就扫不到**（原来 `glob("*.py")` 只看 app/ 根）
-#   ⇒ 并且带一条**防空跑断言**：真扫到 0 个 ⇒ 当场红，不许静默变绿。
 def _product_py(api_dir):
     """`app/` 下的**产品 .py**（`app/` 根 + 七个模块组）。"""
     ps = [p for p in api_dir.rglob("*.py")

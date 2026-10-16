@@ -1,33 +1,4 @@
 """三条【会真调 LLM】的链：每个调用点必须**先拦后记**，且端点必须把身份塞进 state。
-
-## 为什么需要它 —— `test_session_budget_wiring.py` **一直是绿的**
-
-那边断言的是「端点函数体里调了 `check_session_token_budget`」。
-**三条链全都调了，那条测试全绿** —— 而它们**从不往 `token_usage_logs` 写一行**
-⇒ `get_session_token_usage` 恒为 0、`get_global_daily_token_usage` 也看不到它们
-⇒ **端点上的 B8 会话上限 + B11 全站熔断，对这三条链等于不存在**。
-
-> **门在，锁坏了。** 这是本仓
-> 「**门挂在别处，就等于没有门**」的同族 —— 这次门**挂在正确的位置**，
-> 而**门后面的计量表没接上**。本文件钉的就是**那张表**。
-
-裁定与逐文件清单
-
-## 两条必须一起读的话
-
-1. **本文件上半是【形状】判据** —— 本仓对它有过教训（：**守卫的形状盲区**）
-   ⇒ **不许只留那一条**。下半（`-k behavior`）是**行为**判据
-   （假 LLM 驱动三张图，断言 `record_usage` 真的收到对的 `user_name`/`thread_id`）。
-   > **两者缺一都不够**：上半能过而记账写错参数（形状对、语义错）；
-   > 下半能过而某个节点又被人删了守卫（行为对、覆盖面漏）。
-2. **它红了不要删它** —— 红的意思是「这条链又开始免费跑了」。
-   若你**有意**摘掉某条链的记账，先改  的范围表，**再**改本文件的 `GRAPHS`/`ENDPOINTS`。
-
-## 为什么用 AST，不用 grep
-
-`record_usage` / `check_token_budget` 这些词**在注释与 docstring 里也大量出现**
-（本仓三张图的注释都很长）⇒ grep 会把「注释里提到」当成「代码里调了」。
-同款理由见 `app/tests/test_session_budget_offline.py` 的文件头。
 """
 import ast
 import pathlib
@@ -209,9 +180,6 @@ def test_endpoint_passes_identity_into_state(filename, func_name):
 # 下半 · 【行为】判据（`-k behavior`）—— 真图 + 假模型，看 `record_usage` 收到什么
 # ============================================================================
 # **为什么形状判据不够**：上半只能证明"函数里出现了那个名字"。
-#    它**证明不了**参数对不对 —— 传 `thread_id` 却把 `sess` 当值传进去、或
-#    `purpose` 填错、或模型名写死，上半**一条都抓不到**。
-# 反向也成立：行为判据只跑**被 invoke 到的那条分支** ⇒ ①②两条都要留。
 
 ID = {"user_name": "isolation_a", "thread_id": "A-thread-001"}
 USAGE = {"input_tokens": 11, "output_tokens": 7, "total_tokens": 18}
@@ -288,7 +256,6 @@ def test_behavior_chain1_langgraph_records_identity(monkeypatch):
     rows = _capture_records(monkeypatch)
     _allow_budget(monkeypatch, agent_graph)
     monkeypatch.setattr(agent_graph, "llm_with_tools", _bind(_BillingFakeModel()))
-    # 2026-10-13：本图首轮会检索长期记忆（走外网 embedding）⇒ 打桩。
     import agent.memory_store as _ms
     monkeypatch.setattr(_ms, "search_user_memory", lambda *a, **k: [])
 
@@ -366,7 +333,6 @@ def test_behavior_missing_identity_falls_back_not_crash(monkeypatch):
     rows = _capture_records(monkeypatch)
     _allow_budget(monkeypatch, agent_graph)
     monkeypatch.setattr(agent_graph, "llm_with_tools", _bind(_BillingFakeModel()))
-    # 2026-10-13：同上 —— 首轮会检索长期记忆。
     import agent.memory_store as _ms
     monkeypatch.setattr(_ms, "search_user_memory", lambda *a, **k: [])
 

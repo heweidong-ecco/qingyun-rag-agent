@@ -13,8 +13,8 @@
 - **工具定义与处理器由工厂自动生成**（`TOOLS_DEFINITION` / `TOOL_HANDLERS`，都从 `TOOLS` 派生）⇒ ⛔ 不需要手维护第二张映射表
 - **健康检查过滤**：`list_tools` 把 `UNHEALTHY` 的工具**移出清单**（这是**当前实际生效的降级机制**，⛔ 不是 `tool_health.py`）
 - **在 async 边界处 offload**：`call_tool` 里 `await asyncio.to_thread(handler, arguments)` —— 让**同步**工具（如 Playwright）不在事件循环里跑
-- 🔴 **2026-10-08：迁到 mcp 2.x 的构造器回调** —— 见下「看代码会误判」
-- ✅ **2026-10-16：原来那个「单容器部署」开关已删** —— 它随那套部署一起下线，且**没有任何地方再设它**
+- 🔴 **：迁到 mcp 2.x 的构造器回调** —— 见下「看代码会误判」
+- ✅ **：原来那个「单容器部署」开关已删** —— 它随那套部署一起下线，且**没有任何地方再设它**
   （实测 compose / `.env.example` / `scripts/` 全 0 命中）⇒ 是**死配置**，删它是**行为不变**的收尾。
   ⚠️ **但那条安全口径还在**：`execute_python` 走**独立执行器容器**，⛔ 不在应用进程里起子进程。
 
@@ -24,8 +24,8 @@
 |---|---|
 | 🔴 **`TOOLS` 是【模块级】建的** | 任何**按 env 过滤**的做法都**只在 import 时执行一次** ⇒ 同一进程里改 env **静默无效**。⚠️ 要验注册表**必须走子进程**（`test_tool_registry_single_source.py` 正是这么做的）。<br>⚠️ 将来若再加一个按 env 过滤的开关，**先读这一行** |
 | ⚠️ **两个浏览器工具仍注释着** | `fetch_webpage` / `screenshot_webpage` —— 依赖未安装的 chromium（作者裁「挂起 + 注释掉 + 标『可扩展能力』」） |
-| ⚠️ ~~**没有 MCP 会话复用**~~ | ✅ **2026-10-08已解决** —— 客户端侧改成**长驻会话**（actor），**实测 2s → 4–7ms**。<br>⚠️ **但那是 `agent_graph_advanced.py` 的事，本文件一行没动** —— 本文件仍是"被起一次就服务一个连接"的服务端 |
-| ⚠️ **服务端启动形态仍是"握手"** | 用了 `create_initialization_options()`（协议 `2026-07-28`「Make MCP stateless」**没删它**，见 `docs/reference/mcp-stateless-and-transport.md`） |
+| ⚠️ ~~**没有 MCP 会话复用**~~ | ✅ **已解决** —— 客户端侧改成**长驻会话**（actor），**实测 2s → 4–7ms**。<br>⚠️ **但那是 `agent_graph_advanced.py` 的事，本文件一行没动** —— 本文件仍是"被起一次就服务一个连接"的服务端 |
+| ⚠️ **服务端启动形态仍是"握手"** | 用了 `create_initialization_options`（协议 ``「Make MCP stateless」**没删它**，见 `docs/reference/mcp-stateless-and-transport.md`） |
 
 ## ⚠️ 看代码会误判的地方 ⭐
 
@@ -85,7 +85,7 @@ server = Server("agent-tools", on_list_tools=list_tools, on_call_tool=call_tool)
 
 ### 7. ⛔ **谁都不许往 stdout 写** —— 那是 MCP 的 **stdio 传输通道**
 
-🔴 **2026-10-08立**。改前本文件有两处 `print(...)`（**stdout**），
+🔴 **立**。改前本文件有两处 `print(...)`（**stdout**），
 后果是客户端**每次工具调用**都报一条：
 
 ```

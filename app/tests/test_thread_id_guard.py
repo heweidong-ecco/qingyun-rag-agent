@@ -1,22 +1,4 @@
 """`thread_id` 查询参数的空串守卫（裁定 #12）。
-
-为什么用**推导型**用例而不是逐个端点写一条：
-   本刀加守卫的端点是 **13 个**，而"逐个写"只能钉住**我当时记得的**那 13 个 ——
-   下一个人加第 14 个端点时**照样能漏**，而没有任何东西会响。
-   推导型扫的是**路由表本身** ⇒ 新端点自动被覆盖。
-本仓同族：（空清单静默假通过）—— 所以下面**必须**同时断言"扫到的条数不为 0"。
-
-## 两条实测出来的坑（起草时都写错了，见  Step 9 的订正）
-
-① **不能直接遍历 `app.routes`**：FastAPI 0.141 起 `include_router` 的结果被包成
-   `_IncludedRouter` ⇒ 直接遍历只能看到 **5 条**（实测），
-   而真 app 有 **58 条 HTTP + 1 条 WS**。
-   ⇒ 复用本仓**已有**的那把遍历器
-   （`app/tests/test_route_auth_scan.py:143` 也是这么用的）—— 不另写一份。
-
-② **不能读 `field_info.min_length`**：在 FastAPI 0.141.1 + Pydantic v2 上，
-   那个属性**不存在**（实测 15 条路由全部 `AttributeError: 'Query' object has no attribute 'min_length'`），
-   约束改挂在 `field_info.metadata` 里，形如 `[MinLen(min_length=1)]`。
 """
 import importlib.util
 from pathlib import Path

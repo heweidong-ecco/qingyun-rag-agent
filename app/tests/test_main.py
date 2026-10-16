@@ -5,7 +5,7 @@ import pytest
 
 # test_main.py
 def test_service_index(client):
-    """**服务索引 JSON** 仍在 —— 它 2026-10-09 从 `GET /` **挪到了 `GET /api/v1/info`**。
+    """**服务索引 JSON** 仍在 —— 它 从 `GET /` **挪到了 `GET /api/v1/info`**。
 
     **这条用例的形状变了，但不是"改断言让它过"**：`GET /` 当天按裁定改成了
     **总览首页**（302 → `/static/web/index.html`），而那段 JSON 的裁定原话是

@@ -1,22 +1,4 @@
-""" · 登录账号入库 —— **真库往返**（带 `needs_db` · 不进 CI）。
-
-## 跑法（⚠️ 必须指向测试库）
-
-```bash
-POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_login_users_db.py -q -m needs_db
-```
-
-## 为什么离线那半边不够
-
-`app/tests/test_login_users.py` 把 `get_db` 换成了替身 ⇒ 它验的是**决策逻辑**
-（哈希格式 / 优先顺序 / fail-closed），**⛔ 不验 SQL 本身**：
-表名写错、列名写错、`ON CONFLICT` 写错、`BOOLEAN` 与整数比较 —— **那些只有真库能抓**。
-
-## 本文件**自己清场**
-
-每条用例用一个唯一用户名（`uuid4`），`finally` 里 `DELETE` 掉它那几行 ——
-⚠️ 与那些「无 cleanup」的 `needs_db` 用例不同，这里是**有意**的：
-本表是**账号表**，留一堆测试号在里面会让 `manage_users list` 的输出没法看。
+"""· 登录账号入库 —— **真库往返**（带 `needs_db` · 不进 CI）。
 """
 import uuid
 

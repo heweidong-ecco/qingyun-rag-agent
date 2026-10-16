@@ -21,7 +21,7 @@
 - ⬜ **WS 的会话桶仍是"每连接"** —— `thread_id = f"ws-{uuid4}"`，重连 = 换桶。
   见  遗留·2（全局日级熔断 B11 仍罩着，故未失控）。
 - ✅ ~~**`verify_api_key` 的 `get_db()` 没有 try**~~（遗留·4 ⇒ 本表）
-  —— **2026-10-05 已修**（批 3）：库异常 ⇒ 抛 **`AppException(SERVICE_UNAVAILABLE)`** ⇒ **503**。
+  —— **已修**（批 3）：库异常 ⇒ 抛 **`AppException(SERVICE_UNAVAILABLE)`** ⇒ **503**。
   🔴 ** 原文那句「500 而不是 401」【两个都不是答案】** —— 理由见本节实施计划与。
   ⚠️ **WS 侧本来就用 1011 绕过了这个坑；现在 HTTP 侧的口径与它对齐了**（此前两边不一致）。
 
@@ -29,7 +29,7 @@
 
 | 看代码容易以为 | 实际 |
 |---|---|
-| 🔴🔴 **「`verify_jwt_token` 解出名字就够了 —— 令牌没被撤这回事」** | ⛔ **不够** —— JWT 是**无状态**的：只验签名与过期，**⛔ 不查库** ⇒ **撤销一个账号，他手里的令牌在过期前一直有效**（access 15 分钟，**refresh 7 天**）⇒ 「撤销」会退化成"**下次登录才生效**"。<br>✅ **2026-10-15 起**：解码后**再过一道 `access.auth.login_account_is_live`**（§二·⑥）⇒ **撤销最多 30 秒内生效**。<br>⚠️ **两个入口都要堵** —— 只堵这里，那张 `refresh` 还能**一直换新令牌**；`/auth/refresh` 那处**也得过同一道门**。<br>🔴 **而那道门的判定口径别想当然**：「查不到这一行」**不拦** —— 写成"拦"会让 **CI（无 PG）与全部自签 JWT 的用例一起死**，而换来的保护是零（能自签的人已经有 `JWT_SECRET_KEY` 了）。详见 `access/login_users.py::login_account_blocked` 的 docstring。 |
+| 🔴🔴 **「`verify_jwt_token` 解出名字就够了 —— 令牌没被撤这回事」** | ⛔ **不够** —— JWT 是**无状态**的：只验签名与过期，**⛔ 不查库** ⇒ **撤销一个账号，他手里的令牌在过期前一直有效**（access 15 分钟，**refresh 7 天**）⇒ 「撤销」会退化成"**下次登录才生效**"。<br>✅ ：解码后**再过一道 `access.auth.login_account_is_live`**（§二·⑥）⇒ **撤销最多 30 秒内生效**。<br>⚠️ **两个入口都要堵** —— 只堵这里，那张 `refresh` 还能**一直换新令牌**；`/auth/refresh` 那处**也得过同一道门**。<br>🔴 **而那道门的判定口径别想当然**：「查不到这一行」**不拦** —— 写成"拦"会让 **CI（无 PG）与全部自签 JWT 的用例一起死**，而换来的保护是零（能自签的人已经有 `JWT_SECRET_KEY` 了）。详见 `access/login_users.py::login_account_blocked` 的 docstring。 |
 | 🔴 **「WS 路由也能用 `get_current_user_hybrid` 那套」** | ⛔ **送不上来** —— `new WebSocket(url)` **不能自定义请求头**（浏览器 API 限制）⇒ `X-API-Key` / `Authorization` 客户端**根本发不出**。⚠️ 照抄 HTTP 依赖的形态**看着像接了鉴权**，实际是把所有人都挡在门外（或更糟：以为挡了其实没有）。⇒ WS 只能走**首帧 / 查询串 / 子协议**三条路，本轮选**首帧**。 |
 | 🔴 **「`require_ws_user` 里怎么还 `accept()` 了一次，端点里那次可以删」** | ✅ **端点里那次【必须】删** —— 星型 1.6.0 的 `WebSocket.accept()` **不幂等**，第二次会 `RuntimeError: Expected ASGI message "websocket.send" …, but got 'websocket.accept'`（实测）。本文件里那次是**唯一**一次。 |
 | 🔴 **「失败直接 `close()` 不就行了，何必抛异常」** | ⛔ **会连发两帧 close** ⇒ `RuntimeError: Cannot call "send" once a close message has been sent.`。<br>星型自己会接住 `WebSocketException` 并 `close(code=…, reason=…)`（`ExceptionMiddleware.websocket_exception`，靠 **MRO** 命中 —— `fastapi.WebSocketException` 是 `starlette.exceptions.WebSocketException` 的子类，实测）。<br>⚠️ **只能二选一**：自己 close，**或**抛异常让星型 close。 |
@@ -39,7 +39,7 @@
 | 🔴 **「中间件不是已经挡过了吗」** | ⛔ **挡不到 WS** —— `app/main.py` 那两个是 `BaseHTTPMiddleware`，**只看 `scope["type"] == "http"`**。⇒ WS 的鉴权**只能挂在路由自己的依赖上**，这也是它曾经整条裸奔的原因。 |
 | 🔴 **「改了个鉴权函数名而已，跑一下测试就行」** | ⛔ **还要改  的 `AUTH_NAMES`** —— 那个门是靠**函数名字符串**认人的，**名单漂了它会静默放过**（实测：把 `require_ws_user` 从名单里拿掉，两条 WS 立刻被判为"无鉴权"）。 |
 
-# ✅ 实施计划 · 批 3 · （2026-10-05 立 · **同日做完**）
+# ✅ 实施计划 · 批 3 · （立 · **同日做完**）
 
 > **结果**：`app/tests/test_auth_db_unavailable.py` **22 条全绿** · 全量 **654 passed** · **变异自证 17/17**
 > （相关 **7 条**；含"**把捕获写宽**"与"**中间件不再照 `None` 办事**"两类）。

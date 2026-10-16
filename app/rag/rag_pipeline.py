@@ -11,7 +11,6 @@ from rag.embedding_client import get_embedding
 from core.db import search_similar_async, bm25_search_async
 from collections import defaultdict
 from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
-# 2026-10-05 记账入口。放文件头是安全的：`token_tracker` 模块级**只** import
 #    标准库 + `token_config`（`db` / `langchain` 都是**函数内**惰性导入）
 #    —— 同一条理由见 `api_v1_rag.py:21-23` 那段注释。
 from billing.token_tracker import record_from_response
@@ -49,7 +48,6 @@ class RAGPipeline:
         # 角色 = 「模型轴 fast」+「长度轴 answer(2000)」—— 见 `app/core/llm_factory.py` 的模块 docstring。
         self.answer_llm = answer_llm or make_llm("fast", "answer")
 
-    # 2026-09-20 删（§三·B8）：此处原有类属性 `preprocessor = DocumentPreprocessor` ——
     #    **全仓零引用**（`grep -rn '\.preprocessor' app/` = 0）。它只是**在类定义时构造一次**，
     #    从没有任何方法读它。（真正做预处理的实例是在各方法内部**就地构造**的。）
 
@@ -62,15 +60,15 @@ class RAGPipeline:
         strict_mode: bool = False,        # 新增
         citations: bool = False,          # 新增
         *,
-        user_id: str,                     # 2026-10-03 加（决策 4/5）
-        thread_id: str,                   # 🔴 （2026-10-16）：会话标识，往下贯穿到**每一处记账**
+        user_id: str,                     # 加（决策 4/5）
+        thread_id: str,                   # 🔴 ：会话标识，往下贯穿到**每一处记账**
     ) -> dict:
         """执行完整检索流程，返回结果和管线元信息。
 
-        2026-09-20 修：这段 docstring 原先**躺在查询规范化那几行之后**，是**空操作** ——
+        修：这段 docstring 原先**躺在查询规范化那几行之后**，是**空操作** ——
            本方法**没有 docstring**。已上移到签名正下方（代码一行未动）。
 
-        2026-10-03：加**必填** `user_id`—— 检索**只在该用户自己的文档内**做。
+        ：加**必填** `user_id`—— 检索**只在该用户自己的文档内**做。
            身份用**显式形参**贯穿到 `db.search_similar_async` / `bm25_search_async`，
            不用 contextvar（决策 4）。**必填、不给默认值** ⇒ 漏传 = `TypeError`，
            不是"静默查全库"。
@@ -181,7 +179,7 @@ class RAGPipeline:
                 from rag.answer_with_citations import generate_answer_with_citations
                 answer, sources = generate_answer_with_citations(
                     candidates[:top_k], query, self.answer_llm,
-                    user_name=user_id,   # 2026-10-05：身份必须到得了记账点
+                    user_name=user_id,   # ：身份必须到得了记账点
                     thread_id=thread_id,  # 🔴：**会话也要** —— 否则账落 `"default"`、闸查调用者那个桶
                 )
                 result["answer"] = answer
@@ -199,7 +197,6 @@ class RAGPipeline:
                     ("system", system_prompt + "\n\n上下文：\n{context}"),
                     ("user", "{question}")
                 ])
-                # 2026-10-05：**不再接 `StrOutputParser`** ——
                 #    它把 `AIMessage` **剥成 `str`**，`usage_metadata` 随之丢光
                 #    记账**拿不到数**（这正是本轮要修的"零记账"，而测试照常全绿）。
                 #    改为直调 `invoke`，取消息本体。
@@ -208,7 +205,7 @@ class RAGPipeline:
                 record_from_response(
                     self.answer_llm, response, "answer_generation",
                     user_name=user_id,
-                    # 🔴 （2026-10-16）：**这里原先写死 `thread_id="default"`** ——
+                    # 🔴 （）：**这里原先写死 `thread_id="default"`** ——
                     #    于是每一个调用者的账都挤进那**一个**桶，而会话闸查的是**调用者传的那个**
                     #    ⇒ 闸恒看到 0 ⇒ **那条路上的会话上限永远不会触发**（实测复现过）。
                     thread_id=thread_id,
@@ -259,7 +256,7 @@ def create_accurate_pipeline() -> RAGPipeline:
 def create_accurate_norerank_pipeline() -> RAGPipeline:
     """精确检索：启用查询改写，但【不做】Cross-Encoder 重排序（因此不依赖 torch）。
 
-    2026-09-20 修：原 docstring 与上面 `create_accurate_pipeline` **逐字相同**
+    修：原 docstring 与上面 `create_accurate_pipeline` **逐字相同**
        （"启用查询改写和重排序"）—— 而本函数的 `enable_rerank=False`。
        函数名 + 实参都写着"no rerank"，只有 docstring 说反了。
     """

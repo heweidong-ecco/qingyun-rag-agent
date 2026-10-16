@@ -1,30 +1,4 @@
 """`/rag/upload_document` 的【分档】契约 ——  /。
-
-## 为什么要有它
-
-`app/routing/api_v1_rag.py` 的上传端点原文只有一句**按扩展名猜**：
-
-    doc_type = "legal" if ext == "pdf" else "technical"
-
-⇒ **除 PDF 外的一切**（`.md` / `.txt` / `.docx`）**全吃 `technical`**
-⇒ `report` / `article` 两档**从来用不上**；
-而 FAQ 的问答对只有 **140–300 字**，会被**合并进 500 的块**
-检索命中的是「**四五对问答的混合体**」。
-
-**2026-10-08 作者已裁**：「上传接口加一个**可选** `doc_type` 形参，
-**默认 = 现有推断 ⇒ 访客行为一字不变**；我们的灌库脚本可显式给。」
-
-## 本文件钉四件
-
-| # | 钉什么 | 反面（写歪了会怎样） |
-|---|---|---|
-| ① | **不传** ⇒ **仍是**扩展名推断（`.pdf`→`legal`，其余→`technical`） | 悄悄变成 `default` ⇒ **访客的块全变了，且没人会发现** |
-| ② | **传了** ⇒ 用它 | 传了不生效 ⇒ 乙的四类语料**全挤进同一档** |
-| ③ | 传**空白**（`""` / `"  "`）⇒ 按"没传"处理 | 空白当成一个真档名 ⇒ 静默回落 `default` |
-| ④ | 传**未知档位** ⇒ **响亮拒绝** | `get_text_splitter` 是 `.get(doc_type, default)` ⇒ **静默回落**，写错档名**不报错** |
-
-④ 是**有意加的**（里记了它是本 Agent 补的，不是作者原话）——
-理由：本仓立场「**响亮 > 静默**」（那族的同一个病）。
 """
 import asyncio
 import sys
@@ -48,7 +22,6 @@ class _FakeUpload:
     async def read(self, size: int = -1) -> bytes:
         """⚠️ **签名必须与真的那个一致** —— `starlette.UploadFile.read(size=-1)`。
 
-        🔴 2026-10-14：它原先写的是 `async def read(self)` —— **不收参数**。
            而 `upload_document` 改成分块读（`await file.read(64*1024)`）之后
            —— 那是 `①b`  要的「**大小上限必须卡在 `read()` 之前**」——
            **当场 `TypeError: read() takes 1 positional argument but 2 were given`**。

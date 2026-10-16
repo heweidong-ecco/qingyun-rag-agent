@@ -3,46 +3,6 @@
 **为什么单开一个文件**（本仓的老毛病）："写好了" ≠ "接上了"。
 `safe_math.py` 本身测得再绿，只要有一个调用点还留着 `eval`，那条路照样是 RCE。
 同族守卫 ⇒ `app/tests/test_approval_trigger.py` 的姊妹篇 `app/tests/test_pending_approvals_wiring.py`
-
-**两道，覆盖面不同**（不是重复）：
-
-| 闸 | 覆盖 | 挡什么 |
-|---|---|---|
-| **行为验证** | 1 处（能离线调起来的） | 最强的一道：**喂真实恶意表达式，验副作用没发生** —— 断言"返回了错误字符串"**不够**，旧代码也返回错误字符串 |
-| **AST 静态** | 2 处（含 `tools_with_cache`） | "还留着 `eval` 调用" / "没把入口指向 `calculate`" |
-
-## 2026-10-08：站点面**从 5 处收到 1 处**
-
-改前 `calculator` 被**抄了 5 份**； 删掉 `agent_graph` / `agent_checkpointer` /
-`agent_graph_advanced_learning` 三份， 再删 `tools_with_cache` 那份
-⇒ **只剩 `simple_tools_impl.calculator_impl` 一处**。
-
-**删站点 = 守卫覆盖面缩小**，所以每删一处都得能回答「**它原来守的能力现在由谁守**」：
-
-| 删掉的站点 | 现在由谁守 |
-|---|---|
-| `agent_graph.calculator` | **不再是"另一份实现"** —— 该图的 `calculator` **就是** `simple_tools` 那个对象（`simple_tools_impl.calculator_impl`）。⇒ 守 `simple_tools_impl` **= 守它**。<br>**这句话有判据，不是嘴上说说**：`test_tool_registry_single_source.py::test_all_graphs_share_the_same_calculator_object` 断言**对象同一**（`is`），不是"名字一样"。 |
-| `agent_checkpointer.calculator` | 同上（同一张对象表） |
-| `agent_graph_advanced_learning.calculator` | 同上 |
-
-⇒ 所以 `OFFLINE_SITES` 收缩成一条**不是"放宽断言"**，是**实现真的只剩一份**了。
-
-**2026-10-08：`app/tools_with_cache.py` 整个模块删掉了。**
-
-它此前是【第 6 份 `calculator` 拷贝】，靠本文件那条**静态**闸守着
-（它被 `@cached_tool` 包着 ⇒ 调一次就要连 Redis，故一向只进静态那道、不进行为那道）。
-
-**作者 2026-10-08 原话：「`tools_with_cache.py`，删除，这是定好的事了，这个是重复的，没用了」**
-—— ⇒ 它**不再是**"挂起"（原先的 ⏸ 理由是「缓存机制不是废物，是没接上」；
-现在 已经把缓存接在**工具函数体**上，它就成了纯重复）。
-
-**删它之前的两条判据**（都跑过）：
-· `grep -rn --include='*.py' 'tools_with_cache' app/` ⇒ **只剩注释**，没有任何 import
-· `grep -rn 'get_weather' app/` ⇒ 只剩 `api_v1.py` 的两处**注释**（那是个 mock 天气工具）
-
-**删掉一个站点 = 守卫面缩小**，所以本文件**同时**收窄了 `ALL_SITES`
-（`tools_with_cache` 那条一并删）—— 两件事**必须同一个 commit**，
-否则"删文件"会悄悄把守卫的面缩了、而没人记得说过。
 """
 
 import ast
@@ -60,7 +20,7 @@ API_DIR = Path(__file__).resolve().parents[1]   # app/ —— tests/ 的上层
 def eval_name_offenders(tree: ast.AST) -> list[int]:
     """返回**所有「裸名 `eval`」**出现的行号 —— 不是"所有 `eval(...)` 调用"。
 
-    **2026-10-04 修：原判据只抓 `ast.Call` 且 `func` 是裸名 `eval`**，
+    **修：原判据只抓 `ast.Call` 且 `func` 是裸名 `eval`**，
     于是这一行**两条闸都看不见**：
 
         result = await asyncio.to_thread(eval, expression)      # api_v1_rag.py:801
@@ -90,12 +50,6 @@ def eval_name_offenders(tree: ast.AST) -> list[int]:
 # 一、行为验证：喂恶意表达式，验"没被执行"
 # ===========================================================================
 #: (模块名, 入口名) —— 入口名不同是因为 `simple_tools_impl` 那份叫 `calculator_impl`。
-#:
-#: 2026-10-08：原先这里有 **4** 条（三张图各自那份 + 本处）。
-#:    那三份**已被删除** —— 它们与 `simple_tools` 那份逐字等价，属"重复定义"。
-#:    ⇒ 现在**只剩一处实现**，见文件头那张「删掉谁、现在由谁守」的表。
-#: **别再往这里加回模块名** —— 那意味着又有人抄了第 N 份，
-#:       `test_tool_registry_single_source.py` 会先红。
 OFFLINE_SITES = [
     ("tools.simple_tools_impl", "calculator_impl"),
 ]
@@ -167,11 +121,6 @@ def test_site_cannot_read_a_file(module_name, attr, tmp_path):
 # ===========================================================================
 # 二、AST 静态：这些站点都不许再出现 `eval(...)`，且都要指向 `calculate`
 # ===========================================================================
-#: 全部站点 —— **这份名单是"收口的定义"**：将来再复制一份 `calculator`，
-#:    要把它加进来（别让它成为漏网的）。
-#: 2026-10-08：**5 → 1**。三张图那三份由  删、`tools_with_cache` 那份由  删
-#:    ⇒ 现在**只剩 `simple_tools_impl` 一处实现**，故 `ALL_SITES == OFFLINE_SITES`。
-#: 别把这一行删掉、也别改回字面量列表 —— 留着是为了"加站点时只有一个地方要改"。
 ALL_SITES = list(OFFLINE_SITES)
 
 
@@ -222,7 +171,7 @@ def test_no_other_module_defines_an_eval_based_calculator():
     扫的是**整个 `app/`**（不只是上面那 5 个文件）—— 上面那 5 个是"已知的"，
        这条管的是"**将来又冒出来的**"。本仓的拷贝文化是真的：这一份就被复制了 5 次。
 
-    **2026-10-04：这条闸原先【有形盲区】** —— 判据是 `ast.Call` 且 `func` 是裸名
+    **：这条闸原先【有形盲区】** —— 判据是 `ast.Call` 且 `func` 是裸名
        `eval` ⇒ `asyncio.to_thread(eval, expression)`（`api_v1_rag.py:801`）**它抓不到**，
        而那一处**真的在执行任意代码**（匿名 WS `/ws/agent` 可达）。⇒ 改用 `eval_name_offenders`。
     """
@@ -240,17 +189,9 @@ def test_no_other_module_defines_an_eval_based_calculator():
 
 
 # ===========================================================================
-# 2026-10-09（模块化重构）：**产品模块的枚举口径**
 # ===========================================================================
 # **为什么不能再用 `api_dir.glob("*.py")`**：
-#   2026-10-09 把 60 个模块按组收进了 `app/<组>/`（core · routing · access
 #   billing · agent · rag · tools）⇒ **根目录下再也扫不到它们** ⇒ `glob` 返回
-#   **空列表** ⇒ 下面那些「对每个模块…」的断言**全部为真**。
-#   ⇒ 本仓原话：「**空跑 = 静默假通过**」（`pre-commit-gates.py` / `test_web_pages.py` 都栽过）。
-#   ⇒ 所以这里改成**递归**，并且**递归之后必须排掉两处**：
-#       · `tests/`  —— 测试不是产品模块
-#       · `alembic/` —— 迁移脚本，**重构前就扫不到**（原来 `glob("*.py")` 只看 app/ 根）
-#   ⇒ 并且带一条**防空跑断言**：真扫到 0 个 ⇒ 当场红，不许静默变绿。
 def _product_py(api_dir):
     """`app/` 下的**产品 .py**（`app/` 根 + 七个模块组）。"""
     ps = [p for p in api_dir.rglob("*.py")

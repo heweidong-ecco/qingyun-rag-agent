@@ -138,8 +138,6 @@ class HybridUser(HttpUser):
         # 这里**刻意不传 `conversation_history`**：
         #    该端点根本没有这个参数（签名见 api_v1_agent.py:349-357），传了只会被忽略；
         #    多轮上下文靠 **同一个 thread_id + 服务端 checkpointer** 维持，客户端不需要携带历史。
-        #    ——原代码是从 locustfile_v2 抄过来的（那边打的是 /rag/search，参数才有效），
-        #      这份注释是防止下一个人又把它加回去。
         self.client.post(
             "/api/v1/agent/mcp_chat",
             headers=self.headers,

@@ -2,18 +2,6 @@
 
 **测的是什么**：不是模型答得好不好，是**两个用户带同一个 `thread_id` 时，
 传给图的 `config` 是不是同一个**。今天（改动前）是同一个 ⇒ 共用一个桶。
-
-**为什么用假图**：真图要调 LLM（联网 + 花钱）。本文件测【接线与语义】。
-   照抄 `app/tests/test_approval_resume.py` 的先例：
-   · 用 `monkeypatch.setattr(模块对象, 名字, 假货)` —— **不是**直接赋属性（那个不会还原，
-     假图会泄漏到同一个 pytest 会话的其它文件里，而那种污染**不报错**）
-   · 本仓没有 `pytest-asyncio` ⇒ 异步端点**用 `asyncio.run` 手跑**，
-     并把 `Depends` 的形参（`user_name`）**直接当关键字传进去** ⇒ 不需要 TestClient、不需要真 key
-   · 两道门（`check_session_token_budget` / `circuit`）要打桩：它们碰 Redis/PG，
-     **不是本文件要测的东西**
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_session_isolation.py -q -p no:warnings`
 """
 import asyncio
 

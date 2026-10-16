@@ -1,33 +1,4 @@
 """RAG 侧每条真调 LLM 的通路必须【先拦后记】。
-
-## 为什么需要它
-
-`grep -c record_usage app/routing/api_v1_rag.py` ⇒ **0**（`rag_pipeline.py` / `answer_with_citations.py` 同为 0）。
-⇒ RAG 侧**每个成功的请求都在免费跑**：端点上的 **B8 会话上限** / **B11 全站熔断**
-读的计数器，它**从不写** ⇒ **对 RAG 链等于不存在**。
-
-与  修过的 Agent 侧**完全同型** —— 那边的原话是「**门在，锁坏了**」：
-门**挂在正确的位置**（端点确实调了 `check_session_token_budget`），
-而**门后面的计量表没接上**（从没往 `token_usage_logs` 写一行）。
-本文件钉的就是**那张表**。
-
-裁定
-起因 ⇒  §遗留·2（当时核出、**有意没做**）
-
-## 两条必须一起读的话
-
-1. **上半是【形状】判据**（AST），**下半是【行为】判据**（假对象驱动，断言
-   `record_usage` 真的收到**对的** `user_name` / `purpose` / `model`）。
-   > **两者缺一都不够**：形状能过而参数写错（记成 `"unknown"`、`purpose` 抄错）；
-   > 行为能过而某个调用点又被人摘了守卫（覆盖面漏）。
-2. **它红了不要删它** —— 红的意思是「这条 RAG 通路又开始免费跑了」。
-   若你**有意**摘掉某条通路的记账，先改  的范围表，**再**改本文件。
-
-## 为什么用 AST，不用 grep
-
-本仓这些模块的注释与 docstring 里**大量出现** `record_usage` / `check_token_budget`
-这些词（`query_rewriter.py:78` 那个**从不被调用的 import** 就是活证据）
-⇒ grep 会把「注释里提到」当成「代码里调了」。同款理由见 `app/tests/test_billing_wiring.py` 文件头。
 """
 import ast
 import asyncio
@@ -96,7 +67,7 @@ def test_rewrite_query_records_real_usage_and_identity(monkeypatch, no_cache):
     assert len(recorded) == 1, "调了一次 LLM 就该记且只记一笔"
     kw = recorded[0]
     assert kw["user_name"] == "alice", "🔴 ⛔ 不许记成 'unknown'（那是假记账）"
-    # 🔴 （2026-10-16）：**会话也要到得了记账点** —— 不到就会落 `"unknown"`，
+    # 🔴 （）：**会话也要到得了记账点** —— 不到就会落 `"unknown"`，
     #    而会话闸查的是调用者传的那个桶 ⇒ **闸恒看到 0**（那条路上的上限永远不触发）。
     assert kw["thread_id"] == "t-alice", "🔴 ⛔ 不许落 `unknown` —— 那是  的原形态"
     assert kw["purpose"] == "query_rewrite"
@@ -302,7 +273,7 @@ def test_plain_answer_branch_records_with_identity(monkeypatch):
     purpose, kw, resp = recorded[0]
     assert purpose == "answer_generation"
     assert kw["user_name"] == "alice", "🔴 ⛔ 不许是 'unknown'"
-    # 🔴 （2026-10-16）：**这一句钉的就是那条缺陷** ——
+    # 🔴 （）：**这一句钉的就是那条缺陷** ——
     #    改前这里写死 `thread_id="default"`，于是每个调用者的账都挤进那**一个**桶。
     assert kw["thread_id"] == "t-alice", "🔴 ⛔ 不许是 'default' —— 那是  的原形态"
     assert getattr(resp, "usage_metadata", None), "同上：必须是消息本体，不是 str"
@@ -441,24 +412,6 @@ def test_query_rewriter_uses_record_usage_not_record_from_response():
 # ══════════════════════════════════════════════════════════════════
 #  · 行为判据：`/rag/stream_search` 的【流式答案】也要记真账
 # ══════════════════════════════════════════════════════════════════
-#
-# 为什么这条端点此前一直"在闸后面免费跑"
-#   `api_v1_rag.py` 里 `check_session_token_budget` / `circuit` 两道闸都在，而**全文
-#   `record_from_response` = 0** ⇒ 闸读的计数器它从不写 ⇒ 对这条链等于不存在。
-#
-# 为什么不能靠骨架（`sse.sse_stream`）攒 usage
-#   骨架只把**通过 `llm_chunk_text` 过滤的块**攒进 `collected`；而本仓 provider 把
-#   `usage_metadata` 挂在**最后一帧、且那帧 `content=''`** 上 ⇒ `llm_chunk_text` 返回
-#   `chunk.content or None` = `None` ⇒ **恰好被丢掉**。
-#   判据（可打印）⇒ `qingyun-rag-agent-TODO待办/探针-流式与记账.py` §结论 1/2
-#
-# 本节的用例**驱动真实端点函数**（含真实 `sse.sse_stream` 骨架）—— 不是只测 tap 类。
-#    理由：tap 挂在骨架**逐块调用 `extract`** 这个性质上；只测 tap 会漏掉
-#    "某天骨架不再对空 content 调 extract" 这一类回归（那时 tap 测试照样全绿）。
-#
-# **别把 `api_v1_rag.py` 加进本文件的 `_RAG_LLM_FILES`**：那条 AST 守卫的
-#    `_called_names(fn)` **刻意不下钻嵌套函数**，而本端点的记账必然发生在 `_complete`
-#    （嵌套 async gen）里 ⇒ 加进去**恒红**。本节的行为判据对这条链**严格更强**。
 
 
 class _FakeStreamLLM:

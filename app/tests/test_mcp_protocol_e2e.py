@@ -1,18 +1,4 @@
 """真起 MCP 子进程、真走 stdio 协议 —— 本仓**唯一**一条 MCP 端到端守卫。
-
-## 为什么必须有这一条
-
-`app/tests/test_agent_repairs.py` 里那几条 MCP 用例**全都 monkeypatch 掉**了
-`stdio_client` / `ClientSession` ⇒ 它们验的是**我们和假对象的契约**，不是「真协议跑不跑得通」。
-
-⇒ **服务端 API 接错了，现有测试一条都不会红。**
-这条守的就是那个面：**真子进程 × 真协议 × 真调用**。
-
-**成本**（实测 2026-10-08）：单次调用 **1.8s** · `list_tools` **1.4s** ⇒ 本文件约 **3s**。
-   不标 `integration` / `needs_db` —— 它**不碰网、不碰库**（别为了省 3 秒把它摘出 CI，
-   那等于把**唯一**能抓 API 迁移错误的东西摘掉）。
-
-它的价值证明：**迁移前它就绿**⇒ 迁移后若变红，**一定是迁移搞坏的**。
 """
 import asyncio
 
@@ -60,7 +46,7 @@ def _server_child_pids() -> list:
        `ps` 在 **Linux 上会按终端宽度【截断】命令行**：CI 的路径长
        （`/home/runner/work/<repo>/<repo>/app/tools/mcp_server.py`），截断后 `mcp_server.py` 被切掉
        ⇒ **本地（macOS）找得到、CI（Linux）找不到**。
-       **实测**（2026-10-08）：本机 860 全绿，**CI 报 `assert []`**
+       **实测**：本机 860 全绿，**CI 报 `assert []`**
        —— 正是本仓记过的那一类「**本地绿当成了不依赖**」
 
     同时排除**本进程**（`os.getpid`）—— 别把自己当成子进程杀了。
@@ -81,7 +67,7 @@ def test_killed_subprocess_is_recovered_on_the_next_call():
 
     ## 为什么这条**必须是真杀**（假对象测不出来）
 
-    **它是【真的】抓出过一个 bug 的**（2026-10-08 -B 验证阶段）：改前 `_hold` 把
+    **它是【真的】抓出过一个 bug 的**（-B 验证阶段）：改前 `_hold` 把
       「**连接断了**」和「**工具自己报错**」混在一个 `except Exception` ⇒ 子进程一死，
       holder task **可能照样活着**（它阻塞在 `tx.get` 上）⇒ `is_alive` 恒 True
       ⇒ **永远不重建** ⇒ 之后每次调用都拿同一条死会话（**一直** `MCPError: Connection closed`）。
@@ -119,16 +105,6 @@ def test_killed_subprocess_is_recovered_on_the_next_call():
             os.kill(pid, signal.SIGKILL)
 
         # **判据只钉一件事：最终能自己回来**（30 秒内）。
-        #
-        # **原本还钉了「发现的那一次必须失败」，已去掉 —— 它是【时序相关】的**：
-        #    · 有时**堆在队列上没人发现**（`_hold` 阻塞在 `tx.get()`，那条死会话一直"活着"）
-        #      ⇒ 得等修好之后才会「失败一次、然后重建」；
-        #    · 有时 `async with` **自己退出了** ⇒ `is_alive()` 变 False ⇒ **第一次调用就重建**、
-        #      直接成功。
-        #    ⇒ 两种情况在"修复前/修复后"都能出现 ⇒ **那条断言不是一把稳定的尺子**
-        #      （本仓原话：**取反之后输出照样变的东西，才算在测那件事**）。
-        # **可稳定复现的那条尺子在** `app/tests/test_mcp_long_session.py::test_transport_loss_rebuilds_the_session`
-        #    （假对象，**反证 3/3 稳定红**）。本用例是**真环境的兜底**。
         deadline = time.time() + 30
         out, last = None, None
         while time.time() < deadline:

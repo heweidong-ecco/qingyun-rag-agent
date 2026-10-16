@@ -6,12 +6,8 @@ from typing import Optional, Dict
 from dataclasses import dataclass, field
 from collections import defaultdict
 # 从 db.py 导入数据库连接（注意路径）
-# 2026-09-17 重构 ⑥ 切开点 2：此处**原先在模块层**导入 `db.get_db`，且**重复了两行**
 #    （L10 与 L13）。后果：`import token_tracker` 会连带拉起 **psycopg2**，
 #    哪怕调用方只想用本模块的纯计算函数（PRICING / 预估 / 汇总）。
-#    现改为**函数内惰性导入** —— 见下方各函数体首行的 `from db import get_db`，
-#    与本文件既有的 `from permission import ...`（L291）、`import calendar`（L377）同一写法。
-#    位置放在函数体最前、`try` 之前 —— 放 `try` 里会被本函数自己的 `except` 吞掉，掩盖 ImportError。
 import threading
 import json
 from datetime import datetime, timedelta, timezone  # `_iso_utc` / `_seconds_to_tomorrow` 用（stdlib）
@@ -44,29 +40,17 @@ _purpose_summary: Dict[str, Dict] = defaultdict(lambda: {"total_tokens": 0, "tot
 _thread_summary: Dict[str, Dict] = defaultdict(lambda: {"total_tokens": 0, "total_cost": 0.0, "calls": 0})
 
 # ==================== 模型计费单价（元/1000 tokens） ====================
-# 2026-10-01 搬家（B7）：**常量已移到 `app/billing/token_config.py`**（额度类常量的唯一落点）。
 #    这里保留 `PRICING` / `_DEFAULT_PRICING` 两个**同名别名** ⇒ 现有调用方与测试无需改动。
 #    行为不变：值逐字相同。
 #    为什么搬：额度常量原先散在 4 个文件 6 处，单位还混着 —— 见 `token_config.py` 顶部。
-#
-#    2026-09-16 的既有约定（**随常量一起搬到 token_config**）：
-#    兜底单价与 `record_cost` **共用一份**，别再各写一份 —— 否则对未登记模型，
-#    `token_usage_logs.cost` 与 `cost_records.total_cost` 会算出**两个不同金额**，两张表对不上账。
 from billing.token_config import (                                    # noqa: E402
     MODEL_PRICING as PRICING,
     DEFAULT_MODEL_PRICING as _DEFAULT_PRICING,
 )
-# 2026-09-20 删（§三·C2）：此处原有 `DEFAULT_DAILY_TOKEN_BUDGET` 与 `ROLE_TOKEN_BUDGET`
 #    的**一份重复定义**，与文件下方（`get_user_token_budget` 之前）那份**逐字同值**，
 #    而 Python **后者胜出** ⇒ **这一份是被完全遮蔽的死定义**（改它不生效、也不报错）。
 #    下方那份**还带注释**（"免费用户：每天1万token"），是更好的那份 ⇒ 保留下方、删此处。
 #    与 §二（`remove_noise_markers` 重复定义）**同型**。
-#
-# **2026-10-11（两个额度池）那两个名字**现在**整份都不再 import** ——
-#    原先它们只被 `get_user_token_budget()` 用，而它已改成读 `quota_pools.total_daily_limit()`
-#    ⇒ 上面那两条 import 变成了**死导入**（`ruff` 的  当场报出来，提交门拦下的）。
-#    想查"角色日额度"这个数 ⇒ 去 `billing/token_config.py`（唯一的家）或
-#       `billing/quota_pools.pool_daily_limit()`（**按池**那一份）。
 
 
 def record_usage(
@@ -150,7 +134,6 @@ def record_usage(
 
 
 # ==================== 预算耗尽时的统一话术 ====================
-# 2026-10-04 新增。**为什么要有个常量**：三条原先不记账的链本轮补上拦截，
 #    各自要返回一句"超出预算"给用户。若各写各的，措辞会漂成四五份 ——
 #    统一放这里，别在 `agent_graph*.py` 里再抄字面量。
 BUDGET_EXCEEDED_MSG = "今日Token预算已用完，请明天再试。"
@@ -160,9 +143,6 @@ BUDGET_EXCEEDED_MSG = "今日Token预算已用完，请明天再试。"
 # 这三个函数是 `/rag/stream_search` 的 `usage` 帧与【账本】**同源**的保证。
 #    别在端点里再写一遍 `getattr(llm, "model_name", …)` 或再算一次钱 ——
 #       那就是**第二份取数口径**，而  的全部代价正是从"模型名有两个来源"来的
-#       （本仓按错单价记过账，前科两处）。
-#    这不是顺手清理：契约 B 的帧要报 `model` / 两个 token 数 / 钱，
-#       **本刀就要用**，不抽就得在端点里复制。
 
 def resolve_model_name(llm_obj) -> str:
     """从 LLM 对象取模型名 —— **唯一实现**（契约 B）。
@@ -337,17 +317,7 @@ def get_daily_token_usage(user_name: str) -> float:
         with _lock:
             return _user_summary.get(user_name, {}).get("total_tokens", 0)
 
-# ==================== 今日 · 按用途拆（2026-10-11 · 前端整体调整 批 4） ====================
-#
-# 为什么要拆：页头原先**只有一个总数**（`get_daily_token_usage`）——
-#    「LLM 花了多少 / Embedding 花了多少」在作者的要求里要**分开显示**，
-#    而两者的**计价口径与量级差着好几个数量级**，混在一起看不出所以然。
-#
-# **两张表都是【白名单】，不是"除 embedding 之外都算 LLM"。**
-#    理由：「其它」（将来新的 purpose）**两样都不是** ⇒ 并进任何一边都是**编一个数**。
-#    ⇒ 归不进两表的一律进 `other`，**单独列出来**。
-#    新增 purpose 忘了归类 ⇒ **有门会红**（`app/tests/test_daily_token_split.py`
-#      扫活代码里出现过的每一个 `purpose="…"`）。
+# ==================== 今日 · 按用途拆（· 前端整体调整 批 4） ====================
 
 #: 算作 **LLM**（生成 / 决策 / 改写那一路）的用途。
 LLM_PURPOSES = (
@@ -358,7 +328,6 @@ LLM_PURPOSES = (
     "plan_execute.plan",
     "plan_execute.dynamic_input",
     "plan_execute.quality_check",
-    # 2026-10-11：**mem0 抽事实**那次 LLM。
     #    它此前**根本不存在**（mem0 用自己的 LLM 且不记账）⇒ 加它 = **新开一条记账**。
     #    忘了把它加进来的话，`app/tests/test_daily_token_split.py` 会红
     #      （那条门扫活代码里每一个 `purpose="…"`，**新 purpose 必须归类**）。
@@ -445,13 +414,6 @@ def get_user_history(user_name: str, days: int = 30) -> list:
 # 下面这三个 `get_*_summary` 读的是【进程内存】（`_user_summary` / `_purpose_summary`
 #     / `_thread_summary`，见本文件 :39/:42/:45），只在 `record_usage` 里累加，
 #     **从不回读数据库** ⇒ **重启即归零**。
-#
-#     它们【不是没用的】—— `:148` 的即时花费告警要的是"本进程这段时间花了多少"，
-#        那个语义本来就不该查库。
-#     但它们【不能当对外展示的数据源】—— 见 `get_user_overview`。
-#        2026-10-03（`①b`）实跑核出来的：`/agent/cost/overview` 当时正是
-#           拿它们做数据源，实测 admin 在 `token_usage_logs` 里有 **4216 tokens**，
-#           端点答 `0` —— **不报错、界面照常出数**。
 def get_user_summary(user_name: str = None):
     """获取用户维度的汇总统计（**进程内存**，重启归零 —— 见上）"""
     with _lock:
@@ -538,7 +500,7 @@ def get_user_overview(user_name: str) -> dict:
 def get_recent_usage(limit: int = 20, user_name: str = None):
     """最近若干条使用记录。
 
-    **2026-10-09：加【可选】`user_name` —— 给了就只看这个人。**
+    **：加【可选】`user_name` —— 给了就只看这个人。**
 
     **改前是什么样**：端点 `GET /agent/token/recent` 的签名**收了 `user_name`**
        （`Depends(get_current_user_hybrid)`），而函数体写的是 `get_recent_usage(limit + 1)`
@@ -573,25 +535,14 @@ def get_recent_usage(limit: int = 20, user_name: str = None):
 # ==================== 预算控制 ====================
 # ==================== 预算控制函数（已改用数据库查询） ====================
 # 1. 成本计算与预算控制
-# 在 Token 统计的基础上，你可以实现预算控制：为每个用户设置每日 Token 上限，
-# 达到上限后自动拒绝调用或切换为本地小模型。这与第12天的配额检查机制类似，
-# 只是维度从“请求次数”变成了“Token 消耗”。
-# 默认每日Token预算（可通过环境变量覆盖）
-# 2026-10-01 搬家（B7）：本行与下面的 `ROLE_TOKEN_BUDGET` 都已移到 `app/billing/token_config.py`，
-#    在文件顶部 import 进来。两个名字保持不变 ⇒ 调用方无需改动。
-#
-#    顺带按 （决策一）去掉了 `"admin": float("inf")` ——
-#    作者裁「admin 也要同样上限」⇒ 现在是**有限值**（= premium = 100000/天）。
-#    但"全局日级"是**另一个东西**（B10，在 ①b）—— per-user 检查永远看不到
-#    「大家加起来超了」，别拿这条替代它。
 
 def get_user_token_budget(user_name: str) -> float:
     """该用户**一天的总上限**（token）。
 
-    **2026-10-11（两个额度池）语义变过** —— 改前它 = `ROLE_DAILY_TOKEN[角色]`；
+    **（两个额度池）语义变过** —— 改前它 = `ROLE_DAILY_TOKEN[角色]`；
     现在 = **两个池【相加】**（`quota_pools.total_daily_limit(角色)`）。
 
-    **为什么非改不可**：日额度拆成两个池之后，**总上限是翻倍的**（作者 2026-10-11 确认）。
+    **为什么非改不可**：日额度拆成两个池之后，**总上限是翻倍的**（作者 确认）。
     而**本函数是"总额"那道闸的唯一来源** —— `check_token_budget_detail` 用它，
     全仓 **11 处图内闸**（`agent_graph*.py` / `agent_checkpointer.py` / `plan_execute.py`）共用它
     ⇒ 不改它，那些闸仍然在 **1× 角色额度**处把请求拦住 ⇒ **"翻倍"根本不会发生**，
@@ -647,7 +598,7 @@ def get_pool_budget_info(user_name: str) -> dict:
 def check_token_budget_detail(user_name: str, estimated_tokens: int = 0) -> tuple[bool, str]:
     """每日 Token 预算检查 —— **唯一实现**，带原因说明。
 
-    2026-09-16 抽出本函数：此前 `check_token_budget` / `check_budget_before_call` /
+    抽出本函数：此前 `check_token_budget` / `check_budget_before_call` /
     `check_multilevel_budget`(第三级) **各写一份**同样的判定，且后两份把单位写成「元」
     去和 **Token 预算**相减 ⇒ **恒放行**）。
     本函数是**量纲正确**的那一份（Token vs Token），其余一律委托到这里。
@@ -784,7 +735,6 @@ def generate_monthly_report(user_name: str, year: int = None, month: int = None)
                 model_rows = cur.fetchall()
                 
     except Exception as e:
-        # 2026-10-10（CodeQL `py/stack-trace-exposure` · 真问题 · **#2 的根因**）：
         #    这个 `{"error": str(e)}` **就是** `GET /agent/monthly_report` 那条告警的**源头** ——
         #    report 被端点原样返回，异常原文（SQL 片段 / 连接串 / 路径）就跟着出去。
         #    **日志这一行【一个字没改】**（细节本来就该留在服务端），
@@ -849,7 +799,6 @@ PURPOSE_ESTIMATED_COST = {
     "answer_generation": 0.02,   # 生成最终答案
     "query_rewrite": 0.005,      # 查询改写
     "embedding": 0.0005,         # Embedding 调用
-    # 2026-09-21 加（§十四 · ③-b）：与上面 `PURPOSE_ESTIMATED_TOKENS` 的三个键**必须一一对应**
     #    （两套表并存不可互相替代 —— 见下面那段说明）。
     "plan_execute.plan": 0.01,
     "plan_execute.dynamic_input": 0.005,
@@ -864,11 +813,10 @@ def estimate_purpose_cost(purpose: str) -> float:
     """预估单次 LLM 调用的花费（**元** —— 仅供展示，预算判定请用 estimate_purpose_tokens）"""
     return PURPOSE_ESTIMATED_COST.get(purpose, 0.01)
 
-# 两套预估表**必须并存、不可互相替代**（2026-09-16）：
+# 两套预估表**必须并存、不可互相替代**（）：
 #    · *_COST   → 单位「元」，供 `/agent/budget/estimates` 等**对外展示**用（api_v1_agent.py 暴露了它）
 #    · *_TOKENS → 单位「Token」，供**预算判定**用
 #    预算的权威单位是 **Token**（ROLE_TOKEN_BUDGET / get_daily_token_usage 都是 Token）。
-#    历史上判定逻辑误用了「元」表去和 Token 预算相减 ⇒ 三处闸门恒放行）。
 TOOL_ESTIMATED_TOKENS = {
     "web_search": 800,           # 搜索工具：通常需要一次 LLM 辅助总结
     "calculator": 0,             # 计算器：本地执行，无 API 调用
@@ -887,7 +835,6 @@ PURPOSE_ESTIMATED_TOKENS = {
     "answer_generation": 800,
     "query_rewrite": 300,
     "embedding": 100,
-    # 2026-09-21 加（§十四 · ③-b）：`plan_execute` 这条路的三种 LLM 调用。
     #    此前 `plan_execute` **完全不查预算、不记账** —— 它会真跑 LLM，而账上一行不记
     #    ⇒ **免费用户的每日配额管不到它**（`/agent/plan_execute`）。
     "plan_execute.plan": 500,           # 把目标分解成步骤清单
@@ -916,7 +863,7 @@ def check_budget_before_call(
     在调用前检查预算是否充足。
     返回: (是否允许, 原因说明)
 
-    参数单位是 **Token**（自 2026-09-16 起；旧名 `estimated_cost` 单位是「元」）。
+    参数单位是 **Token**（自 ；旧名 `estimated_cost` 单位是「元」）。
     那个旧参数正是本函数此前**恒放行**的原因之一 —— 它把「元」和 **Token 预算**相减。
     """
     # 1. 计算预估 Token（不再是「元」）
@@ -999,7 +946,6 @@ def get_intercept_count(user_name: str = None) -> dict:
 # ==================== 多级预算配置 ====================
 
 # 单次调用最大花费（元）· 单线程最大花费（元）
-# 2026-10-01 搬家（B7）：两个常量已移到 `app/billing/token_config.py`，此处从那里取（文件顶部已 import）。
 #    行为不变（默认仍 0.5 / 5.0）。
 from billing.token_config import MAX_SINGLE_CALL_COST, MAX_THREAD_COST       # noqa: E402,F811
 
@@ -1018,7 +964,7 @@ def check_multilevel_budget(
 
     本函数**刻意有两个单位**，别"统一"掉：
       · 第一、二级是**单次/单线程的花费上限**，配 `MAX_SINGLE_CALL_COST` / `MAX_THREAD_COST`（元）——
-        它们量纲本来就是对的（元 vs 元），2026-09-16 的修复**没动它们**。
+        它们量纲本来就是对的（元 vs 元），的修复**没动它们**。
       · 第三级是**每日预算**，权威单位是 **Token**（`ROLE_TOKEN_BUDGET` / `get_daily_token_usage`），
         原先误用「元」去相减 ⇒ 恒放行。现已委托给 `check_token_budget_detail`。
     """
@@ -1073,16 +1019,6 @@ def get_thread_cost(thread_id: str) -> float:
 
 
 # ==================== Trace 页 · 成本轴明细（F2） ====================
-#
-# **上面那个 `get_thread_cost` 与本节的 `thread_cost_breakdown` 就差一件事：`user_name`。**
-#    `get_thread_cost(thread_id)` **不带用户过滤** —— 单看签名像是越权洞，
-#    **实测不是**：全仓只有 1 个调用点（本文件线程预算检查，用的正是调用者自己的 thread_id）。
-#    ⇒ **别"顺手统一"成一个函数** —— 预算那条路不需要按用户过滤，
-#      强行合进来只会把"要不要过滤"变成调用方的一个布尔参数（本仓最恨的"忘了传=静默全量"）。
-#
-# **它在版图上的位置**：本模块 = **成本轴**（PG `token_usage_logs`，一笔模型调用一行）。
-#    `tool_visualizer` = **追踪轴**（进程内存，一次工具调用一条）。**两条轴对不上号**
-#    ⇒ 两边各画各的，别在这里做"按 step 对齐"（没有共同的 step id，凑出来的层级是编的）。
 
 # 单条线程最多回多少笔明细。有它就【必须】有 `total`（整条线程聚合）——
 # 否则"总花费"会变成"最近 N 笔之和"，**小而无人察觉**。
@@ -1094,7 +1030,7 @@ def _iso_utc(dt) -> Optional[str]:
 
     **为什么必须显式标区**：`token_usage_logs.created_at` 的类型是 `TIMESTAMP`
        （**无时区**），而 PG 容器实测是 `Etc/UTC`（`SHOW timezone`）⇒ 存进去的是**裸的 UTC**。
-       若原样 `.isoformat` 回给前端，JS 的 `new Date("2026-10-06T13:14:21")`
+       若原样 `.isoformat` 回给前端，JS 的 `new Date("T13:14:21")`
        会**当成浏览器本地时间**解析 ⇒ 东八区用户看到的时刻**静默早 8 小时**。
        （同族前科：`logs/api_*.log 混了两套时区`。）
 
@@ -1104,14 +1040,10 @@ def _iso_utc(dt) -> Optional[str]:
     if dt is None:
         return None
     if isinstance(dt, str):
-        # 🔴 2026-10-14（的甲 · `①b`）：**SQLite 那条路上 `created_at` 回来是
         #    `str`，不是 `datetime`** —— 那一列的类型是 `TIMESTAMP`，而 SQLite 是**动态类型**，
         #    `CURRENT_TIMESTAMP` 存进去的就是**一串文本** ⇒ 对着 str 调 `.replace(tzinfo=…)`
         #    会当场 `TypeError: str.replace() takes no keyword arguments`（**实测撞到过**）。
         # ⚠️ **⛔ 不能图省事 `return dt`** —— 那个串**不带时区**，前端
-        #    `new Date("2026-10-14 12:34:56")` 会按**浏览器本地时间**解析
-        #    ⇒ 东八区用户看到的时刻**静默早 8 小时**（本函数存在就是为了这件事，见上面 docstring）。
-        # ⇒ 先解出来，再走**同一条**补区逻辑。
         try:
             dt = datetime.fromisoformat(dt)
         except ValueError:
@@ -1163,7 +1095,6 @@ def thread_cost_breakdown(
                 #    分开各写一个三元表达式，改了一处忘了另一处 ⇒ 参数个数对不上 ⇒ 运行期报错。
                 #    （这不是假想的：本函数第一次写成两行三元式，靠一次变异实验才照出来。）
                 # 下面这个字面量是**常量二选一**，不含任何用户输入 —— 不是 SQL 注入面。
-                #    两个分支的唯一区别是"要不要按 user_name 过滤"。
                 if include_all:
                     owner_clause, owner_params = "1 = 1", ()
                 else:
@@ -1225,11 +1156,6 @@ def thread_cost_breakdown(
 
 # ==================== B8 · 会话级 token 上限（①b） ====================
 # 口径与接线范围。
-#
-# **本维度已经有一个上限了** —— 上面的 `MAX_THREAD_COST`（元/线程）。
-#    两者的**窗口不同**：那个**不带日期**（全程），本节的**按日**（裁定）——
-#    「同一 `thread_id`、两种窗口」是**已知且有意**的，别"顺手统一"掉；
-#    归并由  的 ①b· 处理。
 
 def get_session_token_usage(user_name: str, thread_id: str) -> float:
     """某用户某会话【今日】累计 token —— **查表**，不读内存。
@@ -1350,7 +1276,7 @@ def check_global_daily_budget(estimated_tokens: int = 0) -> tuple[bool, str]:
        fail-closed 的话，**一次 DB 抖动 = 所有人的请求全 429**。
     与 `app/routing/deps.py` 的鉴权（fail-closed）**方向相反是有意的**，别"顺手统一"。
 
-    触顶动作 = **直接拒绝**（要素②，作者 2026-09-30 已裁）
+    触顶动作 = **直接拒绝**（要素②，作者 已裁）
     ⇒ 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)`。
 
     **本函数目前【没有调用点】** —— 接线是 ``。
@@ -1368,7 +1294,7 @@ def check_global_daily_budget(estimated_tokens: int = 0) -> tuple[bool, str]:
 
 
 # ============================================================================
-# 🔴 全站【embedding】的滚动窗口（2026-10-14 ·  §二·8 · 作者裁「甲」）
+# 🔴 全站【embedding】的滚动窗口（·  §二·8 · 作者裁「甲」）
 # ============================================================================
 def get_global_embedding_usage(hours: int = 0) -> float:
     """全站（**不带任何 `user_name` 过滤**）最近 N 小时的 **embedding** token 合计。

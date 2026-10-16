@@ -1,30 +1,4 @@
 """通用按 key 断路器（`R2`）· **离线可跑的那一半**。
-
-## 本文件钉的是什么
-
- 的落点是一个**通用**函数：`circuit(key) -> 是否已熔断`，
-它**不自己判额度**，而是**按 key 派发给对应的判定器**：
-
-| key | 派发给 | 谁在用 |
-|---|---|---|
-| `global:<YYYY-MM-DD>` | `token_tracker.check_global_daily_budget` | ** 第一版只用这一个** |
-| `model:<模型>:<日期>` | 尚未实现 | （十几个 model 候选）—— **加一个 key 前缀即可** |
-
-⇒ 所以本文件钉的第一件事是 **「`global:` 这条路是不是真的接到了 」**。
-这与本仓栽过多次的那个陷阱同型：
-**函数建好了、签名也对、就是没有真的接上**（之前、 本身都是）。
-
-## 未知 key 必须 **fail-open**
-
-额度是**成本控制**，不是安全边界（与 `app/routing/deps.py` 鉴权方向相反，**这是有意的**）。
-⇒ 一个**拼错的 key**、或  将来加了新前缀而 `breaker` 还没跟上，
-**都不该把服务打死** —— 放行 + 打日志，让人看得。
-
-## 本文件全绿 ≠ 熔断生效了
-
-`circuit` 自己**没有调用点**也是白搭。接线在 ``：
-**与  同一批调用点**（`api_v1_agent.py` 5 处 + `api_v1_rag.py` 3 处 + 匿名烧钱的
-`/api/v1/rag/benchmark-embedding`）。
 """
 import pytest
 
@@ -106,7 +80,7 @@ def test_global_key_is_actually_recognized_by_circuit(monkeypatch):
     """**两条合起来才安全**：`global_key` 产出的 key，`circuit` 必须**认得**。
 
     这是最容易静默失效的一种组合错：
-        helper 生成 `global:2026-10-02`，而 `circuit` 认的是 `global/2026-10-02`
+        helper 生成 `global:`，而 `circuit` 认的是 `global/`
         ⇒ **前缀对不上 ⇒ 走 fail-open ⇒ 永远放行**，而**两条测试各自都是绿的**
         （一条只查格式、一条只喂字面量）。⇒ 本条把两边**接起来**验。
     """

@@ -2,10 +2,6 @@
 
 **全离线**：monkeypatch 掉 `stdio_client` / `ClientSession`，不起子进程。
    （"真起子进程"那件事由 `app/tests/test_mcp_protocol_e2e.py` 管，两件事别混。）
-
-**本批的全部收益压在前两条上**：
-   ① **`initialize` 只跑一次**（那 ~2 秒几乎全在这儿）
-   ② **actor 按 loop 认领**（本仓大量调用点是 `asyncio.run`，每次一个新 loop）
 """
 import asyncio
 import contextlib
@@ -166,7 +162,7 @@ def test_a_failing_call_does_not_kill_the_session(monkeypatch):
 def test_transport_loss_rebuilds_the_session(monkeypatch):
     """**传输断了 ⇒ 下一次调用必须重建会话**。
 
-    **这一条是【真杀子进程】才照出来的**（2026-10-08 -B 验证阶段）：
+    **这一条是【真杀子进程】才照出来的**（-B 验证阶段）：
        改前 `_hold` 把「**连接断了**」和「**工具自己报错**」混在一个 `except Exception` 里，
        于是子进程被杀之后 **holder task 照样活着** ⇒ `is_alive` 恒 True ⇒ **永远不重建**
        ⇒ 之后每一次调用都拿同一条死会话，**一直** `MCPError: Connection closed`。

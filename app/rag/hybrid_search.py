@@ -10,7 +10,7 @@ from rag.reranker import rerank
 from rag.query_rewriter import expand_query, rewrite_query
 
 def reciprocal_rank_fusion(
-    vector_docs,  # [(id, content, source, similarity), ...]  ← 2026-09-20 修：原写 3 元组，与 L35 的解包不符
+    vector_docs,  # [(id, content, source, similarity), ...] ← 修：原写 3 元组，与 L35 的解包不符
     bm25_docs,    # [(id, content, source, bm25_score), ...]
     k=60,
     top_k=5
@@ -74,7 +74,7 @@ def reciprocal_rank_fusion(
 def hybrid_search(query: str, top_k: int = 5, *, user_id: str, thread_id: str):
     """混合检索：向量检索 + BM25 关键词检索，使用 RRF 融合。
 
-    2026-10-03：加**必填** `user_id`（决策 4/5）—— 身份用**显式形参**贯穿到
+    ：加**必填** `user_id`（决策 4/5）—— 身份用**显式形参**贯穿到
        `db.search_similar` / `bm25_index.bm25_search`，那两处负责真正过滤。
        **必填、不给默认值** —— 有默认值就等于"可以忘记传"，
           那就还是  §二 那个 fail-open 根因。
@@ -101,7 +101,7 @@ def rerank_search(query: str, top_k: int = 3, *, user_id: str, thread_id: str) -
     完整的混合检索 + RRF 融合 + 重排序流程。
     这是最终版检索入口。
 
-    2026-10-03：加**必填** `user_id`（决策 4/5），向下透传。
+    ：加**必填** `user_id`（决策 4/5），向下透传。
     """
     # 1. RRF 混合检索（多召回一些，给重排序留足候选池）
     candidates = hybrid_search(query, top_k=top_k * 3, user_id=user_id, thread_id=thread_id)

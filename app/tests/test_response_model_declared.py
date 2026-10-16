@@ -1,38 +1,4 @@
-"""**凡被前端调用的端点，必须有 `response_model`**（那条门 · 2026-10-12 立）。
-
-## 为什么要有这条门
-
-`response_model` **真会裁字段**（不是"只改文档"）—— 反证实测：
-把 `return {"a":1,"b":"…"}` 声明成只含 `a` 的模型 ⇒ **实返 `{'a': 1}`**，`b` **被静默吃掉**。
-⇒ 所以「补 `response_model`」是**改行为**，而风险是**静默的**：
-   前端在用的字段被吃掉，**不会有任何门报错**（页面只是某个格子空了）。
-
-⇒ 这条门挡的是「**以后新加一个页面/端点，却不声明形状**」。
-
-## 它怎么认出「被前端调用的端点」
-
-**两把尺子，都要用**（只用第一把会**空过**）：
-
-1. **页面/JS 里 `fetch(…)` / `getJSON(…)` 的【字面量】**（`app/static/**`）
-2. **JS 模块里那些路径【常量】**（`const XXX_PATH = '/api/v1/…'`）
-   —— 新页面走 helper 拼路径（`RagRag.buildSearchPath`），
-   字面量那条**对它完全空过**（`test_web_pages.py` 自己也写着这一条）。
-
-**不扫 `reference.html` 那种"清单页"** —— 它把 63 条端点**列出来给人看**，
-   不是"调用它们"；扫它会一次误报 60 多条。
-
-## 怎么处理"还没补"的
-
-`PENDING` 那张表**显式列出**还没声明的端点 + 理由
-**现在绿**，而**新加一个前端端点却漏了声明 ⇒ 当场红**（这才是本门要挡的）。
-别把 `PENDING` 当成"允许清单"：它只装**这一批之前就存在**的，
-   新加的东西必须**当场补**。
-
-判据（可打印）：
-```bash
-venv/bin/python -m pytest app/tests/test_response_model_declared.py -q -p no:warnings
-grep -rn "response_model=" app/routing/ | wc -l      # 别抄数，现跑
-```
+"""**凡被前端调用的端点，必须有 `response_model`**（那条门 · 立）。
 """
 import os
 import re
@@ -43,9 +9,8 @@ from main import app, static_dir
 
 #: 还没补的老端点 —— **显式列出 + 写清理由**，不许往里加新东西。
 #:
-#: 🔴 **2026-10-15（§七·1）：现在是【空的】。**
+#: 🔴 **（§七·1）：现在是【空的】。**
 #:    ⚠️ 它是被下面那条 `test_pending_entries_are_still_real` **自己撵出去的**
-#:    （原话：「要么它被删了……**把这一行从 PENDING 里删掉**」）—— 那条门按设计工作了。
 PENDING: dict = {}
 
 #: 这些端点的 200 **不是 JSON 体**（SSE 逐帧）⇒ `response_model` 对它们**不适用**。
@@ -54,7 +19,6 @@ PENDING: dict = {}
 #: 帧序与契约 ⇒ `app/routing/specs/sse.md`
 NOT_JSON = {
     "/api/v1/rag/stream_search": "SSE —— 边生成边吐 data: 帧",
-    # 2026-10-13· 三条 agent 流式链 —— 「外部检索与工具Agent编排」那一页
     #    的「用流式」开关会打它们（`app/static/js/agent.js` 的三个 `STREAM_*_PATH` 常量）。
     #    **不是"还没补"** —— 它们的 200 是一条流（`data:` 一帧一帧），
     #    给它们硬加一句"返回是一个 JSON 对象"**是一句假话**。
@@ -64,7 +28,6 @@ NOT_JSON = {
     "/api/v1/agent/plan_execute/stream": "SSE —— 链列表第 3 条的流式形态（⚠️ 它只流规划段，之后一段静默）",
 }
 
-# 🔴 2026-10-15（§七·1）：**`apiFetch` 也要收**。
 #    页面取数从裸 `fetch(` 改成了 `RagAuth.apiFetch(`（那一个入口负责贴认证头 + 令牌过期换一把）。
 #    ⚠️ 而 `fetch\(` **匹配不到** `apiFetch(`（`apiFetch` 里那个 F 是大写）
 #    这个集合会**静默缩水**，下面那条就变成**假绿** —— 是 `NOT_JSON` 那条防空跑断言把它抓出来的。
@@ -79,7 +42,7 @@ def _frontend_raw() -> set:
     它表示前端**要在后面拼东西**（`FULL_PATH + id`）。
     旧版在这里就 rstrip 掉了 ⇒ 拼接路径**塌缩成上一级**（`/api/v1/rag/documents/`
     ⇒ `/api/v1/rag/documents` = **列表端点**，而它**有** schema）⇒ **DELETE 那条整条空过**。
-    那正是  漏掉的原因（2026-10-16 修）。
+    那正是 漏掉的原因（修）。
     """
     found = set()
     roots = [os.path.join(static_dir, "js"), os.path.join(static_dir, "web")]
@@ -118,7 +81,7 @@ def _route_methods() -> dict:
     **掩蔽**掉了 —— **同一条路径上的 DELETE 缺声明，永远看不出来**。
 
     判据取 **OpenAPI 的 `200` schema**，⛔ 不是去读路由对象的 `response_model` ——
-       2026-10-12 实测：本版 FastAPI 的 `include_router` 把子路由包成
+       实测：本版 FastAPI 的 `include_router` 把子路由包成
        **`fastapi.routing._IncludedRouter`**，它**没有 `.routes` / `.router` / `.path`**
        ⇒ 从 `app.routes` 那一层**根本走不到** API 路由。而且这件事**没有任何报错**
        ⇒ 只会让本门**恒绿**。⇒ 所以另有一条防空跑。
@@ -186,7 +149,7 @@ def test_the_scan_is_not_vacuous():
 def test_every_frontend_called_endpoint_declares_its_shape():
     """**被前端调用的端点，每一个方法都要声明返回形状**（或显式列在 `PENDING` / `NOT_JSON` 里）。
 
-    🔴 **2026-10-16本条改成【按方法】+【展开拼接前缀】判。**
+    🔴 **本条改成【按方法】+【展开拼接前缀】判。**
     旧版有两个洞，叠在一起把 `DELETE /api/v1/rag/documents/{doc_id}` 整条放过去了：
 
     1. **按路径、不按方法**，且一命中就 `break` ⇒ 同路径的 **GET** 声明过，

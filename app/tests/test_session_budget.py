@@ -2,13 +2,6 @@
 
 与 `test_session_budget_offline.py` 的分工见那个文件的文件头。
    本文件**只放"必须真读写库"的**：真 `INSERT INTO token_usage_logs`，再真去查。
-
-**跑之前必须带库名隔离**：`POSTGRES_DB=rag_test`
-   （本仓有前科：R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行 ——
-   凡调用 `record_*` / `insert_*` / `create_*` 的验证，**必须带库名隔离**。
-
-**本文件不进 CI**（CI 无 postgres service，见 `app/pytest.ini`）
-   —— 所以  的**核心判据不在本文件**，在离线那份里。
 """
 import pytest
 

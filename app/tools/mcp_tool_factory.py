@@ -73,23 +73,16 @@ def create_mcp_tool_handler(tool_func):
              ⇒ 三代 REACT 分支的工具调用**静默失效**（实测）
           3. 测试
 
-        2026-09-20 的教训:先把它改成了 async（为修 MCP 那条），
+        的教训:先把它改成了 async（为修 MCP 那条），
            **当场就可能砸掉第 2 个调用方** —— 是合并前评审抓到的。
            修法改成"**在 async 边界 offload，处理器保持同步**"：三处调用方都不用动。
            这是"修一条路径时必须问：**同一个形状还有别的入口吗**"的第 4 次实例。
         """
         try:
-            # 2026-09-20 修:此前是
             #      `input_obj = tool_func.args_schema(**arguments)`
             #      `result = tool_func.invoke(input_obj)`
             #    —— 把 **pydantic 实例**喂给 `StructuredTool.invoke()`，而它要的是 **dict**
             #    ⇒ `TypeError: calculator() missing 1 required positional argument`。
-            #    实测对比(同一个真工具):
-            #      · `calculator.invoke({"expression":"1+1"})`  → '2'
-            #      · `calculator.invoke(args_schema(**{...}))`  → TypeError
-            #    后果被健康检查放大:它的判据是"结果里含『工具调用失败』⇒ unhealthy"
-            #       ⇒ 这个 bug 让 **6 个工具全标红**，与传输层修没修好无关。
-            #    回归测试:app/tests/test_agent_repairs.py::test_mcp_tool_handler_passes_dict_to_invoke
             result = tool_func.invoke(arguments)
             return str(result)
         except Exception as e:

@@ -1,35 +1,6 @@
 """`approval_events` 的**真库**那一半 —— （+ §五 判据②）。
 
 与 `app/tests/test_approval_events.py` 的分工：本文件**只放"必须真读写库"的**。
-
-## 本文件补的是一个【真缺口】，不是"对称好看"
-
-`app/agent/approval_audit.py` 的 `record_decision` 是 **fail-open** 的：
-
-    except Exception as e:
-        print(f"[ApprovalAudit] 记录裁决失败（已忽略）: {e}")
-
-⇒ **表名写错 / 列名写错 / 列类型对不上 / SQL 语法错 —— 它一律只往服务端日志打一行，
-谁都不会收到红。** 离线那 12 条（`test_approval_events.py`）走的是**假 pg** ——
-它证的是「**SQL 被发出去了**」，**不是「PG 认它」**。
-
-⇒ 本文件让那条 SQL **真的在 PG 上跑一次**，并且**从库里读回来**。
-
-## 所以本文件的每一格都要【读回来】才算数
-
-「调用没抛异常」在这里**不是证据** —— 那个函数**本来就不抛**。
-因此本文件里**不出现** `record_decision(...)` 之后直接 `assert True` 这种写法。
-
-## 跑之前必须带库名隔离：`POSTGRES_DB=rag_test`
-
-（本仓有前科：R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行 ——
-
-**本文件写的是 `approval_events`，不隔离的后果比脏数据更重** ——
-`approval_events` 是**审计留痕**表：往真库塞一条假裁决 = **假留痕**
-（本仓立场：`app/agent/specs/approval_audit.md`「**表里少一条 ≠ 那次裁决没发生**」，
-反过来同样成立 —— **表里多一条假的，就是在伪造"批过"**）。
-
-**本文件不进 CI**（CI 无 postgres service，见 `app/pytest.ini`）。
 """
 import pytest
 
@@ -40,17 +11,10 @@ pytestmark = pytest.mark.needs_db
 _PREFIX = "n12-approval-"
 
 
-#: **2026-10-08 补的清理** —— 补之前这个文件**只能跑一次**。
+#: **补的清理** —— 补之前这个文件**只能跑一次**。
 #:
 #: **怎么发现的**：加分页用例时，**原本绿的 4 条转红了**，报「读到 **3** 条」——
 #: 那不是被改坏的，是**同一批行被写了 3 次**（我第 3 次跑这个文件）。
-#: 根因是我照抄了 `app/tests/test_cost_visibility_db.py` 的「**无 cleanup**」模式，
-#:    在注释里写了「便于事后精确清理」—— **但那个"事后"从来没发生过**。
-#: ⇒ **教训：「只能跑一次的用例」不是用例** —— 它第 2 次红，
-#:    而那时你分不清"是坏了"还是"是脏了"（本次就白查了一轮）。
-#:
-#: 清理范围**只限本文件自己的行**（`owner LIKE 'n12-approval-%'`），
-#: 不 `TRUNCATE`、不碰别人的数据（同  的纪律）。
 @pytest.fixture(autouse=True)
 def _clean_own_rows():
     from core.db import get_db
@@ -141,13 +105,9 @@ def test_edited_lands_as_a_real_boolean_column():
     from core.db import get_db
 
     # ⚠️ 这里原先有个 `if db.backend_name() == "sqlite": pytest.skip(...)` 的守卫。
-    #    🔴 **2026-10-16 删掉** —— 理由不是"它多余"，是**它引用的东西已经不存在**：
-    #    SQLite 通道 **2026-10-15 就整条删了**⇒ `core/db.py` 里
+    #    🔴 **删掉** —— 理由不是"它多余"，是**它引用的东西已经不存在**：
+    #    SQLite 通道 **就整条删了**⇒ `core/db.py` 里
     #    **已经没有 `backend_name` 这个函数** ⇒ 那一句直接 `AttributeError`
-    #    ⇒ **这条用例从那天起一直是红的**（而它跳的那个场景本身也不存在了）。
-    #    ⚠️ 它是本仓 （`needs_db` 用例腐烂）那一族的**漏网之鱼**
-    #    ——  修的是 `test_isolation.py`，⛔ 没扫全这一批。
-    #    📌 判据：`POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_approval_events_db.py -q -m needs_db`
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(

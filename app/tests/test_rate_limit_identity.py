@@ -1,23 +1,8 @@
-"""限流身份解析的回归测试（对应 B9-b · 2026-09-30）
+"""限流身份解析的回归测试（对应 B9-b · ）
 
 背景（**实测，不是推断**）：
     `app/main.py` 的**限流中间件**原先用 `f"user:{x_api_key[:8]}"` 当身份 ——
     只取请求头里**前 8 个字符**，**不查库、不验签**。
-
-    后果：**随便编一个 `X-API-Key`，就拿到一个全新的限流桶** ⇒ 反复换串 = 无限刷新。
-    **但它只绕过【限流】，绕过不了【鉴权】** —— `app/routing/deps.py:35` 会真查库，
-    无效 key 直接抛 `AUTH_EXPIRED`。所以影响面是"能白刷限流桶"，**不是"能拿数据"**。
-
-    **同一个文件里的两条中间件原本不一致**：`QuotaMiddleware`（`main.py:211`）
-    **验了**签，`RateLimitMiddleware`（`main.py:141`）**没验**。本测试钉的是后者。
-
-**设计约束：本文件的测试【一条都不许碰数据库】。**
-    CI 跑的是 `pytest app/ -m "not integration and not needs_db"` —— **那里没有 Postgres**。
-    **2026-09-30 就是在这里栽的**：本文件初版有 2 条没 stub `verify_api_key`
-    ⇒ 真去连库 ⇒ **CI 红（2 failed）**，而**本地因为 Postgres 开着照样绿** ——
-    而当时本文件的 docstring 还写着「不需要 DB」。**那句是假的。**
-    ⇒ 现在用下面的 `_no_db` fixture 把「碰了库」变成**明确的失败**，
-    而不是一个看不懂的 `psycopg2.OperationalError`。
 """
 import access.auth as auth
 import pytest
@@ -32,7 +17,7 @@ def _no_db(monkeypatch):
     于是任何**忘了 stub** 的测试会立刻报「不许碰数据库」，
     而不会退化成一个"看起来像环境问题"的 psycopg2 报错（那正是上次误判的形态）。
 
-    ## 2026-10-09（B1）：**还多拦一处，否则这道守卫会【静默失效】**
+    ## （B1）：**还多拦一处，否则这道守卫会【静默失效】**
 
     B1 之后 `permission.get_user_role` 也要查库了。它**不是**走 `auth.get_db`
     （那是 `access.auth` 自己的绑定），所以**上面那一行拦不到它**。
@@ -40,7 +25,7 @@ def _no_db(monkeypatch):
     **而它的失败方式比"红"更糟**：`get_user_role` **吞掉所有异常走回退**
     （这是有意的 —— 库抖了不该把全站打死，见 `permission.py`）
     **守卫不报错、库却真被碰了**，两边都看不出来。
-    **实测**（2026-10-09）：把 `core.db.get_db` 换成抛 `AssertionError` 的替身后调
+    **实测**：把 `core.db.get_db` 换成抛 `AssertionError` 的替身后调
     `get_user_role("isolation_a")` ⇒ **它被调了 1 次**、异常被吞、静默返回 `free`。
 
     ⇒ 这里补两样，**都要**：
@@ -79,7 +64,7 @@ def test_no_db_guard_也拦住_permission_那条路():
     **为什么这条必须存在**：B1 让 `get_user_role` 也查库了，而它**不是**走 `auth.get_db`
     ⇒ 上面 fixture 里光有那一行**拦不到它**。而它的失败方式**比"红"更糟**：
     `get_user_role` 会**吞掉库异常走回退**（那是有意的）⇒ **守卫不报错、库却真被碰了**。
-    2026-10-09 实测过这个形态：把 `core.db.get_db` 换成抛 `AssertionError` 的替身后调
+    实测过这个形态：把 `core.db.get_db` 换成抛 `AssertionError` 的替身后调
     `get_user_role("isolation_a")` ⇒ **它被调了 1 次**、异常被吞、静默返回 `free`。
 
     ⇒ 这条同时钉两件事：

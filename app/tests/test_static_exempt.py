@@ -1,22 +1,4 @@
-""" —— **静态资源没被限流豁免**（2026-10-11）。
-
-## 它是什么缺陷
-
-`/` 在 `MIDDLEWARE_EXEMPT_PATHS` 里，**而它 302 到的 `/static/*` 不在** ⇒ 豁免形同虚设。
-一次页面加载 ≈ **8 个请求**（HTML + `app.css` + 6 个 js），而匿名桶是 **3/秒 · 容量 20**
-⇒ **约两三次刷新就顶满** ⇒ 连着刷页面会在几秒内收到 **429**，
-而 429 的是**页面自己的 css/js** ⇒ **页面直接渲染不出来**，访客会以为站点坏了。
-
-## 为什么判据走【纯函数】而不是 TestClient
-
-`TestClient(app).get("/static/app.css")` 看着更"端到端"，但它**测不出这个 bug**：
-限流器连不上 Redis 时是 **fail-open**（`test_rate_limiter_resilience.py` 钉着这条）
-⇒ 本机没起 Redis 时，**改前改后都是 200** ⇒ 那种"绿"是**假的**。
-
-这与 `resolve_rate_limit_identity` 当初被抽出来的理由**逐字相同**
-（见它在 `main.py` 的 docstring：「中间件本体要连 Redis……行为测试会退化成『环境依赖型通过』」）。
-
-## 本文件不需要 Redis / DB
+"""—— **静态资源没被限流豁免**。
 """
 import inspect
 
@@ -33,7 +15,6 @@ def test_real_static_asset_paths_are_exempt():
     """
     from main import is_middleware_exempt
 
-    # 2026-10-12（前端重做 ⑥）：这份清单**按现在的真实资源换过** ——
     #    旧写的是 `/static/app.css` 与 `/static/js/index.js`，那两个**现在都不存在了**
     #    （`app.css` 随旧骨架删、`index.js` 更早就不在盘上）。
     #    本用例的原话就是「路径逐条取自真实页面 …… 不是编的 ——

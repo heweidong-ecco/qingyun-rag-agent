@@ -3,43 +3,6 @@
 **为什么要有这条用例**：删掉一个端点之后，**没有任何东西会阻止它被重新加回来** ——
 `grep` 只说明「现在没有」，不说明「以后不会有」（本仓
 记的就是同族毛病：**拿一次观察当全称判断**）。这条用例把「它不该回来」变成一条**会红的检查**。
-
-| 端点 | 删除日 | 理由（全文见对应 DEC） |
-|---|---|---|
-| `POST /api/v1/rag/ask` | 2026-10-03 |  |
-| `POST /api/v1/rag/jwt_ask` | 2026-10-04 |  |
-| `GET /api/v1/users/{user_id}` | 2026-10-04 |  |
-| `GET /api/v1/tool/benchmark` | 2026-10-04 |  |
-| `POST /api/v1/rag/async_ask` | 2026-10-04 |  |
-| `POST /api/v1/rag/parallel_ask` | 2026-10-04 |  |
-| `WS /api/v1/ws/test` | 2026-10-05 |  |
-
-`/rag/ask` 为什么删（摘要）：它是 `tags=["模拟类测试"]` 的桩，却**读真库**，且 `LIMIT` **无 `ORDER BY`**
-⇒ **结果不可复现**；能力被 `/rag/pg_search` 覆盖（**同鉴权**、**同入参**，且多了 embedding /
-`ORDER BY` / 更丰富的输出）；全仓**无消费者**。
-
-`/rag/jwt_ask` 为什么删（摘要）：**与上一条逐条同构** —— 收到 `question` 却**不拿它检索**（无 embedding、
-无 `ORDER BY` ⇒ **同样的结果不可复现**）；能力被 `/rag/pg_search` 覆盖，且那次是**更严的覆盖**：
-它的 `get_current_user_jwt` **只收 JWT**，而 `pg_search` 的 `get_current_user_hybrid` **JWT 与 API Key 都收**
-⇒ 是它的**超集**（"只收 JWT"是**限制**，不是能力）；全仓**无消费者**。
-
-后 4 条为什么删（摘要，全文）：
-· `GET /users/{user_id}` —— **一行数据都不读**，函数体就是 `return {"user_id": …, "detail": …}`
-  （参数校验演示）。本仓 `app/routing/specs/api_v1.md` 的 ④ 与待办表第 4 条早就写着「**要么真查库，要么删**」。
-· `GET /tool/benchmark` —— 它 benchmark 的是 **mock**：`get_weather` 是 `time.sleep(2)` +
-  硬编码 `f"{city}当前温度25°C，晴"` ⇒ **证明不了任何生产事实**。
-· `POST /rag/async_ask` · `POST /rag/parallel_ask` —— **纯 mock**（`await asyncio.sleep(2)` 后返回
-  `["异步文档A(…)", …]`），无库、无 embedding、不花钱，但**也无消费者**。
-  ⇒ 这两条一删，`tags=["模拟类测试"]` **整组归零**（`/rag/ask` 2026-10-03 已删 · `/rag/jwt_ask` 2026-10-04 已删）。
-
-**这 4 条的判据同样是 404**，不是「不是 200」—— 它们删之前**全都是 200**，
-所以「不是 200」在那时也成立不了什么；而将来若被**加回来并带上鉴权**，回的是 401/403，
-那同样是「它回来了」。**只有 404 才算删干净。**
-
-**第 7 条（`WS /api/v1/ws/test`）不适用上面那套** —— **WS 没有状态码**。
-它的判据见下（**建连当场被拒** + **不在 WS 路由表里**），**别照抄 `== 404`**。
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_removed_endpoints.py -q -p no:warnings` ⇒ **7 passed**
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -56,7 +19,7 @@ def test_rag_ask_stays_removed():
 
     **别把这里改成 `with TestClient(app) as client:`** —— 那样会**触发 lifespan 的 startup**
     ⇒ `init_pool` **真去连 Postgres** ⇒ **CI 没有 Postgres ⇒ `psycopg2.OperationalError`**
-    （2026-10-03 实测： ⇒ `1 failed, 411 passed`）。
+    （实测： ⇒ `1 failed, 411 passed`）。
     **本机看不出来**：本机 Postgres 真开着 ⇒ 连得上 ⇒ 照样绿。
     **本仓判据**：本用例只断**路由存不存在**，**不需要任何 startup** ⇒ 用**裸 `TestClient(app)`**
     （全仓不连库的用例都是这么写的；`with … as` 全仓**只有这一处**，就是它把自己坑了）。
@@ -206,7 +169,7 @@ def test_ws_test_stays_removed():
        ⇒ 连"免鉴权的探活口子"这个唯一可能的用途**也没了**。
 
     **判据形态：WS 没有状态码，所以不能照抄 HTTP 那套 `== 404`。**
-    实测（2026-10-05）：
+    实测：
 
     | 情形 | `client.websocket_connect(path)` 的行为 |
     |---|---|

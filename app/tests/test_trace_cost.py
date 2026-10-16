@@ -3,23 +3,6 @@
 本文件**不连库**（假 pg），⇒ **它能进 CI**。这是它存在的理由：
 `test_trace_cost_db.py` 那半边验的是**真越权**（强得多），但 `needs_db` ⇒ **CI 永远不跑它**。
 ⇒ 万一有人后来把 `user_name` 条件删了，**只有这里的假 pg 会当天红**。
-
-## 本文件钉的头一件事：**这个函数的 SQL 必须同时带两个条件**
-
-`token_tracker.get_thread_cost` 就在隔壁，签名 `(thread_id)` —— **只按线程，不按用户**。
-单看签名像越权洞（**实测不是**：全仓唯一调用点是本人的线程预算检查，见 `app/billing/specs/token_tracker.md`）。
-于是"照着隔壁抄一个"变成**极容易发生**的事 —— 抄过来就是**任何登录用户拿个 thread_id 就能读别人的账**。
-⇒ 本文件用一个**假 cursor 把真正执行的那条 SQL 与它的参数截下来**，逐条断言。
-
-（反证检验：把 `owner_clause` 改成永远 `"1 = 1"` ⇒ `test_filters_by_user` 立刻红。）
-
-## 它【不是】越权判据，别读错
-
-「SQL 文本里有 `user_name = %s`」**是代理量**，不是「A 真的看不到 B 的」。
-**真判据在 `test_trace_cost_db.py`**（真库、真两个用户、阳性对照）。
-同族纪律。
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_trace_cost.py -q -p no:warnings`
 """
 import ast
 import inspect
@@ -184,7 +167,7 @@ def test_not_truncated_when_counts_match(monkeypatch):
 def test_created_at_carries_utc_offset(monkeypatch):
     """`token_usage_logs.created_at` 是 **`TIMESTAMP`（无时区）**，PG 容器是 `Etc/UTC`。
 
-    ⇒ 库里的 `2026-09-20 09:16:22` 是 **UTC**。
+    ⇒ 库里的 `09:16:22` 是 **UTC**。
     ⇒ 若原样（或裸 `.isoformat`）回给前端，`new Date("…T09:16:22")` 会当成**本地时间**解析
       ⇒ 东八区用户看到的时刻静默**早 8 小时**。
 

@@ -9,42 +9,19 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
-# 2026-10-03 删（决策一落地 ·）：
 #    此处原有 `ROLE_QUOTA = {FREE: 100, PREMIUM: 10000, ADMIN: inf}` 与 `get_user_quota()`。
 #    那是**一套独立的「每日请求次数」配额**，与 `token_config` 的 **token 日额度**（token）
 #    **互不知情** ——  实测两者口径**差 35 倍**（`plan_execute` 一次 ~3346 token
 #    ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）。
-#    ⇒ 作者裁「**统一到 token 一套**」⇒ 次数那套**整张表连入口一起删**。
-#    配额表在 `token_config` 的**两张池表**（`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN`）；
-#       判定在 `token_tracker`，全路径那层挂在 `main.QuotaMiddleware` 上（= `R1.3`）。
-#       **2026-10-11 更正**：本行原写「`token_config.ROLE_DAILY_TOKEN`」——
-#          那个名字**当天已删**（日额度按池拆成两张表）⇒ 原来那句是**过期指路牌**。
-#    注意： 原写「降级为**接口权重**、**不删**」—— **该条已被  推翻**。
 
 
-# 2026-10-03 · **隔离探针身份**（§七 裁决 1 · 决策 2）
-#
-# 作者 2026-10-03 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——
+# 作者 原话：「**在对应代码位置注释或者写文档记录这几个用户身份**」——
 # 就是下面这三个。**它们是【测试身份】，不是业务角色。**
-#
-#   · `isolation_a` / `isolation_b` —— **同角色**那一档（都是 FREE）互不串
-#   · `isolation_c`                —— **跨角色**那一档（PREMIUM vs FREE）互不串
-#   · `test_user`                  —— 历史沿用，与 `isolation_c` 同属 PREMIUM 探针
-#
-# 用途：验证多用户资源隔离，用例在 `app/tests/test_isolation.py`。
-# 身份记录（作者要的"留档"）= **本注释** +，
-# **不另开文件**（决策 2）。
-#
-# `isolation_a` / `isolation_b` **不在这里列** —— 它们走默认分支拿 FREE。
-#    用例里有反向守卫钉住这一点（别把默认分支改成 PREMIUM）。
-#
-# **别删**（删了  §六 的判据跑不起来）；**别当成真业务角色**（它们没有业务含义）。
-# 这张表的正式出路是**接 DB**（§遗留 4），届时要**连这段注释一起搬**。
 _PREMIUM_PROBE_USERS = {"test_user", "isolation_c"}
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# B1 · 角色接 DB（2026-10-09）
+# B1 · 角色接 DB（）
 # ═══════════════════════════════════════════════════════════════════════
 
 #: 进程内缓存活多久。**别改成 `@lru_cache`**（那是永不过期）——
@@ -116,7 +93,7 @@ def invalidate_role_cache(user_name: str | None = None) -> None:
 
 
 def get_user_role(user_name: str) -> UserRole:
-    """根据用户名获取角色。**权威 = `api_keys.role`**（2026-10-09 · B1）。
+    """根据用户名获取角色。**权威 = `api_keys.role`**（· B1）。
 
     ## 三层
 
@@ -168,8 +145,6 @@ def get_user_role(user_name: str) -> UserRole:
         #    **不是 `except Exception`** —— 见 `app/access/auth.py:153` 那条**同款**说明：
         #    宽捕获会把**代码 bug**（SQL 打错、`TypeError`）伪装成"库挂了"，
         #    于是**真 bug 永远查不出来**（本仓原话：「静默降级比报错更危险」）。
-        #    而它还有一个**具体**的副作用：`_no_db` 守卫靠抛 `AssertionError` 抓"谁碰了库"，
-        #    捕获写宽了 ⇒ **那道守卫静默失效**（2026-10-09 实测过这个形态）。
         role = _hardcoded_role(user_name)  # ← 库挂了 ⇒ 回退（不抛）
 
     _role_cache[user_name] = (role, now + ROLE_CACHE_TTL_SECONDS)

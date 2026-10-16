@@ -3,9 +3,6 @@
 本文件存在的理由：契约 B 的 `usage` 帧与账本**必须同源** ——
    若帧里的钱与账本里的钱出自**两份公式**，两边迟早对不上，而**没人会收到告警**
    （本仓「闸是装饰」那一族的形状：两边各写一遍 ⇒ 谁也不会红）。
-
-用例一律**推导式**（从 `PRICING` / `_DEFAULT_PRICING` 算期望值），
-   不是把某个金额写死 —— 写死的话，改了单价表用例**照样绿**。
 """
 import pytest
 from langchain_core.messages import AIMessage
@@ -62,7 +59,7 @@ def test_usage_summary_reads_the_real_attribute():
 
     **`cost_usd` 的期望值从 `PRICING` 现推，不是拿 `tt.compute_cost(...)` 当期望**
        —— 那样等于**拿函数和自己比**，`compute_cost` 返回什么东西它都绿（同义反复）。
-       本仓 2026-10-06 实测栽过：反证检验（把 `compute_cost` 改成 `return 0.0`）
+       本仓 实测栽过：反证检验（把 `compute_cost` 改成 `return 0.0`）
        只红了 2 条，**本条照样绿** ⇒ 尺子没量到这件事。已改成现推。
     """
     msg = AIMessage(

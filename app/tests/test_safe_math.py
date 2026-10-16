@@ -1,18 +1,4 @@
 """`app/tools/safe_math.py` 的离线测试（不联网、不花钱 ⇒ 进 CI）。
-
-**为什么要替代 `eval`**：`calculator` 工具的 `expression` 参数是 **LLM 生成的**，
-而 LLM 的输入包含**用户提问 / 检索到的文档 / 搜索结果** ——
-⇒ 原来的 `str(eval(expression))` 等于**在服务进程里执行任意 Python**，
-一行 `__import__('os').popen('cat .env').read` 就能把 DeepSeek / DashScope 的 key 带走。
-裁定与备选
-
-**本文件钉住三件事**：
-  ① **正常算术照常算对**（不回归 —— 旧行为里对的那部分必须原样对）
-  ② **非算术一律拒绝，且一个字符都不执行**（不是"过滤危险词"，是"只认算术"）
-  ③ **DoS 面被堵住**（`9**9**9` 这类不能把 CPU 占满）
-
-本文件测的是 `safe_math` **自己的**逻辑；「5 个调用点真的都改过去了」由
-   `app/tests/test_safe_math_wiring.py` 单独守（本仓的老毛病是"改好了但没接线"）。
 """
 import time
 

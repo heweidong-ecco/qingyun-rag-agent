@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 class QuestionRequest(BaseModel):
     """RAG 检索请求，包含用户问题、是否生成答案等参数，以及当前输入的这条的对话历史用于真停止按钮的调用使它（支持历史补偿）。
 
-    **2026-10-12：删掉了 `mode` 字段。**
+    **：删掉了 `mode` 字段。**
     它是个**死字段** —— 收下的值**没有任何人读**：`/rag/search` 用的 `mode` 是
     **query 参数**（`SearchMode = Literal[...]`，`:583`），body 里那个**被静默忽略**。
     ⇒ 后果是：调用方传 `{"mode":"full"}`、以为跑的是 full，**实跑的是 query 参数的默认值**
@@ -35,7 +35,7 @@ class QuestionRequest(BaseModel):
 
 
 class RagSearchResponse(BaseModel):
-    """`POST /api/v1/rag/search` 的**响应形状**（2026-10-12 **真调一次**量出来的，不是照文档抄）。
+    """`POST /api/v1/rag/search` 的**响应形状**（**真调一次**量出来的，不是照文档抄）。
 
     **这是本仓第一个 `response_model`** —— 它**真会裁字段**（不是"只改文档"）：
        实测把返回声明成只含 `a` 的模型 ⇒ 实返 `{'a': 1}`，多出来的键**被静默吃掉**。
@@ -71,22 +71,11 @@ class RagSearchResponse(BaseModel):
     mode: str
 
 
-# ==================== 2026-10-13：把 `PENDING` 那三条欠账补上====================
-#
-# **这三条是【被前端调用】却没声明返回形状的** —— 它们一直挂在
-# `app/tests/test_response_model_declared.py` 的 `PENDING` 表上，而那张表**自己写着**
-# 「跟着 `rag` 页接线一起补」，**而 `rag` 页 2026-10-12 就接了** ⇒ 那句承诺当时没兑现。
-#
-# **三个形状都是【真调一次】量出来的**（本仓纪律：**形状的真相只有真调才知道**），
-#    不是照代码抄 —— `/agent/token/budget` 的返回里有 `**info` / `**split` 两个**展开**，
-#    照代码抄**必然漏键**，而 `response_model` **真会裁字段**（`RagSearchResponse` 的前科）。
-#
-# **嵌套一律留 `list[dict]`**（`messages`）—— 与 `RagSearchResponse` 同一条理由：
-#    钉死嵌套会让上游多一个键就被**静默吃掉**。要钉，先给它配一条"字段集合"的门。
+# ==================== ：把 `PENDING` 那三条欠账补上====================
 
 
 class ChatHistoryResponse(BaseModel):
-    """`GET /api/v1/rag/chat_history` 的响应形状（2026-10-13 真调量出来的 5 个键）。
+    """`GET /api/v1/rag/chat_history` 的响应形状（真调量出来的 5 个键）。
 
     `messages` 是**最近 5 轮**（`window` 那句说明它）—— 页面别把"更早的没回来"读成"丢了"。
     """
@@ -222,7 +211,6 @@ class RefreshRequest(BaseModel):
         }
     }
 
-# 🔴 2026-10-15：这两条**补上返回形状**（§七·1 —— 前端登录页要调它们）。
 #    在这之前它们的 200 schema 是**空的 `{}`** ⇒ `test_response_model_declared.py` 那条门
 #    一旦扫到「前端会打这两个端点」就会红。⚠️ 门没错 —— **空 schema 就是没承诺返回什么**。
 class TokenResponse(BaseModel):
@@ -248,7 +236,6 @@ class AccessTokenResponse(BaseModel):
 
 
 # 管理接口（**强制管理员**）：
-# 2026-09-20 更正（全仓审计 B）：原文写「仅供管理员使用，**暂不加权限控制**」—— **与代码相反**。
 #    实际 `app/routing/api_v1.py:156` 用的是 `Depends(require_admin)`，非管理员直接 403。
 class UserCreate(BaseModel):
     """管理员创建用户请求"""
@@ -266,7 +253,6 @@ class UserCreate(BaseModel):
         le=365,
         example=90
     )
-    # 2026-10-09（B1）：角色。
     #    **默认 `None`（不传）= 写 `NULL`** ⇒ 读侧走**回退**（探针身份 + admin + 其余 FREE）。
     #    **别给它默认值 `"free"`** —— "**没写**"与"**写了 free**"不是一回事，
     #    而 B1 整套设计正是靠这条区分活着（见 `app/access/permission.py` 的 docstring）。
@@ -277,9 +263,9 @@ class UserCreate(BaseModel):
     )
 
 
-# ==================== 列出文档 / 取整篇（2026-10-12）====================
+# ==================== 列出文档 / 取整篇（）====================
 # 这一组补的是：**全仓此前没有任何"列出文档"的端点**。
-#    作者 2026-10-12 定的目的（逐字）：「让大部分不想自己提交文档的访客，
+#    作者 定的目的（逐字）：「让大部分不想自己提交文档的访客，
 #    能知道已有哪些是已有的，是可以直接搜索，我该搜索什么，会出现内容」—— 即**可发现性**。
 
 
@@ -309,7 +295,7 @@ class DocFullResponse(BaseModel):
 
 
 class DocDeleteResponse(BaseModel):
-    """`DELETE /api/v1/rag/documents/{doc_id}` 的返回（2026-10-16 补）。
+    """`DELETE /api/v1/rag/documents/{doc_id}` 的返回（补）。
 
     ⚠️ **`id` 是前端真在用的字段** —— `app/static/web/kb.html` 的「撤销」那格
     拿它回显「✅ 删掉了（id=…）」。⇒ 它**必须在模型里**：
@@ -324,7 +310,7 @@ class DocDeleteResponse(BaseModel):
 
 
 class DocInsertResponse(BaseModel):
-    """`POST /api/v1/rag/insert` 的返回（2026-10-12 真调一次量出来的）。
+    """`POST /api/v1/rag/insert` 的返回（真调一次量出来的）。
 
     `content` 是**截断过的前 100 字**（回执用），**不是全文** —— 别拿它当原文。
     """
@@ -336,14 +322,14 @@ class DocInsertResponse(BaseModel):
 
 
 class BatchInsertResponse(BaseModel):
-    """`POST /api/v1/rag/insert_batch` 的返回（2026-10-12 真调核的）。"""
+    """`POST /api/v1/rag/insert_batch` 的返回（真调核的）。"""
     status: str
     count: int
     requested_by: str
 
 
 class UploadDocResponse(BaseModel):
-    """`POST /api/v1/rag/upload_document` 的返回（2026-10-12 真调核的）。
+    """`POST /api/v1/rag/upload_document` 的返回（真调核的）。
 
     `preview` 是**清洗后正文的前 500 字**（不是全文）——
     `kb` 页的「入库完当场验一次」**就是拿它当问题去检索的**。
@@ -358,29 +344,6 @@ class UploadDocResponse(BaseModel):
 
 
 # ==================== Agent 线（「外部检索与工具Agent编排」那一页打的那些端点）====================
-#
-# **2026-10-13· 一批 13 个** —— 这一页接线时，它打的每条端点都进了
-#    `app/tests/test_response_model_declared.py` 的 `called` 集合 ⇒ **当场就得声明**，
-#    不能塞进那份门的 `PENDING`（那个清单只装"门立起来之前就存在的老端点"）。
-#
-# ## 三条口径（照 `RagSearchResponse` 那份踩出来的规矩，别自己发明）
-#
-# 1. **只列真返回里【有】的键，一个不多** —— `response_model` **真会裁字段**
-#    （多出来的键被**静默吃掉**，实测过）。
-# 2. **条件性出现的键一律声明成 `| None = None` 或 `default_factory`** ——
-#    声明成必填的下场是 **`ResponseValidationError` ⇒ 整个端点 500**
-#    （`RagSearchResponse` 那一条就是这么换来的）。
-# 3. **顶层钉死、嵌套留 `dict` / `list[dict]`** —— 嵌套那一层若也钉死，
-#    上游哪天多给一个键就被静默吃掉；要钉就先给它配一条"字段集合"的门。
-#
-# ## 每条模型的形状都是【真调出来】的，不是照文档抄的
-#
-# 真调过的：`langgraph_chat`（answered / pending_approval 两态）· `mcp_chat`
-# `plan_execute` · `trace` · `trace/cost` · `pending` · `pending/context`（ok + 拒）·
-# `approve`（rejected）· `approvals/history` · `available_tools` · `budget/intercepts`
-# `memory/search` · `memory/add`。
-# **`approve` 有 5 种返回形状**（见它自己的 docstring）⇒ 这里**全部声明成可选**；
-#    `pending/context` 同理（`status=ok` / `status=error` 两支）。
 
 
 class AgentChatResponse(BaseModel):
@@ -405,7 +368,7 @@ class AgentChatResponse(BaseModel):
 class AgentMcpChatResponse(BaseModel):
     """`POST /api/v1/agent/mcp_chat`（链列表第 2 条）的返回。
 
-    它**没有 `status`** —— 那条链**不会停在审批点**（2026-10-13 实测：
+    它**没有 `status`** —— 那条链**不会停在审批点**（实测：
        一次问句连着发了 5 次联网检索，`/agent/pending` 计数 **0**）。
        ⇒ 页面据此把「停下来等人批」那一块**整块去掉**（不摆一个永远空的壳）。
     """
@@ -583,21 +546,12 @@ class AgentMemoryAddResponse(BaseModel):
 
 
 # ==================== 「系统观测」页（`/ops`）那一批 ====================
-#
-# **2026-10-13** —— 这一页接线时打了 6 条端点，它们**当场进了那道门的
+#  —— 这一页接线时打了 6 条端点，它们**当场进了那道门的
 #    `called` 集合**（`app/tests/test_response_model_declared.py`）⇒ 必须当场声明。
-#
-# ## 这 6 条里有【两条】是那种"看着正常其实取不到"的形状 —— 模型必须**如实**表达
-#
-# · `/debug/quota` 的 `daily_limit` / `remaining`：`get_token_budget_info()` 在预算是 `inf` 时
-#   **回字符串「无限」**（`app/billing/token_tracker.py:693-695`）⇒ 类型是 `int | float | str`，
-#   别声明成 `int`（**admin 一调就 500**）。
-# · `/debug/rate_limit` 的 `capacity` / `rate`：是**代码常量**（`USER_LIMIT_CAPACITY` / `USER_LIMIT_RATE`），
-#   **不是实时值** —— 页面那一格必须标出来（后端注释明写这条）。
 
 
 class DebugCacheStatsResponse(BaseModel):
-    """`GET /api/v1/debug/cache_stats` 的返回（2026-10-13 真调核过）。
+    """`GET /api/v1/debug/cache_stats` 的返回（真调核过）。
 
     **全站口径**（全站的缓存键数）· 不是"你的"。
     **`cached_embeddings_count == 0` 不等于缓存坏了** —— 冷启动就是 0。

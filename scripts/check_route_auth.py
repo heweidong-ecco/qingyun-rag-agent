@@ -1,35 +1,5 @@
 #!/usr/bin/env python3
 """列出【没有鉴权依赖】的路由 —— 并和基线比（B 类检查）。
-
-## 为什么要有这个脚本（2026-09-30）
-
-**起因**：核 `api_v1.py` 时手工扫"哪些路由没鉴权"，**第一版扫出 0 条** ——
-因为 `FastAPI 0.141` 起 `include_router` 的结果被包成 `_IncludedRouter`，
-**`len(app.routes)` 不再等于路由总数**。
-
-**而这个坑【仓里早就写着】** —— `app/tests/test_public_paths.py:17-20` 一字不差地记着。
-⇒ **知识在，但挂在一个谁都不会去读的地方**（那个测试文件的 docstring 里）。
-⇒ 所以把它**做成一条能跑的命令**（本仓立场：「**写不出命令的，就是还没核过**」）。
-
-## 用法
-
-```bash
-python3                  # 只列出（人读）
-python3  --baseline      # 和基线比，多了就 exit 1
-python3  --write-baseline # 把当前结果写成新基线
-```
-
-**它不 import 网络/DB** —— 但会 import `main`（那会建 Gradio Blocks、要 `.env`）。
-   实测耗时见脚本末尾的 `--selftest`。
-
-**判据的口径**：`MIDDLEWARE_EXEMPT_PATHS` 里的**跳过不报** —— 但**那是"跳过两个中间件"的意思，
-   不是"该端点公开"**（`/api/v1/admin/create_user` 就在名单里，可它要 `require_admin`）。
-   —— **只报"不在豁免名单、又没鉴权依赖"的**。
-
-**2026-10-05起它也扫 WebSocket** —— 此前只认 `APIRoute`，
-   `/api/v1/ws/agent`（**真花钱、真没鉴权**）**一条都扫不到**。
-   那条盲区  记在文字里，但**文字不是门**；现在它进了这份清单。
-   WS 行的标签是 `WS`（WS 没有 HTTP 动词，标 `GET` 会误导）。
 """
 import argparse
 import os
@@ -69,7 +39,7 @@ def _collect(routes, http: list, ws: list) -> None:
     直接遍历 `app.routes` 会漏掉所有 `include_router` 进来的路由 ——
        在本仓那是 **53 条里的 48 条**（实测：不递归只能看到 5 条）。
 
-    2026-10-05加第二个出口 `ws`：**WebSocket 也要收**。
+    加第二个出口 `ws`：**WebSocket 也要收**。
        改动前这里只认 `APIRoute` ⇒ `/api/v1/ws/agent`（**真花钱、真没鉴权**）
        **一条都扫不到**。那条盲区  记在文字里，但没做成门。
        两个出口都用 `list.append`（就地改），别改成"返回新列表"。

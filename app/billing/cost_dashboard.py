@@ -131,7 +131,7 @@ def create_daily_trend_chart(user_name: str, days: int = 7) -> str:
 def get_dashboard_summary(user_name: str):
     """看板的 5 格统计。
 
-    **5 格的口径不是同一套，读的时候别串**（2026-10-03 实跑核过）：
+    **5 格的口径不是同一套，读的时候别串**（实跑核过）：
 
     | 格 | 口径 | 数据源 |
     |---|---|---|
@@ -139,7 +139,7 @@ def get_dashboard_summary(user_name: str):
     | 调用统计 | **全站 · 本进程**（`get_purpose_summary` 是内存、且不分用户） | 内存 |
     | 全站预算 | **全站 · 今天**（`R1.4`·） | 库 |
 
-    **第 5 格是 2026-10-03（`①b`）新加的**：在那之前，
+    **第 5 格是 （`①b`）新加的**：在那之前，
     全站日级额度（超了**所有人**吃 429）**界面上完全看不到**。
     """
     info = get_token_budget_info(user_name)
@@ -179,7 +179,6 @@ def refresh(user_name, days):
 # 增加导出函数 CSV
 import csv
 import tempfile
-# 2026-09-20 删（D1/pyflakes 报 redefinition）：此处的 `import os` 与文件头 `:4` **重复**。
 
 def export_cost_csv(user_name: str, days: int = 30) -> str:
     """
@@ -201,33 +200,10 @@ def export_cost_csv(user_name: str, days: int = 30) -> str:
         return None
     
     # 生成 CSV 文件
-    #
-    # 2026-10-10（CodeQL `py/path-injection` · 真问题）：**`user_name` 是用户可控的**
-    #    —— `routing/schemas.py:UserCreate.user_name` 只限制了**长度**（3–50），
-    #    **没有任何字符白名单** ⇒ 一个叫 `../../x` 的账号能把这条路径
-    #    **写出 `tempdir` 之外**（受限：扩展名恒为 `.csv`）。
-    #    触发面窄（要 **admin** 才能建出这种用户名），但**这是真缺陷**，不是误报。
-    #    ⇒ 处置分两层：
-    #      ① **只对【文件名】做白名单**（不动 `user_name` 的准入策略 —— 那是另一件事，
-    #         改了会影响已有的账号与用例）；
-    #      ② **纵深防御**：拼完之后**再核一次真实落点**在不在 tempdir 之内。
     safe_user = re.sub(r"[^A-Za-z0-9_.-]", "_", user_name)
     # **`os.path.basename` 这一层是【纵深防御】，别删** —— 它看着"多余"
     #    （上面已经把 `/` 换成 `_` 了，basename 天然恒等），但**万一将来有人把那行白名单删了**，
     #    这一层仍然剥掉目录成分。
-    #
-    # **更正（2026-10-10 实测，别信旧注释）**：本行原先写着
-    #    「basename 是 **CodeQL 官方认的**路径净化器」—— **实测【不成立】**：
-    #    加了它之后重跑分析，`#1` **照旧 open**（行号从 `:223` 挪到 `:233`，仍指着 `open(filepath, …
-    #    ⇒ **`py/path-injection` 在这条路径上没被撤**。
-    #    同批实测：`re.sub` 白名单 + 下面那层 `realpath` 守卫，它**也不认**。
-    #    ⇒ **CodeQL 认的是 `werkzeug.utils.secure_filename` 那一类**，而 **werkzeug 不在本仓依赖里**
-    #      （本仓是 FastAPI）—— **不为一道静态检查给 本服务镜像加一个生产依赖**
-    #      （同「ruff 不进 `requirements.txt`」那条理由）。
-    #    **所以那条告警是【带理由 dismiss】的**，理由写在 GitHub 上：
-    #      「行为已修 + 反证过（`user_name='a/../../evil'` 改前真写到 tempdir 之外、改后不会）
-    #       + 三层防护都在 + 不引 werkzeug 是有意的」。
-    #    **别看到 alert 被 dismiss 就以为这条路不用防** —— 防护在代码里，不在那个页面上。
     filename = os.path.basename(
         f"cost_report_{safe_user}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     )

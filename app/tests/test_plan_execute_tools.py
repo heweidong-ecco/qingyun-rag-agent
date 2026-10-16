@@ -1,11 +1,8 @@
-"""§十四 · N15 —— Plan-and-Execute **执行层真调用工具**的回归用例（2026-09-21）。
+"""§十四 · N15 —— Plan-and-Execute **执行层真调用工具**的回归用例。
 
 **本文件守的是那件最容易悄悄回退的事**：
    `execute_single_step` 曾经**只对 `calculator` 真调用**，其余**全部交给 LLM「模拟执行」** ——
    端点 `/agent/plan_execute` 看起来在跑真工具，**实际只有规划是真的**。
-
-   这种回退**跑一下看不出**（模拟出来的结果也是一段合理文本），
-   所以判据必须是**结构性的**：见 `test_execute_single_step_does_not_ask_the_llm`。
 """
 import datetime
 
@@ -89,7 +86,7 @@ def test_execute_python_actually_runs_the_code():
 def test_sandbox_modules_are_injected_not_importable():
     """**沙箱里【不能 `import`】—— 模块是直接注入全局域的。**
 
-    实测（2026-09-21）：
+    实测：
       · `import math`            → `ImportError: __import__ not found`
       · 不 import，直接用 `math`  → `4.0`
 
@@ -214,17 +211,16 @@ def test_downgraded_step_keeps_the_real_reason(monkeypatch):
 
     monkeypatch.setitem(P._TOOL_HANDLERS, "calculator", _explode)
     # 每步都判"彻底失败" ⇒ 把同一工具推到 3 连败
-    # （2026-10-05）起要返回 `StepResult` —— 成败判定换成看 `.ok` 字段了。
+    # （）起要返回 `StepResult` —— 成败判定换成看 `.ok` 字段了。
     #    用 `*a, **k` 是为了**同时兼容**将来多传的位置参数（已经加过一处）。
     monkeypatch.setattr(
         P, "execute_step_with_quality_check",
         lambda *a, **k: P.StepResult(ok=False, text="执行失败（已重试1次）：假装失败",
                                      error="假装失败"))
     # 重规划不许真调 LLM：给一份**同样只用 calculator**的计划，把循环推到降级分支
-    # （2026-10-05）：签名原来只有 `ctx` 一个参数 —— 那时它**正好**兜住了
+    # （）：签名原来只有 `ctx` 一个参数 —— 那时它**正好**兜住了
     #    调用点漏传 `user_name`（少传一个 ⇒ 不报错）。修完之后调用点会传两个，
     #    所以这里必须**跟着收下** `user_name`。
-    #    这条替身**本身就是那个洞的旁证**：它只接一个参数 ⇒ 发现不了漏传。
     monkeypatch.setattr(P, "plan_task",
                         lambda ctx, user_name="unknown": [_step("calculator") for _ in range(5)])
 
@@ -362,7 +358,7 @@ def test_llm_clients_have_explicit_timeouts():
     """三个 LLM 客户端**必须显式设超时** —— 否则吃 openai SDK 默认的 `read=600s`。
 
     这条守的是「**③ 只补了工具调用、漏了 LLM 调用**」那半边：
-       实测（2026-09-21）三个客户端都是 `timeout=None` ⇒ 吃 SDK 默认
+       实测三个客户端都是 `timeout=None` ⇒ 吃 SDK 默认
        `connect=5s / read=600s / write=600s`，**且 SDK 还会自己 max_retries=2**
        ⇒ **一次调用最坏等 600 × (1+2) = 30 分钟**；而 `plan_execute` 最坏跑
        「3–7 步 × 每步重试 3 次 × 每步 2 次 LLM 调用」⇒ **理论上能挂几个小时**。
@@ -417,7 +413,7 @@ def test_plan_stops_when_total_budget_exceeded(monkeypatch):
 def test_dynamic_input_receives_the_real_user_name(monkeypatch):
     """`generate_dynamic_input` 必须收到**真实发起人**。
 
-    这条是**端到端实测**才发现的问题（2026-09-21）：
+    这条是**端到端实测**才发现的问题：
        `token_usage_logs` 里 `plan_execute.dynamic_input` 的 **4 条全记在 `unknown` 头上**，
        而 `plan` / `quality_check` 的记在 `admin` 头上。
        ⇒ 后果：**这部分额度算不到发起人头上 ⇒ 配额管不住他**（正是 ③-b 要解决的问题）。
@@ -438,7 +434,7 @@ def test_dynamic_input_receives_the_real_user_name(monkeypatch):
         return "假输入"
 
     monkeypatch.setattr(P, "generate_dynamic_input", _fake_gen)
-    # （2026-10-05）起返回 `StepResult` —— 再返回裸字符串的话，
+    # （）起返回 `StepResult` —— 再返回裸字符串的话，
     #    调用方读 `.ok` 会 `AttributeError`（那就是**假红**，不是这条用例想测的东西）。
     monkeypatch.setattr(P, "execute_step_with_retry",
                         lambda *a, **k: P.StepResult(ok=True, text="假结果"))
@@ -458,7 +454,7 @@ def test_dynamic_input_receives_the_real_user_name(monkeypatch):
 # ===========================================================================
 # ③ 遗留 #4 · 超时必须是【按实测校准】的 —— 既不能误杀，也不能吃光总预算
 # ===========================================================================
-# 实测基线（2026-09-21 · 28 次真实调用 · 见 `plan_execute.py` 里那张表）
+# 实测基线（· 28 次真实调用 · 见 `plan_execute.py` 里那张表）
 _MEASURED_LLM_MAX_SEC = {"plan": 2.68, "dynamic_input": 1.77, "quality_check": 1.56}
 _MIN_HEADROOM = 5  # 至少 5 倍余量
 
@@ -499,10 +495,7 @@ def test_llm_timeouts_are_calibrated_to_measurement():
 # ===========================================================================
 # 把「FREE 用户对 plan_execute 的【真实】每日上限」钉住
 # ===========================================================================
-# 实测（2026-09-21）：一次 `plan_execute`（4 步目标）的真实 token 消耗。
-# 测法：查 `token_usage_logs` 里 `user_name='admin'` 的**累计值** → 跑一次 → 再查 → 取差值。
-#   ⇒ 27916 − 24570 = **3346 tokens**（该次 9 次 LLM 调用：1 规划 + 4 动态输入 + 4 质量检查）
-# 会随目标步数浮动（3 步 + 一次真网络搜索那次更贵）⇒ 这里以 4 步的 3346 为基准。
+# 实测（）：一次 `plan_execute`（4 步目标）的真实 token 消耗。
 _MEASURED_PLAN_EXECUTE_TOKENS = 3346
 
 
@@ -511,7 +504,7 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
 
     ## 历史：这条用例原本是「两套口径」的证据—— 别整条删，那是个宝贵事实
 
-    2026-09-21 实测时，本仓有**两套互不知情的配额**：
+    实测时，本仓有**两套互不知情的配额**：
 
       | 口径 | 出处 | FREE 限额 | 对 `plan_execute` 的真实约束 |
       |---|---|---|---|
@@ -521,7 +514,7 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
     `plan_execute` 一次实测要花 **~3346 tokens** ⇒ **次数配额（100）根本用不完**
     ⇒ 两套口径**差约 35 倍**。这正是  裁「**统一到 token 一套**」的起因。
 
-    2026-10-03：**次数那套已整张删掉** ⇒ 本用例只留 token 口径。
+    ：**次数那套已整张删掉** ⇒ 本用例只留 token 口径。
        **「FREE 每天约 3 次」这个数【没有任何人选择过】** ——
           它是「日预算 ÷ 单次成本」算出来的**副作用**。本用例把它变成**已知且被测的**。
 
@@ -529,7 +522,7 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
        提醒去**重新实测单次消耗**并更新记录。
        **这不是"防改动"，是"防不知情"。**
 
-    ## 2026-10-11（两个额度池 ·）—— 它**真的红过一次**
+    ## （两个额度池 ·）—— 它**真的红过一次**
 
     日额度拆成两个池（各按角色额度）⇒ **总上限翻倍**（作者当日确认）
     ⇒ FREE 用户的**总预算 10_000 → 20_000** ⇒ 按同一份实测单次消耗算：
@@ -545,7 +538,7 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
 
     **这是【有意】改的**（作者明确要"两份额度"）⇒ 按本条自己的规矩：
     **重新算一遍、更新记录**（本节就是那次更新）。单次消耗那个数**没变**
-    （3346 是 2026-09-21 实测的，与额度无关），变的是**分子**。
+    （3346 是 实测的，与额度无关），变的是**分子**。
     判据走**真函数**（`get_user_token_budget` = 两池之和），不是读某一个常量 ——
     否则"拆了两个池、总额仍在拿老数"这种假完成**测不出来**。
     """
@@ -556,7 +549,6 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
     budget = get_user_token_budget("free")
     by_tokens = budget / _MEASURED_PLAN_EXECUTE_TOKENS
 
-    # 历史对照（**这条口径已不存在**，留着只为说明「3 次」有多意外）：
     #   旧「请求次数」口径 FREE = 100/天 ⇒ 按次数能跑 100 次，按 token 只能跑 ~3 次。
     _OLD_REQUEST_COUNT_FREE = 100
 
@@ -660,13 +652,10 @@ def test_重试耗尽返回结构化结果且文案不含异常原文(monkeypatc
         f"重试耗尽返回的是 `{type(r).__name__}` —— 调用方只能回去读文案（的原始形态）")
     assert r.ok is False
     assert r.error == "boom", f"`error` 该留**异常原文**（不带那句格式化前缀）：{r.error!r}"
-    # 2026-10-10（**作者裁「一起收口」**）：**本行就是那次【有意的文案变更】** ——
     #    原先钉的是 `r.text == "执行失败（已重试1次）：boom"`（的「文案一字未改」）。
     #    **现在反过来钉**：**用户看到的那份不许含异常原文** ——
     #    因为 `str(e)` 会把**路径 / 连接串 / SQL 片段**一起带出去
     #    （CodeQL `py/stack-trace-exposure` **同族**；形状照 `api_v1_agent.py` / `token_tracker.py`）。
-    #    **本仓「失败要说出来」那条不变**（不许退化成静默 / 白屏）。
-    #    本行是**可取反的**：把 `str(e)` 加回去 ⇒ 第一条断言当场红。
     assert "boom" not in r.text, (
         f"用户可见文案里出现了异常原文：{r.text!r}\n：细节只进服务端日志，⛔ 不出接口。")
     assert "执行失败（已重试1次）" in r.text, (

@@ -1,19 +1,4 @@
-"""压测脚本「请求形状」 vs 「接口契约」的一致性测试（对应 docs/重构计划-2026-09-15.md 的 #3）
-
-背景（2026-09-16 修）：
-  · `locustfile_hybrid.py` 用 **json body** 打 `/api/v1/agent/mcp_chat` —— 但该端点
-    **没有 Pydantic 请求体模型**，`question` 是必填 **query 参数**
-    ⇒ 占该脚本 **25% 权重**的 Agent 任务**必然 422**。
-  · 另有 `mode`：脚本放在 json body 里，而 `/api/v1/rag/search` 把 `mode` 独立声明为
-    **query 参数** ⇒ body 里的被**静默忽略**，所有请求恒走 `accurate_norerank`
-    ⇒ **各 task 的 name 标签全是假的**（不报错，比 422 更隐蔽）。
-
-本测试**不需要起服务、不需要 Redis/DB、不打 LLM** —— 只做两类静态但权威的断言：
-  ① **契约侧**：读 `app.openapi`，确认端点的参数在哪（query 还是 body）
-  ② **脚本侧**：读 locustfile 源码，确认它发的形状与 ① 一致
-
-> 写这类测试的坑（本仓刚踩过）：断言必须**能对"修复前的形态"判不过**，
-> 否则就是恒过。所以这里每类断言都配了自证用例（见 `test_would_have_caught_*`）。
+"""压测脚本「请求形状」 vs 「接口契约」的一致性测试（对应 docs/重构计划-.md 的 #3）
 """
 import re
 from pathlib import Path
@@ -21,7 +6,6 @@ from pathlib import Path
 from main import app
 
 REPO = Path(__file__).resolve().parents[2]
-# 2026-10-09：压测件已收进 `locust/` ⇒ 这几个名字**要带目录**
 #    （下面按 `REPO / name` 读文件，不是按模块名 import）。
 LOCUSTFILES = ("locust/locustfile.py", "locust/locustfile_v2.py", "locust/locustfile_hybrid.py")
 

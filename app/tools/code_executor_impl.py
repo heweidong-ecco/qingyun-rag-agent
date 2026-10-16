@@ -1,17 +1,10 @@
-"""
-代码执行器的**纯 stdlib 内核**（无 langchain 依赖）。
+"""代码执行器的**纯 stdlib 内核**（无 langchain 依赖）。
 
 从 `code_executor.py` 切出（重构计划 ⑥ 切开点 3）。目的：让**沙箱白名单与执行逻辑**
 可在**只有标准库**的环境里被导入和测试 —— 此前它们住在 `code_executor.py` 里，
 而那个文件在**模块层** `from langchain_core.tools import tool`，
 于是想单测沙箱就必须先把 langchain 装齐。
-
-**依赖方向单向**：本模块**只 import 标准库**（`sys` 未用故未列）。
-`code_executor.py` 引用本模块；**本模块绝不反向引用** `code_executor.py`。
-
-`code_executor.py` 只是给 `execute_python_impl` 套一层 `@tool` 外壳（供 Agent 调用）。
 """
-# 2026-09-21（③-a）：`io` / `contextlib` 的 import **删掉了** ——
 #    执行搬进子进程后，它们只在 `_SANDBOX_CHILD` 那段**脚本字符串**里用（子进程自己 import），
 #    父进程里已无引用。**不是清理历史遗留**，是本次改动**自己造成的**未使用导入。
 import json
@@ -20,7 +13,6 @@ import subprocess
 import sys
 import urllib.request
 
-# 2026-10-08：**执行器容器的地址**。
 #    有值 ⇒ `execute_python_impl` 走**远端**（容器里跑）；没值 ⇒ **回落**本地子进程。
 #    回落的目的是「本机开发 / 离线 CI 不许被这个功能拖成"必须有容器"」，
 #       **不是**"远端挂了就自动回落" —— 那件事见 `_run_remote` 里的说明。
@@ -39,43 +31,14 @@ ALLOWED_BUILTINS = [
     # 常用数学模块
     "math",
 
-    # 2026-09-20 加（§三·N17 · 作者裁「放开」）：**异常类**。
-    #
-    #    此前白名单里**一个异常类都没有** ⇒ 被执行的代码**不能**写
-    #      `try: … except ValueError: …`，也不能 `raise ValueError(…)`
-    #    —— 两者都会先撞 `NameError: name 'ValueError' is not defined`。
-    #    而**异常处理是 Python 最常见的写法之一**，且这条限制**从代码上看不出来**
-    #       （"一长串白名单里没有异常类"是**沉默的**）。
-    #
-    #    放开的安全性：**异常类本身不提供逃逸能力** —— 它们只是**类型对象**，
-    #    没有文件/进程/导入的能力。放开它们不会让沙箱多出一条逃逸路径。
-    #
-    #    **刻意【不】放开的**：`BaseException` / `SystemExit` / `KeyboardInterrupt`
-    #       / `GeneratorExit` —— 这几个是**退出机制**，让被执行的代码能捕获它们，
-    #       等于允许它**吃掉执行器的中断信号**。要捕获，用 `Exception` 就够了。
     "Exception",
     "ArithmeticError", "AssertionError", "AttributeError",
     "IndexError", "KeyError", "NameError", "NotImplementedError",
     "OSError", "RuntimeError", "StopIteration", "TypeError",
     "ValueError", "ZeroDivisionError",
 
-    # 2026-09-21 加（§十四·N18 · 作者裁「放开」）：`__build_class__` —— **让 `class` 语法成立**。
-    #
     #    此前被执行的代码**不能定义类**：
     #      `class Mine(Exception): pass` ⇒ `NameError: __build_class__ not found`
-    #
-    #    **为什么放开它【不增加任何新能力】**（实测，2026-09-21）：
-    #       白名单里**本来就有 `type`** ⇒ 「动态建类」这个能力**早就可达**了：
-    #         `Mine = type("Mine", (Exception,), {})`        → 可用
-    #         `M    = type("M", , {"f": lambda self: 42})` → 可用
-    #       ⇒ 加 `__build_class__` **只是让 `class` 这种写法也成立**，
-    #         **不是新开一条能力，更不是新开一条逃逸路径**。
-    #
-    #    与 N17（放开异常类）是**同一条逻辑**：放开的是**语言构造**，不是**逃逸通道**。
-    #    实测：`__build_class__` 本身只是类创建的**原语**，白名单里仍**没有**
-    #    `__import__` / `open` / `eval` / `exec` ⇒ 逃逸面未变。
-    #
-    #    **仍然【不】放开的**：见上面 N17 那段列的四个**退出机制**。
     "__build_class__",
 ]
 
@@ -96,11 +59,9 @@ MAX_EXEC_TIME = 5  # 最长执行5秒
 MAX_OUTPUT_LENGTH = 2000  # 最大输出字符数
 
 # 远端调用要给**执行器自己**那 5 秒留出余量（它内部还有一次子进程往返）。
-# 2026-10-08—— 别把两者设成一样：那会让"执行器还没跑完"
 #    被本地判成"远端超时"，于是**正常的慢代码**变成报错。
 EXECUTOR_TIMEOUT = MAX_EXEC_TIME + 10
 
-# 2026-09-21（§十四 · ③-a）：**真·超时 —— 把执行放进【子进程】，超时【硬杀】。**
 
 # **此前 `MAX_EXEC_TIME` 只被【定义】、从未被使用** —— 实测：
 #      `execute_python_impl("i=0\nwhile True:\n    i+=1")` **永不返回**（4 秒后仍在跑）。
@@ -110,10 +71,6 @@ EXECUTOR_TIMEOUT = MAX_EXEC_TIME + 10
 # **为什么必须换机制**（另外三条路都核过，都不成立）：
 #   · `signal.alarm` —— **只在【主线程】有效**，而 MCP 服务端用
 #     `asyncio.to_thread(handler, args)` 调工具 ⇒ 执行发生在 **worker 线程**，alarm 装不上
-#   · 线程 + `join(timeout)` —— **杀不掉 Python 线程** ⇒ 线程照跑，
-#     只是"你以为超时了"（**假超时**，比没有更糟：它给了一个错误的安全感）
-#   · `PyThreadState_SetAsyncExc` —— 对紧循环**不可靠**，拿它当安全承诺的地基不诚实
-#   · **子进程 + 超时硬杀** —— **唯一能真正打断死循环的**
 
 # **收益不止超时**：子进程是**全新解释器**（更强隔离），白名单从**同一个模块**重建
 #   （⇒ 单一事实源，不会与主进程漂），且它崩了（段错误 / OOM）**也带不走主进程**。
@@ -145,15 +102,6 @@ def create_safe_globals() -> dict:
     """创建一个安全沙箱的执行环境"""
     safe_globals = {"__builtins__": {}}
 
-    # 2026-09-21 加（§十四·N18）：`__name__` —— **`class` 语句要用它填 `__module__`**。
-    #
-    #    只加 `__build_class__`（见 ALLOWED_BUILTINS）**还不够** —— 实测报的是
-    #      `NameError: name '__name__' is not defined`
-    #    （`__build_class__` 的调用点会去全局域取 `__name__`）。
-    #    ⇒ **N18 实际是两件事**：白名单要放 `__build_class__`，执行全局域要给 `__name__`。
-    #
-    #    安全性：`__name__` 只是个**字符串**，不提供任何逃逸能力。
-    #       它必须是**执行全局域**（`safe_globals`）的键，**不是** builtins 的键 —— 放错位置无效。
     safe_globals["__name__"] = "__sandbox__"
 
     # 只注入允许的内置函数
@@ -200,14 +148,12 @@ def execute_python_impl(code: str) -> str:
                 f"请先生成代码文本，再将代码作为参数传入。"
             )
 
-    # 2026-10-08：**先看有没有执行器** —— 有则走**容器**，没有则**本地子进程**。
     #    这一句必须在**意图检测之后**：那个检测是**产品策略**（"这个工具只执行、不生成"），
     #       不许因为"走远端了"就跳过它。
     #       守卫：`test_code_executor_remote.py::test_intent_check_still_applies_before_any_remote_call`
     if EXECUTOR_URL:
         ok, out = _run_remote(code)
     else:
-        # 2026-09-21（③-a）：执行搬进**子进程**，超时**硬杀**（详见上面 `_SANDBOX_CHILD` 的注释）。
         ok, out = run_in_sandbox_subprocess(code)
     return out
 

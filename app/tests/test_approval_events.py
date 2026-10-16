@@ -1,12 +1,4 @@
 """审批留痕 `app/agent/approval_audit.py` —— **离线可跑的那一半**（假 pg，不连库）。
-
-本文件钉的第一件事：**`owner` 与 `actor` 是两个身份**。
-   admin 接管 alice 的会话时，`owner="alice"` 而 `actor="admin"` ——
-   把两者合成一个字段，**留痕当场变成假话，而且不报错**。
-   ⇒ 本用例传**两个不同的值**，断言写进去的**也是两个不同的值**。
-   （反证检验：把它取反成"两者相同"，`test_records_owner_and_actor_separately` 立刻红。）
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_approval_events.py -q -p no:warnings`
 """
 import core.db as db
 import agent.approval_audit as aa
@@ -194,7 +186,7 @@ import routing.api_v1_agent as m
 def _history(monkeypatch, user_name, limit=50, offset=0, rows=None):
     """直接调端点函数（不经过 TestClient ⇒ 不触发 lifespan ⇒ 不需要库）。
 
-    **2026-10-08 加 `offset` 与 `rows`**（分页 · `frontend/README.md` §六）——
+    **加 `offset` 与 `rows`**（分页 · `frontend/README.md` §六）——
        `rows` 用来喂"比 limit 多一条"的情形，验**「多取一条」判 `has_more`** 那条路。
     """
     seen = {}
@@ -226,7 +218,7 @@ def test_history_admin_gets_all(monkeypatch):
 def test_history_passes_limit_through(monkeypatch):
     """`limit` 别收下不用（签名看着对、行为是死的 —— 本仓栽过）。
 
-    **2026-10-08 改**（分页）：端点现在向 `list_decisions` 要的是 **`limit + 1`** ——
+    **改**（分页）：端点现在向 `list_decisions` 要的是 **`limit + 1`** ——
        多要的那一条只用来判 `has_more`，**不返回**。⇒ 断言从 `== 7` 改成 `== 8`，
        不是"把用例放松了"，是**契约本身变了**。
     """

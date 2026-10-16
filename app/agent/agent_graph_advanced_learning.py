@@ -9,15 +9,12 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from core.llm_factory import make_llm   # ①b：model / api_key / base_url / max_tokens 的唯一落点
 from tools.search_tools import web_search   # **留** —— `:149` 的搜索子图节点直接 `.invoke` 它
-# 2026-10-08：`tool` / `datetime` / `calculate` 三个 import **删了** ——
 #    它们只服务于本文件原先自带的那两个 `@tool`（已删、改为取共享对象）⇒ 留着就是 F401。
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage,SystemMessage
 from langchain_core.runnables import RunnableConfig   # B1：节点要靠它把回调接进模型调用
-# 2026-10-04：本图**6 个节点调 LLM，全都既不拦也不记** —— 是三条链里最大的
 #    那个口子（`/agent/advanced_chat` 与它的 `/stream` 都走这张图）。
 #    `record_from_response` 是三张图共用的**唯一记账实现**，别在本文件里另抄 6 份取用量。
 from billing.token_tracker import check_token_budget, record_from_response, BUDGET_EXCEEDED_MSG
-# 2026-10-05（批 7）：本图 6 处预算软返回**都保住 `check_token_budget` 这个调用**，
 #    别改成 `check_token_budget_detail` —— 见 `agent_graph.py` 同一处的长注释
 #    （"模块属性 `check_token_budget`"是 4 个测试文件的 monkeypatch 缝）。
 
@@ -26,52 +23,23 @@ from billing.token_tracker import check_token_budget, record_from_response, BUDG
 llm = make_llm("chat", "agent")
 
 # ==================== 定义工具 ====================
-# 2026-10-08 收口：本文件自带的 `calculator` / `date_today` **删了** ——
 #    它们与 `mcp_server.TOOLS` 里那两个**同名不同对象**（实现逐字等价 ⇒ 当前无害，
 #    但属"重复定义" —— 本文件下面那句注释自己就登记过它）。
 #    **未改子图的形状** —— 只把子图节点 `.invoke` 的目标换成**共享对象**（见 `TOOLS_BY_NAME`）。
-#    `eval` 那条没丢：实现仍在 `app/tools/safe_math.py`，守卫在 `test_safe_math_wiring.py`。
 
 
-# 2026-09-20（作者裁「乙」）：**LLM 工具表改为从 MCP 注册表【派生】—— 单一事实源。**
-#
-#    此前这里是一份**手工维护**的列表，与 `mcp_server.TOOLS` **各写各的** ⇒ 漂移：
-#      · `mcp_server.TOOLS`   **6** 个
-#      · 本文件的 `tools`     **7** 个（多一个 `fetch_webpage_html`）
-#    而 `mcp_server.TOOL_HANDLERS` 是**从 `TOOLS` 生成的** ⇒ 多出来的那个工具
-#    **永远取不到 handler** ⇒ 走到那一步只回一句「未找到工具: fetch_webpage_html」，
-#    **不报错、不 500** —— 是**静默失败**。
-#
-#    **为什么不选"把它加进 MCP 就好"**：`fetch_webpage_html` **同样依赖 Playwright/Chromium**
-#       （`browser_tools.py:3` 模块级 import + `p.chromium.launch()`），而**本仓任何部署方式
-#       都不装浏览器**（`app/Dockerfile` / `docker-compose.yml` 都没有 `playwright install`）
-#       ⇒ 加进去它**也永远 unhealthy**，只是把「4/6」变成「4/7」。
-#
-#    ⇒ 改为**派生**：两表**结构上不可能再漂** —— 以后加工具只需在 `mcp_server.TOOLS` 加一行。
-#    **这是一次【工具 schema 变更】，须在 PR 里显式声明**：LLM 现在看到的
-#       `calculator` / `date_today` 是 `simple_tools` 那份（**实现与本文件原版逐字等价**，
-#       但 **docstring 更详细** —— 多出「输入的必须是纯数学表达式」/「忽略查询参数」两句）。
-#    回归测试:app/tests/test_agent_repairs.py::test_llm_tool_table_is_sourced_from_mcp_registry
 from tools.mcp_server import TOOLS as _MCP_TOOLS
 
 tools = [t["func"] for t in _MCP_TOOLS]
 
-# 2026-10-08：子图节点（`:227` / `:242`）要**按名字**取工具对象，
 #    取的是**共享对象**（原先拿的是本文件自带的同名副本）。与 `agent_graph.py` 同款。
 #    它**不是**分派表 —— 分派那两条在 `agent_graph` / `agent_checkpointer`（守卫 `test_tool_dispatch.py`）。
 TOOLS_BY_NAME = {t["func"].name: t["func"] for t in _MCP_TOOLS}
 
-# 2026-09-20 另删掉了一行 `tools.extend([fetch_webpage, fetch_webpage_html])` ——
 #    上面那个列表**已经包含**这两个工具 ⇒ 加了之后**各出现两次**
 #    `llm_react.bind_tools(tools)` 发给 LLM 时被拒：
 #      `openai.BadRequestError: 400 - 'Tool names must be unique.'`
 #    ⇒ **3 代 Agent 的 REACT 分支 100% 500**。
-#    它此前**测不出来** —— `/agent/advanced_chat` 会先在 mem0 那一步 500（bug 1），
-#       根本走不到 REACT 分支;**修好 bug 1 才把它暴露出来**。
-#    回归测试:app/tests/test_agent_repairs.py::test_react_tool_list_has_no_duplicate_names
-#    **本文件自带的 `calculator` / `date_today` 已于 2026-10-08 删除**——
-#       原先子图节点直接 `.invoke()` 那对**同名不同对象的副本**。现在改为取
-#       `TOOLS_BY_NAME[...]`（**共享对象**，即 `mcp_server.TOOLS` 里那两个）⇒ 同名同对象。
 
 # 重新绑定工具到模型
 llm_with_tools = llm.bind_tools(tools)
@@ -91,26 +59,18 @@ class AgentState(TypedDict):
     final_output: str  # 存储最终回复
     user_name: str          # 新增：当前对话的用户名
     memory_space: str       # 新增：当前使用的记忆空间
-    # 2026-10-04：本图此前**没有这个键** ⇒ 6 个调用点记账时取不到会话。
     #    **由端点注入**（`api_v1_agent.py` 的 `/agent/advanced_chat` 与它的 `/stream`），
     #       一律 `.get(..., "unknown")` 读。
     #    子图（search/calc/date/translate/react）与本图**共用同一个 `AgentState`**
     #       父图的 `thread_id` 会流进子图节点，不必逐个子图再注入一次。
     thread_id: str
-    # 2026-10-05（批 7）：**预算被拦的原因**，通往【端点层】的唯一通道
     #    —— 端点据此回 **429**（非流式）/ **error 帧**（流式）。
     #    与另外三张图的同名键**是同一个契约**：存**原因**，拼文案由
     #       `api_v1_agent.agent_budget_intercept_message` 统一做（别在节点里拼）。
     #    没挂 `operator.add` ⇒ last-write-wins + 落 checkpoint ⇒ **必须每轮清零**。
-    #       本图的清零落在**入口节点 `supervisor`**（`set_entry_point("supervisor")`），
-    #          **它的两个出口都要带上** —— 子图里的节点（`search_summarize` 等）
-    #          **不是"每轮必经"**，不许在那里清。
-    #    实测（2026-10-05 探针）：**子图节点写的普通键【能】传到父图** ⇒ 6 处软返回
-    #       直接写在各自的子图节点里就行，不必让外层节点替它回传。
     budget_intercept: Optional[str]
 
 # ==================== 创建 通用的“记忆注入”工具函数 ====================
-# 2026-09-20 删（D1/pyflakes 报 redefinition）：此处的 `from memory_store import search_user_memory`
 #    与文件下方**逐字重复**，且下面那份在它之前从未被使用 ⇒ 删此处、保留下方。
 
 def inject_memories_to_prompt(original_prompt: str, state: AgentState) -> str:
@@ -123,13 +83,10 @@ def inject_memories_to_prompt(original_prompt: str, state: AgentState) -> str:
     user_query = state["messages"][-1].content
 
     user_id = f"{user_name}:{memory_space}"
-    # 2026-10-13：**必须 fail-open** —— 同 `memory_store.memory_block`：
     #    记忆是「有更好」的锦上添花，检索失败（key 不对 / 网络不通 / mem0 或向量库挂了…）
     #    只该**少一段上下文**，不许把整条链打挂。改前这里是**裸调用**
     #    ⇒ `/agent/advanced_chat` 在 embedding 取不到时**整条 500**。
     #    **本文件的 `supervisor`（入口节点）另有一处**，同款处置 —— 见那一处的注释。
-    #    **为什么不与 `agent_graph_advanced.py` 那份合并成一份**：本函数是
-    #       **5 个测试文件**在用的 monkeypatch 缝 ⇒ 合并 = 挪缝 = 补丁静默失效。
     try:
         memories = search_user_memory(user_id, user_query)
     except AssertionError:
@@ -174,12 +131,10 @@ def create_search_subgraph():
            本文件所有节点**都是同步的**，别改成 `async def`：同步的 `graph.invoke`
            （`/agent/advanced_chat` 走的就是它）会当场抛 `TypeError`。
         """
-        # 2026-10-04：拦在 `.stream` **之前** —— 放之后钱已花，只能丢结果。
         #    这是**子图节点**：`user_name` / `thread_id` 由父图经共用 `AgentState` 流进来。
         user_name = state.get("user_name", "unknown")
         thread_id = state.get("thread_id", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：**同时置 `budget_intercept`** ——
             #    改前只塞一句话当答案，端点照常回 **HTTP 200** ⇒ 调用方**看不出被拒了**。
             #    **不许在这里 `raise`**（§二 的 checkpoint 污染实测）。
             #    本图（`advanced_agent`）的**清零在 `supervisor`**（它是入口节点），
@@ -216,11 +171,9 @@ def create_calculator_subgraph():
 
     def calc_execute(state: AgentState):
         """从用户消息中提取表达式并计算"""
-        # 2026-10-04：拦在 `llm_calc.invoke` **之前**。
         user_name = state.get("user_name", "unknown")
         thread_id = state.get("thread_id", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：**同时置 `budget_intercept`** ——
             #    改前只塞一句话当答案，端点照常回 **HTTP 200** ⇒ 调用方**看不出被拒了**。
             #    **不许在这里 `raise`**（§二 的 checkpoint 污染实测）。
             #    本图（`advanced_agent`）的**清零在 `supervisor`**（它是入口节点），
@@ -273,12 +226,10 @@ def create_translate_subgraph():
     subgraph = StateGraph(AgentState)
 
     def translate_execute(state: AgentState, config: RunnableConfig):
-        """执行翻译（2026-10-04 改真流式 —— 译文本就是答案 ⇒ 该流）"""
-        # 2026-10-04：拦在 `.stream` **之前**。
+        """执行翻译（改真流式 —— 译文本就是答案 ⇒ 该流）"""
         user_name = state.get("user_name", "unknown")
         thread_id = state.get("thread_id", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：**同时置 `budget_intercept`** ——
             #    改前只塞一句话当答案，端点照常回 **HTTP 200** ⇒ 调用方**看不出被拒了**。
             #    **不许在这里 `raise`**（§二 的 checkpoint 污染实测）。
             #    本图（`advanced_agent`）的**清零在 `supervisor`**（它是入口节点），
@@ -327,7 +278,6 @@ def create_react_subgraph():
            会让本子图的 `should_continue` 判不出 `"tools"` ⇒ **工具永远不会被执行**，
            而 `summarize` 照样写出 `final_output`（看着像正常回答）。
         """
-        # 2026-10-04：拦在 `.stream` **之前**。
         #    超预算时**必须返回 AIMessage、不能只写 `final_output`** ——
         #       本子图的出口是 `should_continue` 读 `messages[-1].tool_calls`：
         #       给一条**没有 tool_calls** 的消息 ⇒ 走 `END` ⇒ 由 `summarize` 把它的文本
@@ -335,7 +285,6 @@ def create_react_subgraph():
         user_name = state.get("user_name", "unknown")
         thread_id = state.get("thread_id", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：同本图其余软返回 —— 只加 `budget_intercept`，
             #    **不改返回形状**（本子图的出口是 `should_continue` 读 `messages[-1].tool_calls`）。
             return {"messages": [AIMessage(content=BUDGET_EXCEEDED_MSG)],
                     "budget_intercept": BUDGET_EXCEEDED_MSG}
@@ -391,7 +340,7 @@ def create_react_subgraph():
     def summarize(state: AgentState):
         """收尾节点：把最后一条消息的文本落成 `final_output`。
 
-        2026-09-20 补（第 9 个依赖漂移之外的缺陷）:
+        补（第 9 个依赖漂移之外的缺陷）:
           本子图原先**只有 agent / tools 两个节点、没有任何节点写 `final_output`**,
           而端点读的是 `api_v1_agent.py` 的 `result.get("final_output", "处理完成")`
           ⇒ **走 REACT 意图时永远返回占位串「处理完成」**（其余四个子图都写了）。
@@ -419,29 +368,10 @@ def create_react_subgraph():
 
     return subgraph.compile()
 
-# ==================== 流式白名单（B1 · 2026-10-04）====================
+# ==================== 流式白名单（B1 · ）====================
 # **：可流节点名单放在【图模块里】，端点不许自己抄一份字面量**（理由见
 #    `app/agent/agent_graph.py` 同名常量处 —— 一个名字两个来源必然漂移，而漂移是**静默**的）。
 # 必须放在**模块级**（不能放进 `build_advanced_agent`）：端点是按
-#    `agent_graph_advanced_learning.STREAMABLE_NODES` 取的，函数体里的是局部名。
-#
-# **这张名单是「6 个调 LLM 的节点里只有 4 个该流」那条判断的落点** ——
-#    它**读代码推不出来**（要同时知道「这个节点的 LLM 输出是什么角色」＋「答案最终从哪来」）。
-#    完整对照表 ⇒ `app/agent/specs/agent_graph_advanced_learning.md` 的 节。
-#
-# | 节点 | 调什么 | 该流？| 为什么 |
-# |---|---|---|---|
-# | `chat` | `llm` | | 就是答案 |
-# | `search_summarize` | `llm_search` | | 一句话总结 = 答案 |
-# | `translate_execute` | `llm` | | 译文 = 答案 |
-# | `agent`（react 子图内层名） | `llm_react_with_tools` | | 答案 + `tool_calls` |
-# | `supervisor` | `llm` | | 输出是**路由词**（`SEARCH`/`CALCULATOR`/…）—— 流出去 = 答案前面先蹦一个 `SEARCH` |
-# | `calc_execute` | `llm_calc` | | 它**只提取表达式**（`6*7`）；真答案 `42` 来自 `calculator` **工具**，不是 LLM |
-#
-# 另有 **2 个节点根本不调 LLM** 因而无字可流：`date_execute`（纯工具）、`summarize`（只搬运）。
-# 由此得出的一条**必须知道、别误判成 bug 的事实**：**CALC 与 DATE 两个分支本来就一个字都流不出来**
-#    —— 用户会一直等到最后一帧汇总里的 `answer`。那是设计如此，别为了"看起来也在流"
-#    把 `calc_execute` 的提取过程放出来（那是中间产物，不是答案）。
 STREAMABLE_NODES = frozenset({
     "chat",
     "search_summarize",
@@ -460,21 +390,11 @@ def build_advanced_agent():
         """分析用户意图，决定路由方向（增强版：注入长期记忆mem0）"""
         user_query = state["messages"][-1].content
 
-        # 2026-10-04：拦在 `llm.invoke` **之前**。
         #    **超预算时【必须】给 `intent`** —— `route_by_intent` 读的是 `state["intent"]`
         #        （`:423`）。少了它，langgraph 会当场 `KeyError: 'intent'` ⇒ **500**，
         #        而不是一句"预算用完了"。给 `"CHAT"` ⇒ 落到兜底分支 `chat_node`，
         #        而 `chat_node` 自己的守卫也会拦下（同一个人、同样的额度）
-        #        **最终不调任何模型**，用户看到的就是那句话术。
-        #    这与参照图 `agent_graph_advanced.py:333` 的写法**不同**是**有意的**——
-        #       那张图的路由函数不读 `intent`，所以它不需要给。
-        #    2026-10-05（批 7）：**门要排在任何花钱的调用之前** ——
-        #       改前 `search_user_memory`（一次 DashScope embedding）在门**之上**
-        #       预算已被拒的那一轮仍然花掉那笔钱，而取回来的记忆**当场被丢弃**。
-        #       这是本批的判据在 CI（dummy key）里**真打网络**才暴露出来的。
-        #       ⇒ 记忆检索与 `classify_prompt` 的构建整体**下移到门之后**。
         if not check_token_budget(state.get("user_name", "unknown"), estimated_tokens=500):
-            # 2026-10-05（批 7）：加 `budget_intercept`。
             #    **`intent="CHAT"` 一个都不能少** —— `route_by_intent` 读 `state["intent"]`，
             #       少了它当场 `KeyError` = **500**，而不是一句"预算用完了"。
             return {"intent": "CHAT", "final_output": BUDGET_EXCEEDED_MSG,
@@ -486,7 +406,6 @@ def build_advanced_agent():
         memory_space = state.get("memory_space", "default")
         # 构建 Mem0 的 user_id
         user_id = f"{user_name}:{memory_space}"
-        # 2026-10-13：**入口节点这一处同样必须 fail-open** —— 它不走上面那个
         #    `inject_memories_to_prompt`（是**直调**），所以那一处的处置**盖不到这里**。
         #    漏了它 = `/agent/advanced_chat` 照旧整条 500（同一个 embedding 失败）。
         #    `except AssertionError: raise` 那句不是多余 —— 见上面那个函数的同款说明
@@ -525,29 +444,25 @@ def build_advanced_agent():
             thread_id=state.get("thread_id", "unknown"),
         )
         state["intent"] = intent.content.strip()
-        # 2026-10-05（批 7）：**正常出口也要清零**——
         #    `budget_intercept` 是普通 state 键（last-write-wins + 落 checkpoint）
         #    ⇒ 只清一个出口的话，走**另一个**出口的那一轮会留着上一轮的值
         #    ⇒ 预算恢复之后那一轮**正常的提问**照样回 429。
         #    本节点是**原地改 `state` 再整个返回**（不是返回增量）⇒ 清零也写成赋值。
-        #    守卫：`app/tests/test_budget_soft_return.py::test_advanced_agent_上一轮的标志不串轮`
         state["budget_intercept"] = None
         return state
 
     # 2. 添加对话节点（简单聊天）
     def chat_node(state: AgentState, config: RunnableConfig):
-        """兜底对话节点（2026-10-04 改真流式）。
+        """兜底对话节点（改真流式）。
 
         它是**默认落点**：`route_by_intent` 是**精确匹配**的，模型多吐一个句号
            （`REACT。`）就静默落到这里 ⇒ **这条分支的流式体验 = 大多数请求的体验**。
         """
-        # 2026-10-04：拦在 `.stream` **之前**。
         #    这一处**不只是"漏记"** —— 它是 `supervisor` 超预算时的**落点**（见 `supervisor` 注释）：
         #       这里的守卫是"那条路不花钱"的**第二道保证**，别因为它看着冗余就删。
         user_name = state.get("user_name", "unknown")
         thread_id = state.get("thread_id", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):
-            # 2026-10-05（批 7）：**同时置 `budget_intercept`** ——
             #    改前只塞一句话当答案，端点照常回 **HTTP 200** ⇒ 调用方**看不出被拒了**。
             #    **不许在这里 `raise`**（§二 的 checkpoint 污染实测）。
             #    本图（`advanced_agent`）的**清零在 `supervisor`**（它是入口节点），

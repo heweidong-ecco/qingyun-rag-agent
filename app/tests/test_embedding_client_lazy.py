@@ -1,12 +1,9 @@
 """`app/rag/embedding_client.py` —— **客户端惰性构造**（批 6）。
 
 判据两条（改前都红）：
-1. 缺 `DASHSCOPE_API_KEY` 时 **`import embedding_client` 不许炸**（T1 的原始判据）
+1. 缺 `DASHSCOPE_API_KEY` 时 **`import embedding_client` 不许炸**
 2. 走到调用时，报的错必须**点名那个变量**，不是 OpenAI SDK 那句
    `The api_key client option must be set …`（它连 `OPENAI_API_KEY` 都提，本项目根本不用那个名字）
-
-本文件**不发网络请求、不碰 Redis** —— 缺 key 那条路在**取客户端时**就断了。
-为什么修到这里为止（LLM 那半边为什么只改「报什么」不改时机）
 """
 
 import os

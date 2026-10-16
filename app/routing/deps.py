@@ -22,7 +22,6 @@ oauth2_scheme = HTTPBearer(auto_error=False)
 def verify_jwt_token(token: str) -> str:
     """验证 JWT token 字符串，返回用户名，失败抛出异常。
 
-    🔴 2026-10-15（§二·⑥）：**解码之后还要过一道「这账号还活着吗」**。
 
     ## 为什么（没有它的后果）
 
@@ -100,16 +99,6 @@ async def require_admin(
 # ===========================================================================
 # WebSocket 首帧认证—— 与上面那套**不能互换**
 # ===========================================================================
-#
-# **为什么不能照抄 HTTP 那套**：`new WebSocket(url)` **不能自定义请求头**
-#    ⇒ `X-API-Key` / `Authorization` 两条路**客户端根本送不上来**。
-#    浏览器唯一能带的只有 **URL 查询串**（会进访问日志/Cloudflare 边缘日志）与
-#    **子协议头**（`Sec-WebSocket-Protocol`，非常规、代理可能剥）。
-#    本轮裁定：**首帧认证**。
-#
-# **为什么中间件帮不上忙**：`app/main.py` 那两个中间件是 `BaseHTTPMiddleware`，
-#    它**只看 `scope["type"] == "http"`** ⇒ **永远看不到 WebSocket**。
-#    ⇒ WS 的鉴权只能挂在**路由自己**身上（这也是它曾经整条裸奔的原因， 遗留·1）。
 
 WS_AUTH_TIMEOUT_SECONDS = 5.0
 

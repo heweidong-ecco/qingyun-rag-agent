@@ -1,22 +1,4 @@
 """前端可消费性的**行为判据**（契约 A / B）。
-
-## 为什么单开一个文件
-
-这两条契约是【跨层】的 —— 后端发出去的帧，要能**唯一地**还原成前端要的东西
-（引用编号 / 本轮花费）。钉在 `api_v1_rag.py` 自己的测试里会去调私有闭包；
-钉在前端里就得造假后端。这里用 **真端点函数 + 真 `sse.sse_stream` 骨架** 跑一遍，
-再**只看它吐出来的帧**（`app/tests/test_rag_billing_wiring.py` 的 `_drive_stream` 是同款手法）。
-
-## 桩打在【DB 边界】，不打在 `record_from_response` 上
-
-`app/tests/test_rag_billing_wiring.py` 是桩 `rag_mod.record_from_response` 的 —— 那是对的，
-它测的是"**这次调用记了几笔**"。**本文件不一样**：契约 B 的判据是
-「**记账了才出帧、没记账就不出帧**」。若把 `record_from_response` 桩掉，
-这条判据就变成**同义反复**（我问"记账了吗"，答的是我自己写死的那个桩）。
-
-⇒ 这里桩 `token_tracker.record_usage` —— 即**只拦"往库里写"那一步**：
-   `record_from_response` 仍然**真跑**（真读 `usage_metadata`，那正是  的判据），
-   只有落库被接住。这样"有没有记账"是**真被问出来的**。
 """
 import asyncio
 import json
@@ -67,8 +49,6 @@ def rag_env(monkeypatch):
     #    `from db import get_db` / `from cache import get_chat_history` 这种**直接绑定**
     #    （见 `app/routing/api_v1_rag.py:44` 与 `:64`）。打 `db.get_db` / `cache.redis_client`
     #    是**空操作**：那些名字在 import 期就被复制进 `api_v1_rag` 的命名空间了
-    #    ⇒ 改源模块它**看不见**。
-    #    这是"桩了个寂寞"的经典形状 —— 桩没生效、用例走了真路径、然后**假绿**。
     monkeypatch.setattr(rag_mod, "get_chat_history", lambda *a, **k: [])
     monkeypatch.setattr(rag_mod, "persist_turn", lambda *a, **k: None)   # 留痕不是本文件的被测对象
     monkeypatch.setattr(rag_mod, "check_session_token_budget", lambda *a, **k: (True, ""))
@@ -187,10 +167,6 @@ def test_answer_with_citations_sources_carry_the_same_shape(monkeypatch):
 
 
 # ============ 契约 A·追加：`sources` 帧补 `similarity` ============
-#
-# 起因：硬门 B 的证真那句要求「点开能看到 **chunk id + 相似度分**」。
-#    `id` 早在帧里（契约 A），`similarity` 这一条**数据本来就在手上**
-#    （`api_v1_rag.py` 里 `contexts` 的 `r[3]`）—— 只是没人往帧里放。
 
 
 def test_sources_carry_similarity_for_the_citation_card(monkeypatch, rag_env):
@@ -233,7 +209,7 @@ def test_both_sources_exits_have_the_same_key_set(monkeypatch, rag_env):
     原状：`answer_with_citations.py` 的注释写着「改一边忘另一边 ⇒ 两个出口的形状
        悄悄分叉，而两边各自的用例都是绿的」—— 而那件事**当时没有任何尺子**。
 
-    2026-10-06 施工时**实测**（判据是命令，不是"我觉得应该抓得住"）：
+    施工时**实测**（判据是命令，不是"我觉得应该抓得住"）：
        - 改动前全文：`7 passed`（基线）
        - **只给流式那侧加上 `similarity`**、再把本条摘掉：
          `-k 'not both_sources_exits'` ⇒ **9 passed, 1 deselected**
@@ -270,7 +246,6 @@ def test_both_sources_exits_have_the_same_key_set(monkeypatch, rag_env):
 
 
 # ==================== 契约 B：末尾的 `usage` 汇总帧 ====================
-#
 # 一条贯穿三节的判据：**记账了才出帧**。
 #    帧不是"再算一遍"，是**把已经写进账本的那笔念回来** —— 两者同源。
 
@@ -304,7 +279,7 @@ def test_usage_frame_reports_the_numbers_that_were_billed(monkeypatch, rag_env):
        所以它同时钉住「**记账了才出帧**」：没记成的话 `record` 返回 None，帧根本不出现。
 
     `cost_usd` 的期望值从 `PRICING` **现推**，不是拿 `tt.compute_cost(...)` 当期望
-       —— 那是拿函数和自己比（同义反复）。本仓 2026-10-06 在  栽过一次，见
+       —— 那是拿函数和自己比（同义反复）。本仓 在 栽过一次，见
        `app/tests/test_token_tracker_cost_helpers.py` 同款注释。
     """
     import billing.token_tracker as tt
@@ -351,14 +326,6 @@ def test_no_usage_frame_when_nothing_was_billed(monkeypatch, rag_env):
 
 
 # ==================== 契约 E：熔断 429 得说得出是【哪一种】熔断（`R3.2`）====================
-#
-# 为什么这条契约必须存在：`chat.html` 原先 429 只写一句
-#    「今日额度已用完 / 会话额度已用完」—— **把恢复条件完全不同的两种熔断混成了一句**：
-#      · 全站日级⇒ 全站共享，**做什么都救不回来**，只能等跨天
-#      · 会话级  ⇒ 是**你自己这个 thread** 的今日用量 ⇒ **开个新会话立刻能继续**
-#    两者 `code` **都是 `QUOTA_EXCEEDED`**（`app/core/exceptions.py` 就一个枚举）
-#    **前端从 `code` 分不出是哪种** ⇒ `R3.2` 要的第三件事（「何时恢复」）**写不清**。
-#    ⇒ 后端在**对话页这条链**上补 `scope`（有意只接这一个端点，）。
 
 _QUOTA_WHY = {
     "session": "本会话预算已用完（已使用 50000 tokens，会话上限 50000 tokens）",
@@ -381,7 +348,6 @@ def _quota_429_body(rag_env, monkeypatch, which):
     #    端点的顺序是**先会话后全站**（`api_v1_rag.py` 的 `:709` / `:714`），
     #    而 `monkeypatch` 要到用例**收尾**才还原 ⇒ 同一个用例里连调两次时，
     #    第一次打的桩**还挂着**（实测：两条都返回 `session`，那条"可区分"的用例因此变红）。
-    #    ⇒ 写成「按 `which` 判」的纯函数，结果与调用顺序无关。
     monkeypatch.setattr(
         rag_mod, "check_session_token_budget",
         lambda *a, **k: (False, _QUOTA_WHY["session"]) if which == "session" else (True, ""))
@@ -430,21 +396,6 @@ def test_the_two_quota_scopes_are_distinguishable_without_reading_the_text(rag_e
 
 
 # ============ 契约 F：无据拒答要能被【机器】读出来（① · 硬门 B 第二半）============
-#
-# 为什么这条契约必须存在：硬门 B 的判定是**两半** ——
-#    「问库里有的 ⇒ 点开看原文」＋「**再问一个库里没有的 ⇒ 明确拒答**」。
-#    前半由  /  做完；后半 2026-10-06 用**真栈 spike** 测过：
-#    **8/8 都在拒**（`deepseek-v4-flash` ＋ 本机语料，含 3 类「话题相邻但事实不在库里」的硬例）。
-#
-# 但它**只活在正文里**，于是三个消费者都够不着：
-#      · 前端 —— 拒答与普通回答是**同一句普通文字**，画不出区别；
-#      · 评测 —— `bad_cases.md` 正记着「评估集缺拒答类样本」，没有信号就刷不出样本；
-#      · 日志 —— 拒答率这个数**今天根本不存在**。
-#    ⇒ 本契约补的是**可观测性**，**不是拒答率**：prompt / 模型 / 检索一律不动）。
-#
-# 判据是「**以 prompt 那句拒答语开头**」，不是"含"：
-#    误判（把正常回答画成"资料里没有"）比漏判（退化成今天的样子）**有害得多** ⇒ 宁可严。
-#    代价是写实的：`文档未提及净利润，因此无法回答该问题。` 这种**换过措辞**的拒答会被漏掉。
 
 _REFUSAL_IN_PROMPT = re.compile(r"请直接说“([^”]+)”")
 

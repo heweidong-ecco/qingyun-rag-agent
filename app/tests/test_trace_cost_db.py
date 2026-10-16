@@ -2,25 +2,6 @@
 
 与 `test_trace_cost.py` 的分工：那边用**假 pg** 断言 SQL 的形状（⇒ 能进 CI）；
 本文件在**真库**上验**真越权**。**两边都要跑**，别拿假 pg 那份当越权证据。
-
-## 本文件钉的是：**光测"看不到别人的"不够，必须同时测"看得到自己的"**
-
-只断言 `A 查 B 的线程 ⇒ 0 条` 的话，一个**永远回 0 条**的实现（比如 SQL 打错、列名打错、
-`user_name` 传反）会**绿着通过** —— 而这恰恰是最可能发生的坏法。
-⇒ 每条越权断言旁边**必配阳性对照**（`test_positive_control_*`）。
-同族纪律 ⇒  的**反证检验**。
-
-## 跑之前必须带库名隔离：`POSTGRES_DB=rag_test`
-
-（本仓有前科：R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行 ——
-
-本文件**不进 CI**（CI 无 postgres service，见 `app/pytest.ini`）
-⇒ **CI 全绿【不代表】本文件绿**。改了这半边，必须本机单独跑一次并把输出贴进 PR。
-
-判据（可打印）：
-```bash
-POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_trace_cost_db.py -q -p no:warnings
-```
 """
 from datetime import datetime, timezone
 

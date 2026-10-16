@@ -8,21 +8,15 @@ from psycopg2 import pool
 # 连接池（全局唯一）使用环境变量设置 连接池的上下限，DB_MIN_CONN, DB_MAX_CONN
 _connection_pool = None
 
-# 2026-10-12 · 公共语料库的 owner 名。
 #   语义：`requested_by = PUBLIC_OWNER` 的那些行是**全站共享**的 ⇒ **检索时人人可见**。
 #   它 **不削弱**  的用户隔离 —— 隔离说的是「用户之间互相看不到」，
 #      这条说的是「有一份大家都能看的公共语料」= `WHERE requested_by = %s OR requested_by = PUBLIC_OWNER`。
 #   **只在【检索】通路上生效**；**写入与删除仍严格按用户**（访客删不掉它）。
-#   本仓已有三处按 `requested_by` 过滤的 SQL —— 它们**必须引用这一个常量**，
-#      别在 SQL 里各写一遍字面量（三处写死 = 必漂）。
 PUBLIC_OWNER = "public"
 
-# 🔴 2026-10-16：**向量索引的 access method** —— 全仓**唯一**的定义处。
 #    建索引（`create_table()`）与那道"验类型"的自愈段**都引用它** ——
 #    ⛔ 别在两处各写一个字面量（本仓立场：**两处写死 = 必漂**，`PUBLIC_OWNER` 那条同理）。
 #    为什么用 `hnsw` 而不是 `ivfflat` ⇒ 见 `create_table()` 里那一段注释 · 。
-#    ⚠️ **改这个值 ⇒ 已有的库会在下次启动时【自动重建索引】**（自愈段），⛔ 不需要手工 SQL、
-#       也⛔ 不需要 alembic（那条迁移链本仓已明文作废）。
 _VECTOR_INDEX_AM = "hnsw"
 
 
@@ -37,7 +31,7 @@ def enable_ann_iterative_scan(cur) -> None:
     而本仓那两句向量 SQL 一定带 `WHERE requested_by = %s OR requested_by = %s`
     （多用户隔离 +  公共语料）⇒ **正好在这个坑的射程里**。
 
-    **实测它能兜住**（2026-10-16 · 本机活库 · 拿 `hnsw.ef_search=2` 人为饿死搜索）：
+    **实测它能兜住**（· 本机活库 · 拿 `hnsw.ef_search=2` 人为饿死搜索）：
 
     | 配置 | 回满 `LIMIT 3` |
     |---|---|
@@ -168,20 +162,17 @@ def get_db():
     finally:
         _connection_pool.putconn(conn)
 
-# 2026-09-20 删（§三·B7）：此处原有 `DB_CONFIG = {...}` —— **全仓零引用**
 #    （`grep -rn '\bDB_CONFIG\b' app/` 只有定义那一行）。真正的连接配置走连接池，不用它。
 
 # 注意：仅保留上方基于连接池的 get_db()（自动提交/回滚/归还连接）。
-# 历史版本曾在下方重复定义 get_db() 覆盖连接池版本，导致写入不提交、连接池失效，已删除。
 
 def embedding_dim_in_db():
     """从【表定义】里读出 `documents.embedding` 的维度。
 
-    🔴 2026-10-14（**B 段**）：**它回答的是"启动自检的 `expected` 从哪来"那个悬了很久的问题。**
        原先的结论（写在 `rag/embedding_client.py` 的 docstring 里）是：
        「全仓**没有那个来源**（`vector(N)` 是行内字面量）⇒ **接线留到 B 段**」。
        ✅ **B 段到了，而答案是【问表自己】**：
-       · ⛔ **不抽常量**（作者 2026-10-08 裁过"逐处改"，见   Step 3）；
+       · ⛔ **不抽常量**（作者 裁过"逐处改"，见 Step 3）；
        · ✅ PG 的 `pg_attribute.atttypmod` 对 `vector(N)` **就是 N** ⇒ **表的定义本身**就是那个单一来源。
        ⇒ **从此不再有"第三处写死的维度"**。
 
@@ -253,14 +244,6 @@ def create_table():
                 #    · `api_keys`    = 【API Key】那套（`X-API-Key`）：一个用户名可有多把、
                 #                      每把带自己的 `expires_at` 与 `role`
                 #    · `login_users` = 【用户名 + 口令】那套（登录换 JWT）：**一个用户名一行**
-                #    ⇒ **一个身份、两张通行证**，最终都解析成同一个 `user_name`
-                #      （收口在 `app/routing/deps.py::get_current_user_hybrid`）。
-                # ⚠️ **角色不在这张表里** —— 角色由 `api_keys.role` 定，而
-                #    **库里查不到的新用户名默认就是 FREE**（`access/permission.py::_hardcoded_role`）
-                #    ⇒ 建号时**⛔ 不需要**顺手插一行 `api_keys`。
-                # ⚠️ `is_active` 这里用 **BOOLEAN**，与 `api_keys` 那个 **INTEGER** 不同 ——
-                #    **有意**：`api_keys` 那列是为了兼容"加列前的老行（NULL）"才用 `COALESCE` 整数口径；
-                #    本表是**新表、列 NOT NULL**，`NULL` 在这里只可能是坏数据 ⇒ 两种语义，⛔ 别统一。
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS login_users (
                         user_name     TEXT PRIMARY KEY,
@@ -290,10 +273,6 @@ def create_table():
                 # 同一款：`api_keys.is_active`
                 #    病因：这个库是**先建的**（`CREATE TABLE IF NOT EXISTS` 那句对已存在的表
                 #    **什么都不做**）⇒ 光把列写进上面的建表语句，**老库永远补不上**。
-                #    实测（2026-10-06）：本机真库 `api_keys` 只有 5 列，没有 `is_active`，
-                #    而 `app/access/auth.py:105` 按它过滤 ⇒ **每次 key 认证 503
-                #    （`UndefinedColumn`）**，且限流/额度两道闸**同时 fail-open**。
-                #    ⇒ 加列这一步**必须**在这里做，不能只写在建表语句里。
                 cur.execute("""
                     DO $$
                     BEGIN
@@ -305,12 +284,9 @@ def create_table():
                         END IF;
                     END $$;
                 """)
-                # 同一款：`api_keys.role`（2026-10-09 · B1）
+                # 同一款：`api_keys.role`（· B1）
                 #    理由与上面 `is_active` 那段**逐字同款**：本机这条 PG 是**先建的**，
                 #    光把列写进建表语句 ⇒ **老库永远补不上**。
-                #    而这一列补不上的**症状比 `is_active` 那次更阴**：
-                #    `get_user_role` 查不到列会**吞掉异常走回退**（见 `permission.py` 的 docstring）
-                #    ⇒ **静默退回硬编码**，排查时只看到"角色没生效"，**一个报错都没有**。
                 cur.execute("""
                     DO $$
                     BEGIN
@@ -322,7 +298,6 @@ def create_table():
                         END IF;
                     END $$;
                 """)
-                # 2026-10-09（B1）：`api_keys` **原本没有任何 `user_name` 索引** ——
                 #    而 `get_user_role` 正是按 `user_name` 查 `role` ⇒ 那是**全表扫**。
                 #    这条要**和 B1 一起进**，别留到"以后优化" ——
                 #    它正是"每请求最多调 10 次"那条热路径上唯一的查询。
@@ -331,19 +306,6 @@ def create_table():
                     ON api_keys (user_name);
                 """)
                 # 为向量字段创建索引，加速检索
-                # 🔴 2026-10-16：**`ivfflat` → `hnsw`，并加自愈**。
-                #    为什么换（都在活库上实测过，）：
-                #      · `hnsw` 在活库那批数据上**逐条精确**（60/60），`ivfflat` + 防护只有 51/60；
-                #      · `ivfflat` 的 `lists` **建索引时定死**（数据长大要重建、且不自适应），
-                #        而 `hnsw` 随数据增长自适应；
-                #      · `ivfflat` 的 `iterative_scan` **只有 `relaxed_order` 一档**（服务端枚举值就这两个），
-                #        且实测它会**把更不相似的排到前面**（60 条里 1 条）；`hnsw` 三档齐全、没这毛病。
-                # 🔴 **为什么必须自愈、⛔ 不能只靠 `IF NOT EXISTS`**：
-                #    那条语句**改不动【已经存在】的索引** —— 名字一旦被占，它就整条空转。
-                #    本仓为此漂移过很久：代码里写 `ivfflat`、活库是手工建的 `hnsw`，
-                #    **两边不一致而没人发现**（旧记录见 `docs/契约/数据模型.md` §六）。
-                #    ⇒ 现在：先按代码【建】（没有才建），再【验类型】—— 不符就 `DROP` + 重建。
-                #    ⚠️ 重建只在**类型不符**时发生一次，本仓数据量下是毫秒级。
                 cur.execute(f"""
                     CREATE INDEX IF NOT EXISTS documents_embedding_idx
                     ON documents
@@ -443,7 +405,7 @@ def create_table():
 def insert_document(content: str, source: str, embedding: list, requested_by: str = "anonymous"):
     """插入一条文档块及其向量。
 
-    2026-10-04：**插入后自己清 BM25 缓存** —— 不变量放在这一层，
+    ：**插入后自己清 BM25 缓存** —— 不变量放在这一层，
        调用方就不必记得再补一句（`/rag/upload_document` 正是漏了那一句，
        而它调的又恰好是这里 ⇒ 上传的新文档在 BM25 召回里"不存在"，直到重启）。
        清缓存是**惰性**的（只是把桶丢掉，重建发生在下次搜索）⇒ 逐条调用不会造成 N 次重建。
@@ -492,9 +454,9 @@ def _require_identity(user_id, where: str) -> None:
 def search_similar(query_embedding: list, top_k: int = 3, *, user_id: str):
     """根据向量相似度检索文档 —— **该用户自己的文档 + 公共语料库**。
 
-    2026-10-03：加 `WHERE requested_by = %s`（决策 5：共享层承重）。
+    ：加 `WHERE requested_by = %s`（决策 5：共享层承重）。
        原先无 WHERE ⇒ 查全库 ⇒ 这里**就是**「A 能看见 B 的文档」那条路。
-    2026-10-12：加 `OR requested_by = PUBLIC_OWNER` ——
+    ：加 `OR requested_by = PUBLIC_OWNER` ——
        公共语料**人人可见**，而**用户之间仍然互相看不见**（两件事，别读成"隔离被取消"）。
     """
     _require_identity(user_id, "search_similar")
@@ -513,26 +475,15 @@ def search_similar(query_embedding: list, top_k: int = 3, *, user_id: str):
 # ==================== 兼容转发层（重构计划 ⑥ 切开点 1）====================
 # 本文件原先在**模块层** `import sqlalchemy / numpy / jieba / rank_bm25`，
 # 于是**任何** `from db import get_db` 的调用方（auth.py / deps.py / cost_dashboard.py …）
-# 都被迫把这 4 个重包一起拉起来。现已切走：
-#   · 表结构声明 → `db_metadata.py`（纯 sqlalchemy，**不依赖本文件**，故可安全单向导入）
-#   · BM25 检索   → `bm25_index.py`（反过来 `from db import get_db`）
-#
-# 下面这几个是**函数内惰性导入**的转发层：老调用方 `from db import bm25_search` 照旧可用，
-# 但 `import db` 本身**不再**拉起重包。
-# 必须惰性 —— `bm25_index` 反向依赖本文件的 `get_db`，模块层互相 import 会成环，
-#    且只在"先 import bm25_index"时才炸，属最难查的一类。
-# `alembic/env.py` 需要的 `metadata` **没有**在这里转发（它是值不是函数，转发要动
-#    PEP 562 的 `__getattr__`）—— 已改为直接从 `db_metadata` 导入。
 
 def bm25_search(query: str, top_k: int = 10, *, user_id: str):
     """转发到 `bm25_index.bm25_search`（惰性导入，见上方说明）。
 
-    2026-10-03：加 `user_id`—— 过滤实现在 `bm25_index` 里，本层只转发。
+    ：加 `user_id`—— 过滤实现在 `bm25_index` 里，本层只转发。
     """
     from rag.bm25_index import bm25_search as _impl
     return _impl(query, top_k, user_id=user_id)
 
-# 2026-09-20 删（§三·B5/B6）：此处原有 `get_bm25_index` 与 `get_all_documents`
 #    两个**转发壳**（各自 `return _impl()`），但**全仓零外部调用**：
 #      grep -rn 'db\.get_bm25_index\|from db import.*get_bm25_index' app/    → 0
 #      grep -rn 'db\.get_all_documents\|from db import.*get_all_documents' app/ → 0

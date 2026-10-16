@@ -1,18 +1,6 @@
-"""`rate_limiter` 的容错与过期（批 3 ·  +  · 2026-10-05）
+"""`rate_limiter` 的容错与过期（批 3 · + · ）
 
-两条**早已裁过**的方向（作者 2026-09-30，见 `app/access/specs/rate_limiter.md` 末表）：
-
-
- 那条**不是推断**：`app/tests/test_rag_search.py` 里早就写着「实测」，
-`.github/workflows/ci.yml:11` 也把它当**给 redis service 的理由**写着。
-
-## 本文件两类用例
-
-* **离线**（12 条里 11 条）：把 `rate_limiter.redis_client` 换成一个**按需抛异常**的替身。
-* **真 Redis**（`test_新桶在真Redis里真的带上了TTL`）：它要问 Redis **`TTL` 是多少**。
-  没有别的办法能证明「`EXPIRE` 真的生效」—— 读脚本文本只能证明「**写了这句**」。
-  CI 有 redis service（`.github/workflows/ci.yml:66`）， 复用 `qingyun-rag-agent-redis-1`。
-  **本仓已有同一取舍**：`app/tests/test_rag_search.py` 的 L1/L2 同样**必须真连 Redis**。
+两条**早已裁过**的方向（作者 见 `app/access/specs/rate_limiter.md` 末表）：
 """
 import math
 import re
@@ -97,7 +85,7 @@ def test_redis不通时放行而不是把全站打崩(redis_down):
 def test_redis不通时留下响的日志(redis_down, logs):
     """**必须响** —— 否则就是「**限流悄悄失效**」，比报错更危险。
 
-    （作者 2026-09-30 裁那条时就带着这一句：「fail-open + **必须响的日志**」。）
+    （作者 裁那条时就带着这一句：「fail-open + **必须响的日志**」。）
     """
     _limiter().is_allowed("bucket-x")
 

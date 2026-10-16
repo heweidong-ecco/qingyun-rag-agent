@@ -1,20 +1,7 @@
 # conftest.py
 import os
 
-# 必须在 `import main` **之前**设置（2026-09-17 · M6 期间实测发现）
-#
-# 病因：`cost_dashboard.py:218` 在**导入期**就建 Gradio Blocks，Gradio 随即起
-#   **非 daemon** 线程去连 `huggingface.co` 发匿名遥测（`gradio/analytics.py`
-#   → `huggingface_hub._telemetry._send_telemetry_in_thread`），外加两条
-#   `posthog/consumer.py` 上报线程。本机网络不通时它们**卡在 TCP connect 上永不返回**，
-#   主线程永远停在 `threading._shutdown` ⇒ **22 条用例全 PASSED，进程却退不出去**。
-#
-# 实测：不设该开关 → 20s+ 不退出；设了 → 11s 内正常退出（同一个套件）。
-# 它会**随机复现**（取决于当次 DNS/TCP 是快速失败还是挂住），不是稳定失败 ——
-#   这正是它一直没被发现的原因。卡住的 CI job 会一直耗到超时上限。
-#
-# 位置不能挪到各测试模块里：`conftest.py` 先于所有测试模块被导入，
-#   而本文件第 20 行左右就要 `from main import app` —— 那之后设什么都晚了。
+# 必须在 `import main` **之前**设置（· M6 期间实测发现）
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
 import pytest
@@ -104,18 +91,6 @@ def sample_document():
 # ══════════════════════════════════════════════════════════════════════
 # B1：**每条用例前后都清掉角色缓存**
 # ══════════════════════════════════════════════════════════════════════
-#
-# `permission.get_user_role` 带**进程内 TTL 60s 缓存**（它在配额热路径上，
-# 一个请求最多调 10 次 —— 见 `app/access/permission.py` 的 docstring）。
-#
-# **缓存是【进程级】的** ⇒ 它**会跨用例残留**。那会带来两种**都不出声**的坏结果：
-#   ① 某条用例先替身出了一个角色 ⇒ 后面真调 `get_user_role` 的用例**拿到那个替身值**；
-#   ② 某条用例改了库里的 `role` ⇒ 后面 60 秒内的用例**仍看到旧值**。
-# 两者都会让结论**取决于用例的【执行顺序】** —— 而"顺序换了就红/就绿"在本仓是明令要消的形态。
-#
-# ⇒ 用 autouse fixture 清掉，让每条用例都从**冷缓存**开始。
-#    它**不是**"为了让测试过"的开关 —— 缓存本身有 `test_user_role_from_db.py`
-#      那 10 条专门钉它（TTL / 写侧失效 / 不误伤别人）。这里清掉的只是**跨用例的脏残留**。
 @pytest.fixture(autouse=True)
 def _clear_role_cache_between_tests():
     """见上方长注释：消掉「结论随执行顺序变」这个不确定性。"""
@@ -129,38 +104,6 @@ def _clear_role_cache_between_tests():
 # ══════════════════════════════════════════════════════════════════════
 #  · 真库闸：**要真库的用例，库名必须以 `_test` 结尾**
 # ══════════════════════════════════════════════════════════════════════
-#
-# ## 它修的是什么
-#
-# `needs_db` / `integration` 那些用例会**真的写库**（往 `token_usage_logs` / `documents` /
-# `api_keys` 里 INSERT）。而本仓**有前科**：
-# ——R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行。
-#
-# 2026-10-13 实查：真库 `rag_db` 里躺着**一批测试写进去的假记录** ——
-#   `purpose` 那一列写着 test、`user_name` 是 test_user / user-a，
-#   其中一条 **`total_tokens = 999 999`**。
-#   **这里不许把那个 `purpose` 的字面量原样写出来**（本仓那一族的坑，已栽 5 次）：
-#   `app/tests/test_daily_token_split.py` 会**正则扫全 `app/`**（含本文件、不含 `tests/`）
-#   找它，写成字面量 ⇒ **那条门会报在本注释头上**（2026-10-13 当场发生过一次）。而**全站日 token 顶**是
-# `SUM(所有人)`、**不带 `user_name` 过滤** ⇒ **一条这种假记录就能吃掉当天近 100% 的预算**
-#
-# ## 为什么必须做成【结构】
-#
-# `app/pytest.ini` 与 `app/tests/CLAUDE.md` 都写着「**本机跑 `needs_db` 必须带
-# `POSTGRES_DB=rag_test`**」—— **但那是一句【文字】，没有任何东西执行它**。
-# 本仓立场：**「只有文字就漏，结构才执行」**。
-# 而且这个漏法**特别隐蔽**：写进去了**不会有任何异常**，
-# 要到**当天晚些时候**全站额度突然耗尽才看得出来，而那时**已经找不到成因了**。
-#
-# ## 它管不到谁（如实记下）
-#
-# 只拦**带 marker** 的用例。**不带 marker 却真连库**的用例不受这条闸管 ——
-# 那种写法本身就是另一条账（它连"我要真库"这句话都没说）。
-#
-# ## 反证（跑过）
-#
-# `venv/bin/python -m pytest app/tests/test_session_budget.py -q`（**不带库名**）⇒ **红**；
-# 前面加 `POSTGRES_DB=rag_test` ⇒ 正常跑。
 
 
 def needs_db_isolation_problem(db_name) -> str | None:

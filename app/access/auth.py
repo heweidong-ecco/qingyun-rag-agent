@@ -22,15 +22,6 @@ def hash_api_key(api_key: str) -> str:
 #:
 #:    `verify_api_key`（按 key_hash 查一把）与 `ensure_admin_exists`（启动自检）
 #:    **必须共用这一句** —— 别在两处各写一遍。
-#:
-#:    **2026-10-06 的缺陷就是这么来的**：自检只 `COUNT(*)` **行数**，不看 `is_active`
-#:    ⇒ （按用户名撤，撤的是该用户名下的**全部行**）
-#:    之后，自检照样报「管理员账户已存在，跳过自动创建」，而认证侧一把都过不去
-#:    ⇒ **admin 锁死，而日志说一切正常**。裁定。
-#:    守卫 ⇒ `app/tests/test_auth_ensure_admin_exists.py::test_两条路径的_is_active_口径是同一句`
-#:
-#: **必须 `COALESCE`** —— 迁移 `828721f77ef2` 建列时是 `nullable=True`，
-#:    `is_active IS NULL` 的老行会被 `is_active = 1` **静默排除**（契约 D）。
 ACTIVE_PREDICATE = "COALESCE(is_active, 1) = 1"
 
 
@@ -43,15 +34,11 @@ def _is_expired(expires_at, now=None) -> bool:
        正好是本仓踩过的「两套时区混在一个量里」那一族。
     """
     if isinstance(expires_at, str):
-        # 🔴 2026-10-14（的甲 · `①b`）：**SQLite 那条路上 `expires_at` 回来是
         #    `str`，不是 `datetime`** —— 那一列的类型是 `TIMESTAMP`，而 SQLite 是**动态类型**，
         #    存进去的就是**一串文本** ⇒ 直接比会当场
         #    `TypeError: '<' not supported between instances of 'str' and 'datetime.datetime'`
         #    （实测撞到过：四个检索端点的隔离用例全红）。
-        # ⚠️ **解出来仍是 naive 本地时间**（写进去的就是 `create_user_api_key` 的 `datetime.now`）
-        #    ⇒ 与本函数上面那段「在 Python 侧比」的理由**逐字一致**，⛔ 别在这里顺手补时区。
         # 🔴 **解不出来 ⇒ 当成【已过期】**：这是鉴权路径，**fail-closed** 是唯一正确方向
-        #    （⛔ 不是 fail-open 地放行）。
         try:
             expires_at = datetime.fromisoformat(expires_at)
         except ValueError:
@@ -64,7 +51,7 @@ def create_user_api_key(user_name: str, expire_days: int = 30, role: str | None 
     为新用户生成API Key并存入数据库。
     返回明文Key（只在生成时显示一次，之后无法找回）。
 
-    ## `role`（2026-10-09 · B1）
+    ## `role`（· B1）
 
     **默认 `None` ⇒ 写进库的是 `NULL`** —— 而 `get_user_role` 把 `NULL` 当
     「**还没人裁决**」⇒ **走回退**（探针身份 + `admin` 特判 + 其余 FREE）。
@@ -91,8 +78,6 @@ def create_user_api_key(user_name: str, expire_days: int = 30, role: str | None 
     # **写侧必须主动失效缓存**（B1）—— 见 `permission.get_user_role`：
     #    它在**配额热路径**上带 60s 进程内缓存；不失效 ⇒ 改完角色**最多 60s 内还是旧的**，
     #    而那种"改了不生效"看起来像 bug，会把排查带到错的地方。
-    #    **不给它包 `try/except`** —— `invalidate_role_cache` 是**纯内存**操作，没有可失败的理由；
-    #    包一层宽捕获就是本仓最恨的「静默降级」（真坏了也不出声）。
     from access.permission import invalidate_role_cache   # 函数内 import：避免模块级循环依赖
     invalidate_role_cache(user_name)
 
@@ -102,7 +87,7 @@ def ensure_admin_exists(logger=None):
     """
     应用启动时检查**管理员还有没有能用的凭据**。
 
-    三种情形（第 3 种是 2026-10-06 补的 —— 此前它会被**误当成第 1 种**）：
+    三种情形（第 3 种是 补的 —— 此前它会被**误当成第 1 种**）：
 
     | # | 库里的状态 | 行为 |
     |---|---|---|
@@ -159,7 +144,7 @@ def ensure_admin_exists(logger=None):
     if logger:
         logger.warning("=" * 60)
         logger.warning("首次启动：已自动创建管理员账户")
-        logger.warning("管理员用户名: admin")  # 2026-09-20 去掉多余的 f（D1/pyflakes：f-string 无占位符）
+        logger.warning("管理员用户名: admin")  # 去掉多余的 f（D1/pyflakes：f-string 无占位符）
         logger.warning(f"管理员 API Key: {api_key}")
         logger.warning("请立即复制并安全保存此 Key，它仅显示这一次！")
         logger.warning("=" * 60)
@@ -171,7 +156,7 @@ def verify_api_key(api_key: str):
     验证API Key是否有效。
     返回该Key对应的user_name，如果无效则返回None。
 
-    2026-10-05（待办）：**库不可用 ⇒ 抛 `AppException(SERVICE_UNAVAILABLE)`**，
+    （待办）：**库不可用 ⇒ 抛 `AppException(SERVICE_UNAVAILABLE)`**，
        **不是返回 `None`**。
 
        * 返回 `None` 会让调用方（`deps.get_current_user`）报 **401** ——
@@ -200,11 +185,6 @@ def verify_api_key(api_key: str):
                     #    ⇒ 发出去的 key 收不回来。
                     # **必须 `COALESCE(is_active, 1)`，不许写 `is_active = 1`** ——
                     #    迁移 `828721f77ef2` 建列时是 `nullable=True`，NULL 行会被**静默排除**
-                    #    ⇒ 老 key 集体失效，而用户只看到一句"凭据无效"（查不到点上）。
-                    #    "现网有没有 NULL 行"**没验过**（当时库没起）—— 正因为没验过才必须防。
-                    #    守卫 ⇒ `app/tests/test_auth_api_key_active.py::test_a_null_is_active_row_still_authenticates`
-                    # 2026-10-06：那半句抽成了 `ACTIVE_PREDICATE`，
-                    #    因为 `ensure_admin_exists` 也必须用它 —— 两处各写一遍正是缺陷成因。
                     "SELECT user_name, expires_at FROM api_keys "
                     f"WHERE key_hash = %s AND {ACTIVE_PREDICATE}",
                     (hashed,)
@@ -227,9 +207,8 @@ def verify_api_key(api_key: str):
     return user_name
 
 
-# 登录凭据来自环境变量 —— 2026-09-15 从本文件的硬编码字面量迁出
+# 登录凭据来自环境变量 —— 从本文件的硬编码字面量迁出
 # （那曾是**公开仓库上的活凭据**；决策）
-#
 # 每次调用都重新读环境变量（刻意不缓存到模块级）：这样测试可以 monkeypatch 干预。
 def _get_users_db() -> dict:
     """从环境变量构造登录凭据表。

@@ -1,36 +1,4 @@
 """公共语料库—— **它人人可，而用户之间仍互相看不见**。
-
-## 背景（为什么要有它）
-
-新建一个用户，他的库是**空的**，而检索又**按用户隔离**
-「内部RAG知识库检索及问答」那一页**查不到东西**。
-
-> 本来就该分「**公共 / 个人**」两档，⛔ 不是"为了给访客兜底才加的"。
-
-作者 2026-10-12 裁：**加一份公共语料（`requested_by = 'public'`），它不受用户隔离限制**。
-
-**它不是"把隔离关掉"** —— 两件事：
-- **隔离**说的是「**用户之间**互相看不见」⇒ **仍然成立**
-- **本条**说的是「**多了一份大家都能看的**」⇒ 检索条件变成 `自己的 OR public`
-
-## 本文件的两层（照着 `test_isolation.py` 的分法）
-
-| 层 | 钉什么 | 要库吗 | 进 CI 吗 |
-|---|---|---|---|
-| ① **结构守卫** | 三处检索 SQL **必须**引用 `PUBLIC_OWNER`；删除**必须**仍按 owner | 不用（纯 `inspect`） | |
-| ② **行为用例** | `isolation_b` 看得见公共的、看不见 `isolation_a` 的 | 真 Postgres | （标 `needs_db`） |
-
-**反证怎么做的**：把 `OR requested_by = PUBLIC_OWNER` 撤掉
-① 立刻红（源码里没那个常量了）；② 里「看得见公共的」那条也红。
-2026-10-12 手工跑过一次等价的反证：**老 SQL（不带 OR）命中 0 条 · 新 SQL 命中 74 条**
-（那时库里的公共语料就是 74 块）⇒ 差异 100% 来自那一个 `OR`。
-
-## 判据（可打印）
-
-```bash
-# ① 结构守卫（CI 也跑这条）
-venv/bin/python -m pytest app/tests/test_public_corpus.py -q -m "not needs_db" -p no:warnings
-```
 """
 import inspect
 
@@ -73,7 +41,7 @@ def test_bm25_index_mentions_public_owner():
 def test_pg_search_endpoint_mentions_public_owner():
     """`POST /rag/pg_search` 是**第三条**取语料的路（它自己写了一条 SQL）。
 
-    2026-10-12 改这次时差点漏掉它 —— 前两处都在 `rag/` 与 `core/`，
+    改这次时差点漏掉它 —— 前两处都在 `rag/` 与 `core/`，
        而这条在 `routing/` 里**自己写了一遍**。
     """
     from routing.api_v1_rag import pg_search
@@ -96,7 +64,7 @@ def test_delete_still_checks_the_owner():
 # ===========================================================================
 # ② 行为用例 —— `isolation_b` 到底看得见什么
 # ===========================================================================
-_PROBE_DIM = 1024  # `documents.embedding` = `vector(1024)`（2026-10-14 B 段）
+_PROBE_DIM = 1024  # `documents.embedding` = `vector(1024)`（B 段）
 _PROBE_SRC = "public-corpus-probe-test"
 _PROBE_PUBLIC = "公共语料探针 · PUBLIC-DOC · 归属 public · 不含任何真实资料"
 _PROBE_PRIVATE = "私有语料探针 · PRIVATE-DOC · 归属 isolation_a · 不含任何真实资料"

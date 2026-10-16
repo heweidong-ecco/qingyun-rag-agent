@@ -1,15 +1,6 @@
 """接管后续跑—— 硬门 D 的最后一段。
 
 **核心判据**（`通用/四硬门 §3-D`）：**接管后会话【上下文连续】** —— 不是重开一轮。
-
-**用假图替掉 `agent_graph`**：真图要调 LLM ⇒ 那会让这条测试变成"要联网、要花钱"。
-   本文件测的是【接线与语义】，不是模型质量。
-   ⇒ **无 marker，纯离线，进 CI。**
-
-为什么非要钉住 `invoke(None, …)` 这个形状：
-   传 `None` = **从 checkpoint 继续**；传 `{"messages": [HumanMessage(q)]}` = **重开一轮**。
-   两者的**接口返回长得一模一样**（都是 `{"status": "approved", "answer": …}`）
-   ⇒ 只有静态钉住调用形状，才拦得住"看着一切正常、其实上下文断了"。
 """
 import asyncio
 
@@ -91,7 +82,6 @@ def _approve(monkeypatch, fake, **kw):
     kw.setdefault("thread_id", "t1")
     kw.setdefault("approved", True)
     kw.setdefault("user_name", "admin")
-    # 2026-10-03（丙段）【口径变了】：`/agent/approve` 现在**先从待接管队列
     #    反查属主**、再按属主拼 checkpoint 键、并按「本人或 admin」校验。
     #    ⇒ 这些用例必须先**登记**（改动前 approve 不看队列，所以不用登记）。
     #    键也变了：登记用的是 `session_key(属主, thread_id)`，不是裸 `thread_id`。
@@ -135,7 +125,6 @@ def test_resume_uses_the_requested_thread_id(monkeypatch):
     _approve(monkeypatch, fake, thread_id="thread-abc")
     assert fake.configs, "一次都没 invoke"
     got = [c.get("configurable", {}).get("thread_id") for c in fake.configs]
-    # 2026-10-03（丙段）：键 = `session_key(属主, 请求里的 thread_id)`。
     #    这条**仍然**在守"续的是**这一条**" —— 只是"这一条"现在**带上了人**：
     #       裸 `thread_id` 会让两个用户指向**同一个** checkpoint（丙段修的正是它）。
     assert got == [session_key("admin", "thread-abc")], (
@@ -162,7 +151,7 @@ def test_edit_note_is_written_into_state(monkeypatch):
 def test_edited_answer_is_a_tool_message_not_a_human_one(monkeypatch):
     """写进去的必须是 **`ToolMessage`**（带 `tool_call_id`），不是 `HumanMessage`、也不是 `AIMessage`。
 
-    **口径变更（2026-10-04 · 端到端验收）** —— 本条原名
+    **口径变更（· 端到端验收）** —— 本条原名
        `test_edited_answer_is_an_ai_message_not_a_human_one`，钉的是「必须是 `AIMessage`」。
        真机跑下来**那个形状是错的**（`api_v1_agent._tool_rulings` 的 docstring 记了两种错）：
          · 卡住的那条 `AIMessage(tool_calls=[…])` **永远等不到配对的 `ToolMessage`**
@@ -220,21 +209,6 @@ def test_not_at_approval_point_does_not_invoke(monkeypatch):
 
 
 # ==================== ⑤ 真图 + 假 LLM：三条出口之后 state 【还合法吗】 ====================
-#
-# **为什么上面那些假图用例拦不住这次的事**：
-#   它们钉的是「函数被怎么调」（`invoke(None)`、`update_state` 被调过）—— 那三处**确实都对**。
-#   2026-10-04 端到端验收（真 LLM + 真 `MemorySaver`）暴露的缺陷**不在调用形状上**：
-#   `interrupt_before=["approval"]` 把一条**带 `tool_calls` 的 `AIMessage`** 留成了 state 的末尾，
-#   而三条出口**都没保证它后面跟上配对的 `ToolMessage`** ⇒ 真模型的 API 直接 400：
-#
-#       An assistant message with 'tool_calls' must be followed by tool messages
-#       responding to each 'tool_call_id'.
-#
-#   ⇒ 假图 replay 不了 LangGraph 的 reducer / 条件边 / interrupt 语义，**结构性地钉不住这一类**。
-#     ⇒ 这一节改用**真图**（`build_agent_graph()`，自带独立 `MemorySaver`）+ **假 LLM**（离线、不花钱）。
-#
-# 判据写成「**state 里不存在孤儿 tool_calls**」而不是「调了哪个函数」——
-#    前者是**真模型能不能接受这个 state**，后者只是我们自己许的愿。
 
 def _orphan_tool_calls(messages):
     """返回**带 `tool_calls` 却没有配对 `ToolMessage`** 的那些消息（合法时为空列表）。
@@ -290,7 +264,6 @@ def _real_graph(monkeypatch, script):
 
     llm = _ScriptedLLM(script)
     monkeypatch.setattr(ag, "llm_with_tools", llm)
-    # 2026-10-13：本图**首轮会去检索长期记忆** ⇒ 不打这一针，
     #    它会真去连 mem0（embedding 走外网：CI 里 key 是占位值 ⇒ 401；
     #    本机则会**真花钱**且依赖 Redis 缓存碰巧命中 ⇒ 本地绿、CI 红）。
     import agent.memory_store as _ms
@@ -322,7 +295,7 @@ def _approve_real(monkeypatch, graph, **kw):
 def test_edited_approval_leaves_no_orphan_tool_call(monkeypatch):
     """改写后放行 ⇒ state 里**不许留孤儿 `tool_calls`**（否则真模型下一轮直接 400）。
 
-    实测（2026-10-04，真服务）：改写走完，state 是
+    实测（真服务）：改写走完，state 是
     `[Human(Q1), AIMessage(tool_calls=[web_search]), AIMessage(改写)]`
     —— 中间那条 `tool_calls` **永远等不到配对** ⇒ 同 thread 再问一句 ⇒ 500。
     """
@@ -339,7 +312,7 @@ def test_edited_approval_leaves_no_orphan_tool_call(monkeypatch):
 def test_rejected_approval_leaves_no_orphan_tool_call(monkeypatch):
     """拒绝后放行 ⇒ 同样**不许留孤儿 `tool_calls`**。
 
-    实测（2026-10-04，真服务）：拒绝走完，state 是
+    实测（真服务）：拒绝走完，state 是
     `[Human(Q1), AIMessage(tool_calls=[web_search]), HumanMessage(内部指令)]`
     —— 同型缺陷；而且返回给调用方的是那句**内部指令原文**。
     """
@@ -374,7 +347,7 @@ def test_thread_is_still_usable_after_edit_and_reject(monkeypatch):
 def test_edited_approval_actually_wakes_the_model(monkeypatch):
     """改写后必须**真的续跑**（模型被叫醒），不是"把改写当最终答案直接返回"。
 
-    实测（2026-10-04，真服务）：`approve` 返回耗时 **0.017s**、`answer` **= 输入原文** ——
+    实测（真服务）：`approve` 返回耗时 **0.017s**、`answer` **= 输入原文** ——
     图在 `update_state` 之后**直接 END**，`tools` / `agent` 一个没跑。
 
     这正是 `app/routing/specs/api_v1_agent.md`  里那句
@@ -395,7 +368,7 @@ def test_edited_approval_actually_wakes_the_model(monkeypatch):
 def test_resume_that_stops_again_is_re_registered(monkeypatch):
     """放行后**又**停在审批点 ⇒ 必须**重新入队**，不许留成"谁也放行不了"的孤儿。
 
-    实测（2026-10-04，真服务）：`approve` 返回 `answer=""`（末条是只有 tool_calls 的 AIMessage
+    实测（真服务）：`approve` 返回 `answer=""`（末条是只有 tool_calls 的 AIMessage
     ⇒ 图**又**停在审批点），而结尾的 `resolve` **无条件**把队列清了
       · `/agent/pending` 查不到它
       · 再 `/agent/approve` 报「当前没有等待审批的任务」
@@ -425,14 +398,6 @@ def test_resume_that_finishes_clears_the_queue(monkeypatch):
 
 
 # ==================== ⑥ 审批轮次上限（§六·2） ====================
-#
-# **要修的是什么**： —— `approve` 放行后模型**又**要求敏感工具时会
-#    **重新入队**（`B5/B6` 修正，对），但**没有任何上限** ⇒ 模型可以无限要求，人工就得无限批。
-#    实测里 3 次就收敛了，但**没有任何机制阻止 30 次**。
-#
-# **裁定（作者 2026-10-05）**：**上限 3 轮 · 触顶强制收尾** ——
-#    到上限后再停 ⇒ **不再入队**，改为注入一条「已达上限，请直接作答」的裁定并续跑；
-#    **若仍停** ⇒ 返回 `error` 且**不再入队**（否则"封顶"就退化成了"换个姿势继续无限循环"）。
 
 
 def test_first_stop_registers_round_one(monkeypatch):

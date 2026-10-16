@@ -35,7 +35,7 @@ def factory(monkeypatch):
 def test_falls_back_to_config_when_env_is_absent(monkeypatch):
     """env 里**没设** `LLM_*` 时，`make_llm` 必须回落到 **`config` 的口径**（不是 `None`）。
 
-    **为什么有这一条 —— 2026-10-02 线上 CI 实测，不是我推的边界**：
+    **为什么有这一条 —— 线上 CI 实测，不是我推的边界**：
 
     CI 里**没有 `.env`**（日志原话 `.env 存在吗    = False`），也没设 `LLM_MODEL_*`。
     当时的实现是 `os.getenv("LLM_" + key) or None` ⇒ **直给 `model=None`**
@@ -65,7 +65,7 @@ def test_falls_back_to_config_when_env_is_absent(monkeypatch):
 def test_returns_bare_chatopenai_with_the_attrs_call_sites_use(factory):
     """**返回值必须是裸 `ChatOpenAI`，且带 `bind_tools` / `model_name`。**
 
-    **为什么钉这条**（2026-10-02 实测，**理由不是"会炸"，别记错**）：
+    **为什么钉这条**（实测，**理由不是"会炸"，别记错**）：
 
     | 属性 | 谁在用 | 处数 |
     |---|---|---|

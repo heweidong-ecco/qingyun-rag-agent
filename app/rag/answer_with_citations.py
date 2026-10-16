@@ -3,7 +3,6 @@
 """
 from langchain_core.prompts import ChatPromptTemplate
 
-# 2026-10-05 记账入口。本模块**原先**还 import 了 `StrOutputParser` ——
 #    它把 `AIMessage` 剥成 `str`，`usage_metadata`（`record_from_response` 的唯一判据，
 #    ）随之丢光 ⇒ 记账静默收不到数。已删。
 from billing.token_tracker import record_from_response
@@ -43,7 +42,7 @@ def generate_answer_with_citations(
         thread_id: **必填** —— 会话标识（B8 会话级上限用）。**不给了，理由与 `user_name` 逐字同款**：
             原先是 `thread_id: str = "default"`，而 `/rag/search` 的调用点**根本没传**
             ⇒ 每一个调用者的账都落进 **`"default"` 这一个桶**，
-            而会话闸查的是**调用者传的那个** ⇒ **闸恒看到 0**（2026-10-16）。
+            而会话闸查的是**调用者传的那个** ⇒ **闸恒看到 0**。
 
     返回:
         (带引用标注的答案文本, 来源信息列表)
@@ -65,15 +64,12 @@ def generate_answer_with_citations(
             #：形状与流式出口**逐字同构**，这条键也必须跟着加。
             # 本链的 `contexts` 来自 `rag_pipeline` 的 RRF 融合结果，那里**没有**
             #    `similarity`（候选字典只有 id/content/source/from/rrf_score）
-            #    ⇒ 这里会**诚实地**取到 `None`。前端 `formatSource` 对 `None` 画 `—`，
-            #    不许为了"好看"在这里编一个分出来。
             "similarity": doc.get("similarity"),
         })
     
     context_text = "\n\n".join(context_text_parts)
     
     # 调用 LLM 生成
-    # 2026-10-05：**不再接 `StrOutputParser`** —— 把 `AIMessage` 剥成 `str`
     #    会让 `usage_metadata` 丢光，`record_from_response` 随即**静默跳过**（一笔不记）。
     #    改为直调 `invoke`（与 `rag_pipeline.search_async` 的普通生成分支同款）。
     messages = CITATION_PROMPT.format_messages(context=context_text, question=question)

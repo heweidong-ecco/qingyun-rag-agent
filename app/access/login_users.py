@@ -1,20 +1,4 @@
 """登录账号的**【库】存储** —— 用户名 + 口令哈希。
-
-## 它解决什么
-
-在此之前，**能登录的账号只有环境变量里那两个**（`LOGIN_USER_NAME` / `test_user`）——
-`auth._get_users_db()` 每次现读环境变量 ⇒ **加一个账号 = 改 `.env` + 重启**。
-要给外面发 N 个账号，那条路不成立（§一）。
-
-## 三条边界（⛔ 改之前先读）
-
-1. **口令一律哈希存储** —— `pbkdf2_hmac`（**标准库**，每行独立 salt）·
-   🔴 **⛔ 不引 `passlib` / `bcrypt`**：本仓镜像已经 1.28 GB，
-   而 `hashlib.pbkdf2_hmac` 是标准库、够用。
-2. **环境变量仍然【优先】**（判断在 `auth.authenticate_user`，⛔ 不在这里）——
-   它保住了本地开发 / CI / 以及「**第一个管理员从哪来**」那条引导路径。
-3. **fail-closed** —— 库读不到 / 报错 ⇒ **当成「这个人不存在」**（返回 `False`），
-   ⛔ **绝不**放开。⚠️ 这一条与 `auth._get_users_db` 的取向一致，别写成两套。
 """
 import hashlib
 import hmac
@@ -102,10 +86,6 @@ def authenticate_from_db(user_name: str, password: str) -> bool:
 #:
 #: 🔴 **为什么必须有缓存**：下面那个 `is_login_user_active` 在**每一个带 JWT 的请求**上跑
 #:    ⇒ 不缓存就是**每请求一次打库**（与 `permission.get_user_role` 同一个理由）。
-#: ⚠️ **代价（知道再选）**：`revoke` 是**另一个进程**（`manage_users.py`）干的
-#:    ⇒ **进程内失效做不到** ⇒ 撤销的生效延迟 = **最多这个 TTL**。
-#:    ⇒ 所以这个值**故意取小**：30 秒。⛔ 别为了省查询把它调到分钟级 ——
-#:    那等于把"撤销立即生效"偷偷改回"撤销等一会儿才生效"。
 _ACTIVE_CACHE_TTL_SECONDS = 30
 
 #: {user_name: (检查时刻, 是否活着)}

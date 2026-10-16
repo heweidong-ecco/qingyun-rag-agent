@@ -1,19 +1,8 @@
-"""
-简单工具的**纯 stdlib 内核**（无 langchain 依赖）。
+"""简单工具的**纯 stdlib 内核**（无 langchain 依赖）。
 
 从 `simple_tools.py` 切出（重构计划 ⑥ 切开点 3）。目的：让这两个函数的逻辑
 可在**只有标准库**的环境里被导入和测试 —— 此前它们住在 `simple_tools.py` 里，
 而那个文件在**模块层** `from langchain_core.tools import tool`。
-
-**依赖方向单向**：本模块**只 import 标准库**（`datetime` / `json` / `re` / `statistics`）。
-`simple_tools.py` 引用本模块；**本模块绝不反向引用**它。
-
-**2026-10-03 例外**：多了一个 `from safe_math import calculate`。
-   它**不破坏上面那条不变量** —— `safe_math` 自己也**只用标准库**（`ast` / `math` / `operator`），
-   没有任何 langchain 依赖。**这是本模块唯一允许的外部依赖，别再往里加第二个。**
-
-函数名带 `_impl` 后缀是**故意的** —— 提醒读者：**这不是给 LLM 看的工具**。
-面向 LLM 的工具描述（docstring）留在 `simple_tools.py` 的 `@tool` 那一层。
 """
 import json
 import re
@@ -38,7 +27,7 @@ def date_today_impl() -> str:
     return f"今天是{now.year}年{now.month}月{now.day}日，星期{weekday_str}"
 
 
-# ==================== （2026-10-08）：三个新工具的纯逻辑内核 ====================
+# ==================== （）：三个新工具的纯逻辑内核 ====================
 # 与 `calculator_impl` 同款三条约定：返回 `str` · 失败也返回字符串（不抛） · 只用标准库。
 # 三个都是【纯函数】：同一组入参结果永远一样 ⇒ 连失败结果也是**稳定的**，
 #    所以缓存它无害（对比 `web_search`：它的"搜不到"是**瞬时**的 ⇒ 那边必须挂 `should_cache`）。

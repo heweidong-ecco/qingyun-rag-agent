@@ -1,19 +1,9 @@
-"""`*_impl.py` 两个「纯 stdlib 内核」的单元测试（§三·D2 · 2026-09-20）
+"""`*_impl.py` 两个「纯 stdlib 内核」的单元测试（§三·D2 · ）
 
 背景：`code_executor_impl.py` / `simple_tools_impl.py` 的 docstring 都声称
 「**可脱离 langchain 单测**」—— 而这个**能力是真的**（实测两个模块只 import 标准库：
 一个是 `datetime`，另一个是 `io` + `contextlib`），**只是从来没人用过它**
 （全仓唯一引用者是各自的 `@tool` 外壳，没有任何测试在跑）。
-
-所以这组用例的意义**不是"发现了 bug"**，而是两件正事：
-
-1. **兑现那句声明** —— 否则它就是一句**没被验证过的话**（本仓最防的那类）。
-2. **锁住那次重构的收益** —— 「⑥ 切开点 3」把沙箱逻辑抽成纯 stdlib，目的就是让它可测；
-   但**没有测试，下次改动静悄悄把 langchain 依赖塞回去，没人会发现**。
-   ⇒ 下面 `test_impl_modules_do_not_import_langchain` 就是那条**结构性锁**。
-
-这组用例**刻意跑得飞快**（不碰 Redis / DB / LLM），因为那两个模块本来就只依赖标准库 ——
-   如果哪天它开始需要 fixture，说明**声明已经被破坏**了。
 """
 import importlib
 import re
@@ -70,7 +60,7 @@ def test_date_today_impl_returns_a_readable_date():
 
 
 # ===========================================================================
-# （2026-10-08）：date_calc / json_extract / stats 三个纯函数内核
+# （）：date_calc / json_extract / stats 三个纯函数内核
 # ===========================================================================
 def test_date_calc_impl_adds_and_subtracts_days():
     from tools.simple_tools_impl import date_calc_impl
@@ -189,7 +179,7 @@ def test_execute_python_impl_handles_no_output_and_errors():
 
 
 def test_sandbox_whitelist_allows_exception_classes():
-    """沙箱白名单里**有**异常类 —— 这是 **N17 放开之后**的行为（2026-09-20 作者裁）。
+    """沙箱白名单里**有**异常类 —— 这是 **N17 放开之后**的行为（作者裁）。
 
     **这条用例的前身是反过来的**：它当时断言"白名单里**没有**异常类"，
        并注明「哪天放开了，这条会红、提醒你去更新记录」。
@@ -219,7 +209,7 @@ def test_sandbox_whitelist_allows_exception_classes():
 
 
 def test_sandbox_allows_class_definition():
-    """沙箱**能定义类** —— 这是 **N18 放开 `__build_class__` 之后**的行为（2026-09-21 作者裁）。
+    """沙箱**能定义类** —— 这是 **N18 放开 `__build_class__` 之后**的行为（作者裁）。
 
     **为什么放开它不增加能力**（本用例把这条论证变成可执行的事实）：
        白名单里**本来就有 `type`** ⇒ 「动态建类」**早就可达**了。
@@ -280,7 +270,7 @@ def test_execute_python_impl_rejects_natural_language_requests():
 def test_sandbox_enforces_max_exec_time(monkeypatch):
     """**`MAX_EXEC_TIME` 真的生效** —— 死循环会被【硬杀】。
 
-    这条用例守的是一件「**以前是假的**」的事（2026-09-21 · §十四 · ③-a）：
+    这条用例守的是一件「**以前是假的**」的事（· §十四 · ③-a）：
        此前 `MAX_EXEC_TIME` **只被定义、从未被使用** —— 实测死循环
        （`while True: i += 1`）**永不返回**；而工具描述却对 LLM **承诺**「最长执行时间：5秒」。
        以前执行层是「LLM 模拟执行」所以不痛；**N15 让执行层真跑代码之后，这就是个洞。**

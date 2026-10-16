@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**；`model:` 那类**还没做**（留给） |
+| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**（· ``）；`model:` 那类**还没做**（留给） |
 | **对外提供** | `circuit(key, estimated_tokens=0) -> (bool, str)` · `global_key() -> str` |
 | **谁在用** | 9 处（8 个端点函数）：`api_v1_agent.py` 5 处（`:109 :186 :224 :280 :527`）· `api_v1_rag.py` 2 处（`:609 :832`，后者在 WS 里）· `api_v1.py` 1 处（`:244`） |
 | **测试** | `test_breaker.py`（9 条 · 函数本身）· `test_breaker_wiring.py`（9 条 · **接线**）· `test_global_daily_budget.py::test_yesterdays_usage_does_not_count`（**跨天恢复**） |
@@ -16,7 +16,7 @@
 | 部分 | 说明 |
 |---|---|
 | 阈值 | `1,000,000` tokens / 天（`token_config.GLOBAL_DAILY_TOKEN_LIMIT`） |
-| 触发动作 | **直接拒绝** —— 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)` ⇒ **429**（要素②，作者 2026-09-30 裁） |
+| 触发动作 | **直接拒绝** —— 调用方抛 `AppException(ErrorCode.QUOTA_EXCEEDED, why)` ⇒ **429**（要素②，作者 裁） |
 | 可见提示 | `why` 里带「已使用 X / 上限 Y，请明日再试」 |
 | 恢复 | **跨天自然重置**（见下 §⚠️ 第 1 条） |
 
@@ -30,7 +30,7 @@
 | **`model:` 前缀没实现** |  要的模型级降级链（TTL /  可见标记 /  人工排序）**都还没做** —— 见  §一·附 |
 | ⚠️ **没有"半开 / 探测恢复"** | **这是有意的**，不是漏了 —— 理由见 §⚠️ 第 2 条 |
 | ⚠️ **`benchmark-embedding` 是近似计量** | 见 §⚠️ 第 5 条 |
-| **匿名那层仍是个洞（另一个问题）** | 配额那层对匿名请求**完全绕过**（`app/main.py:314` 的 `if not user_name:`）。⚠️ **旧写「`quota_limiter.py` 绕过」—— 那个模块 2026-10-03 已删，但这条行为原样保留**。 没有解决它，只是**不再让它连带烧钱**（`benchmark-embedding` 现在会问断路器） |
+| **匿名那层仍是个洞（另一个问题）** | 配额那层对匿名请求**完全绕过**（`app/main.py:314` 的 `if not user_name:`）。⚠️ **旧写「`quota_limiter.py` 绕过」—— 那个模块 已删，但这条行为原样保留**。 没有解决它，只是**不再让它连带烧钱**（`benchmark-embedding` 现在会问断路器） |
 
 ## ⚠️ 看代码会误判的地方
 
@@ -83,7 +83,7 @@
 ⇒ 接线由 `test_breaker_wiring.py` 单独钉住（AST 查 8 个函数体里有没有真的调 `circuit`）。
 📌 同型先例： 之前「常量建好没接上」·  本身「有函数零调用点」。
 
-### 7. ⚠️ `admin` **不是无限的了**（2026-10-01 起）
+### 7. ⚠️ `admin` **不是无限的了**
 
  已去掉 `"admin": float("inf")`（现在是 `premium` = `100000`/天）。
 ⚠️ **但全局日级是另一回事** —— `get_global_daily_token_usage()` 按 `SUM(所有行)` 算、**含 admin**，
@@ -95,5 +95,42 @@
 |---|---|
 | `app/billing/specs/token_tracker.md` | `check_global_daily_budget()` / `get_global_daily_token_usage()` 的出处 |
 | `app/billing/specs/token_config.md` | `GLOBAL_DAILY_TOKEN_LIMIT` 的值与改法 |
-| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴 **2026-10-03**：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
+| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴 ：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
 | `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` §B11 | 四要素原文 + 我方建议 |
+
+
+---
+
+## 📎 原先写在代码 docstring 里的设计说明
+
+> 来源 = `app/billing/breaker.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+
+## 它是什么 / 不是什么
+
+**是**：一个**派发器**。`circuit(key)` 按 key 前缀找到对应的判定器，
+把"该不该拦"这个决定**委托出去**。
+
+**不是**：一个自己判额度的东西。别在这里另写一套判定 ——
+那会和 `token_tracker` 里的口径**悄悄分叉**，而且**两边都不报错**。
+
+## 为什么不按教科书做「半开 / 探测恢复」
+
+标准熔断器有"半开"态（放一个探针请求试上游）。**这里不需要**，理由：
+本仓熔断的对象是**预算**，而预算的周期是**天** ⇒ **恢复机制天然就是"跨天自然重置"**。
+做半开只会引入「预算没到却被当探针放行」的复杂度。
+
+> 恢复的**实现**其实早就有了 —— 全站用量走的是
+> `WHERE created_at >= CURRENT_DATE`（`token_tracker.get_global_daily_token_usage`），
+> **跨天查询窗口自己翻页**，与 Redis TTL 无关（源文档曾标"Redis 日级 key TTL 未核"，
+> 那是**对存储的误判** —— 日级用量在 PG，不在 Redis）。
+
+## 未知 key ⇒ **fail-open**，这是有意的
+
+额度是**成本控制**，**不是安全边界**（与 `app/routing/deps.py` 鉴权 fail-closed **方向相反**）。
+⇒ 拼错的 key、或  将来加了新前缀而本文件还没跟上，
+**都不该把服务打死** ⇒ 放行 + 打日志，让人看得。
+
+## 本文件【自己】没有调用点也是白搭
+
+接线在 `①b`：**与  同一批调用点**
+（`api_v1_agent.py` 5 处 + `api_v1_rag.py` 3 处 + 匿名烧钱的 `/api/v1/rag/benchmark-embedding`）。

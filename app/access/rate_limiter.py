@@ -4,7 +4,6 @@ import redis
 from loguru import logger
 
 from core.config import REDIS_HOST, REDIS_PORT
-# 2026-10-05（批 3 · 顺手）：参数与 TTL 常量都从 `token_config` 取
 #    ⇒ 这个导入**上移到顶部**了 —— 原先它在文件中部，而上面的类要用其中的常量。
 from billing.token_config import (
     GLOBAL_LIMIT_RATE, GLOBAL_LIMIT_CAPACITY,
@@ -12,7 +11,6 @@ from billing.token_config import (
     RATE_LIMIT_BUCKET_TTL,
 )
 
-# 2026-10-05（批 3）删三个死导入：`Request` / `HTTPException` / `os` —— 全都没用到
 #    （`pyflakes` 一直在报）。它们就在本次要改的这几行旁边，故一并清掉。
 
 redis_client = redis.Redis(
@@ -23,17 +21,9 @@ redis_client = redis.Redis(
 )
 
 
-# 2026-10-05：Lua 脚本提成模块级常量。两个理由 ——
 #    ① 原先它在 `is_allowed` 里**每次调用都重新拼一遍字符串**（白花）；
 #    ② 提出来才**测得到**：「每个 `return` 之前都 `EXPIRE` 过」这条只能用**文本判据**，
 #       藏在函数体里就验不了（见 `app/tests/test_rate_limiter_resilience.py`）。
-#
-# 2026-10-05 顺带**合并了原先重复的两个分支**：改前 `tokens >= 1` 与 `else` 各自
-#    写了一遍 `HSET` + `return`。合并之后 **`EXPIRE` 天生只有一条路径** ——
-#    不会出现"某个分支忘了加"这种改法。
-#
-# `EXPIRE` 必须排在 `return` **之前**：Lua 里 `return` **直接退出**，
-#    写在它后面的语句**永远不会执行** ⇒ 那就成了"看着加了、其实没加"。
 _TOKEN_BUCKET_LUA = """
 local bucket = redis.call('HGETALL', KEYS[1])
 local now = tonumber(ARGV[1])
@@ -77,7 +67,7 @@ class TokenBucketLimiter:
         rate: 每秒补充的令牌数
         capacity: 桶的最大容量（允许的最大突发请求数）
         ttl: 桶键在 Redis 里存活多少秒。`None` ⇒ 用 `token_config.RATE_LIMIT_BUCKET_TTL`。
-             2026-10-05：**改前根本没有这个概念** ⇒ 键**永不过期**。
+             ：**改前根本没有这个概念** ⇒ 键**永不过期**。
         """
         self.rate = rate
         self.capacity = capacity
@@ -92,7 +82,7 @@ class TokenBucketLimiter:
         检查用户是否允许此次请求。
         如果允许，消耗一个令牌；否则返回False。
 
-        2026-10-05：**Redis 不通 ⇒ 放行**（fail-open）+ 一条 ERROR 日志。
+        ：**Redis 不通 ⇒ 放行**（fail-open）+ 一条 ERROR 日志。
            改前**没有任何兜底** ⇒ 异常冒到 `RateLimitMiddleware`
            **非公开路径全站 500**（实测出处：`app/tests/test_rag_search.py`
            `.github/workflows/ci.yml:11`）。理由：限流是**保护**，不是**边界** ——
@@ -130,7 +120,7 @@ class TokenBucketLimiter:
     def get_remaining(self, user_name: str) -> int:
         """查询用户剩余令牌数
 
-        2026-10-05：Redis 不通 ⇒ **报满桶**（`self.capacity`）。
+        ：Redis 不通 ⇒ **报满桶**（`self.capacity`）。
            不是报 0 —— 报 0 会让调用方以为"**被限死了**"，
            而真实情况恰恰相反：**限流已经失效了**（fail-open）。两者的处置完全相反。
         """
@@ -160,7 +150,6 @@ class TokenBucketLimiter:
         key = self._get_bucket_key(user_name)
         now = time.time()
 
-        # 2026-10-05：中间件在 `is_allowed` **之前**就调本函数（`main.py`），
         #    所以**它不兜住 ⇒ 照样是全站 500**。⇒ 同样 fail-open：报满桶。
         try:
             data = redis_client.hgetall(key)
@@ -171,7 +160,6 @@ class TokenBucketLimiter:
             )
             data = {}
 
-        # 2026-09-20 删（§三·D1）：两个分支里原先都还有 `last_time = ...`，**从未被使用**。
         #    **但它一开始被我误报成"桶不回填"（N16）** —— 核了消费入口才发现**回填是有的**，
         #    在 `is_allowed()` 的 **Lua 脚本**里（`elapsed = now - last_time` ⇒ `tokens += elapsed*rate`），
         #    而且是对的。⇒ 本函数是**只读展示**，它算的 `reset_time = now + need/rate` **也是对的**。
@@ -196,10 +184,8 @@ class TokenBucketLimiter:
 
 # 新增 实现“全局 + 用户”两层令牌桶防护
 
-# 2026-10-01 改（S6）：参数从**本文件写死**改为从 `token_config` 取 ——
 #    它们与额度类常量同型（都是"写死的策略参数"）⇒ 收口到一处，便于统一看/统一调。
 #    行为不变：默认值与原来逐字相同（100/150 · 3/20）。
-# 2026-10-05（批 3）：那个 `from token_config import ...` **已上移到文件顶部** ——
 #    因为类里的 `self.ttl` 默认值要用同一份常量，写在中间会变成"先用后导"。
 #    导入位置变了，**取值没变**。
 

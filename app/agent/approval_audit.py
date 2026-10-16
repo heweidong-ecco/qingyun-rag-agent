@@ -3,14 +3,6 @@
 **为什么必须落 PG，不能只在内存**：待接管队列（`pending_approvals.py`）是**进程内存**，
    重启即空；而 `MemorySaver` 重启后**图也没了**。两边一起消失 ⇒ **事后什么都查不到**。
    留痕要活过重启，只能落库。
-
-**为什么不塞进 `pending_approvals.py`**：那个模块的 docstring 全篇在论证
-   「**为什么必须是内存**」，往里加 PG 写会把它变成"两种存储各说一半"的模块。
-
-本模块是 **fail-open** 的：写/读失败一律**打一行日志继续** ——
-   留痕是**旁路**，不该让「批准」这个动作 500，也不该让页面整页崩。
-
-表形状 ⇒ 下面 `_DDL` · spec ⇒ `app/agent/specs/approval_audit.md`
 """
 from typing import Optional
 
@@ -91,7 +83,7 @@ def list_decisions(*, owner: Optional[str], limit: int = 50, offset: int = 0) ->
 
     fail-open：库不可用 ⇒ 返回 `[]`（页面上少一段历史 好过整页 500）。
 
-    **2026-10-08 加 `offset`**（`frontend/README.md` §六 分页）——
+    **加 `offset`**（`frontend/README.md` §六 分页）——
        端点用「**多取一条**」判 `has_more`（见 `api_v1_agent.agent_approval_history`）：
        调用方若要 N 条，**传 `limit=N+1`**，拿到 N+1 条就说明后面还有。
        **排序必须是【全序】**（`created_at DESC, id DESC`）—— 否则翻页会**漏行或重行**，

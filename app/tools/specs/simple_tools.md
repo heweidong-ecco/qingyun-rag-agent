@@ -9,7 +9,7 @@
 
 - **10 处产品代码引用 · 4 个测试文件提到**。
 - **逻辑不在本文件** —— 已搬到 `app/tools/simple_tools_impl.py`（纯 stdlib）。
-- 🔵 **2026-10-08从【两个】变【五个】**（新增 `date_calc` / `json_extract` / `stats`）。
+- 🔵 **从【两个】变【五个】**（新增 `date_calc` / `json_extract` / `stats`）。
 
 ## ⚠️ 看代码会误判的地方 ⭐
 
@@ -18,7 +18,7 @@
    ⚠️ 反过来：**⛔ 别把 langchain 依赖塞进 `_impl`** —— 那个文件的不变量就是「只用标准库」。
 2. 🔴 **`import simple_tools` 会拉 langchain**；**只想用逻辑就 import `simple_tools_impl`**。
    ⇒ 写单测时 import 错的那个 ⇒ **测试平白多一个重依赖**。
-3. 🔴 **缓存包在 `@tool` 这一层**（2026-10-08）：
+3. 🔴 **缓存包在 `@tool` 这一层**：
    `cached_tool` 的 **`name=` 必须显式给** —— 它缺省用 `func.__name__`，
    而外壳函数名与工具名**不一定一致** ⇒ **缓存键会错**（不报错，只是命中率假高/假低）。
    ⛔ **`tool_cache` 绝不许 import 进 `_impl`**（那会破坏第 1 条的不变量）。

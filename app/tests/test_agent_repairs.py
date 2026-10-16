@@ -1,17 +1,7 @@
-"""Agent 三线的回归测试（对应 2026-09-20 的 就绪度探测）
+"""Agent 三线的回归测试（对应 的 就绪度探测）
 
 背景：把 API 真起来逐个打，查出**三条 Agent 路径全断**，而 RAG 那条线完好。
 三条**没有一条是业务逻辑错** —— 全是「**依赖漂移**」：装上的版本比代码写作时新。
-
-| # | 位置 | 根因（实测） |
-|---|---|---|
-| a | `memory_store.py:55` | mem0 **2.0.20** 的 `search` 签名是 `(query, *, top_k=20, filters=None, …)` —— **不收 `user_id`、`limit` 已改名 `top_k`**。线上报 `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported` |
-| b | `agent_graph_advanced.py:110` | **`mcp 1.30.0` 的 `stdio_client` 是 `@asynccontextmanager`** ⇒ 返回 `_AsyncGeneratorContextManager`，**只能用 `async with`，不能 `await`**。线上报 `object _AsyncGeneratorContextManager can't be used in 'await' expression` |
-| c | `api_v1_agent.py:51` | 图带 `interrupt_before=["approval"]`，停在审批点时**最后一条消息是"只带工具调用、无文字"的 AIMessage**，端点照搬 `.content` ⇒ **返回 200 + 空答案，且不告诉调用方"正在等审批"** |
-
-这些测试**都用"复刻真实依赖契约的替身"**，不是断言 mock 被调用过：
-   替身会**在参数不对时抛错**（照抄线上那条异常的触发条件）——
-   所以"生产代码被改回错写法"就会让它红。
 """
 import asyncio
 import contextlib
@@ -117,14 +107,14 @@ def _install_mcp_fakes(monkeypatch, m, events):
 def test_call_mcp_tool_keeps_session_lifecycle_inside_one_task(monkeypatch):
     """一次 `call_mcp_tool` 里，会话是**开 → 用 → 关**（三层嵌套顺序正确）。
 
-    **为什么不许池化**（这是 2026-09-20 实测撞出来的）:
+    **为什么不许池化**（这是 实测撞出来的）:
       `stdio_client` 基于 **anyio**，其 cancel scope 要求「**进入与退出在同一个 task**」。
       池化的生命周期天然跨 task（启动 task 建 · 请求 task 用 · 归还 task 关）
       实测报 `RuntimeError: Attempted to exit cancel scope in a different task
       than it was entered in` —— 而且它会让**应用启动直接失败**
       （`Application startup failed. Exiting.`）。
 
-    ## 2026-10-08：**本用例比它自称的弱，已订正**
+    ## ：**本用例比它自称的弱，已订正**
 
     它**原**写的是「`call_mcp_tool` **返回时**已关闭」，并声称是"不许改回池化"的反向保护。
     **实测：那句是虚的** —— 断言只检查 `asyncio.run` **结束之后**的事件序列，
@@ -155,7 +145,7 @@ def test_call_mcp_tool_keeps_session_lifecycle_inside_one_task(monkeypatch):
 def test_mcp_server_path_does_not_depend_on_cwd(monkeypatch, tmp_path):
     """MCP server 的路径必须锚在**模块自身位置**，不能是相对 CWD 的相对路径。
 
-    2026-09-20 实测（这是"传输层修好了健康检查还是全红"的答案）:
+    实测（这是"传输层修好了健康检查还是全红"的答案）:
       本仓文档起服务的姿势是 `cd app && uvicorn main:app`，而路径写的是
       `"app/tools/mcp_server.py"` ⇒ 从 `app/` 看是 `app/app/tools/mcp_server.py` —— **不存在**
       ⇒ MCP 子进程起不来 ⇒ 6 个工具全 unhealthy（报 `ExceptionGroup:
@@ -172,7 +162,7 @@ def test_mcp_server_path_does_not_depend_on_cwd(monkeypatch, tmp_path):
     seen = {}
 
     class _Params:
-        # ⚠️ `env` 这个形参⛔ 别删 —— （2026-10-15）给真实构造加了这个关键字，
+        # ⚠️ `env` 这个形参⛔ 别删 —— （）给真实构造加了这个关键字，
         #    替身不接就会 `TypeError: unexpected keyword argument 'env'`，
         #    而那会**伪装成"路径守卫红了"**（判据指错方向是本仓最恨的形态）。
         def __init__(self, command=None, args=None, env=None):
@@ -218,7 +208,7 @@ def test_mcp_server_path_does_not_depend_on_cwd(monkeypatch, tmp_path):
 
 
 def test_mcp_server_gets_the_full_environment(monkeypatch):
-    """（2026-10-15）：MCP 子进程**必须拿到与父进程同一份 env**。
+    """：MCP 子进程**必须拿到与父进程同一份 env**。
 
     ## 这条钉的是什么
 
@@ -301,7 +291,7 @@ def test_mcp_server_gets_the_full_environment(monkeypatch):
 def test_get_mcp_tools_also_keeps_lifecycle_inside_one_task(monkeypatch):
     """同上（`/agent/mcp_tools_dynamic` 走 `get_mcp_tools`）：三层嵌套顺序正确 + 跑完确实关了。
 
-    **2026-10-08口径订正**：本条与上一条同因 —— 原写「必须**自开自关**」，
+    **口径订正**：本条与上一条同因 —— 原写「必须**自开自关**」，
     而-B 之后会话是**长驻**的。**不再是"自开自关"，是"整个生命周期落在
     一个 holder task 里、且跑完会关"**。那两条不变量的新守卫 ⇒ `app/tests/test_mcp_long_session.py`
     """
@@ -404,7 +394,7 @@ def test_mcp_server_command_uses_current_interpreter(monkeypatch):
 # (d) mcp_tool_factory：handler 必须把 arguments 字典【原样】交给 invoke()
 # ===========================================================================
 def test_mcp_tool_handler_passes_dict_to_invoke():
-    """2026-09-20：原实现 `tool_func.invoke(tool_func.args_schema(**arguments))`
+    """：原实现 `tool_func.invoke(tool_func.args_schema(**arguments))`
     把 **pydantic 实例**喂给 `StructuredTool.invoke`，而它要的是 **dict**
 
         TypeError: calculator missing 1 required positional argument: 'expression'
@@ -473,7 +463,6 @@ def test_mcp_server_call_tool_offloads_sync_handler(monkeypatch):
         ms.call_tool(None, CallToolRequestParams(name="probe", arguments={}))
     )
 
-    # 2026-10-08：**只改了"怎么调"** —— `call_tool` 从 `(name, arguments)`
     #    变成 `(ctx, params)`（2.x 的构造器回调），返回值从裸 `list` 变成 `CallToolResult`
     #    （文本在 `.content[0].text`）。
     #    **下面两条断言一个字没动** —— 它们守的是"同步工具不能在事件循环里跑"，与签名无关。
@@ -490,7 +479,7 @@ def test_mcp_server_call_tool_offloads_sync_handler(monkeypatch):
 def test_get_llm_with_mcp_tools_unpacks_list_tools_result(monkeypatch):
     """`list_tools` 返回的是 **`ListToolsResult`**（列表在 `.tools`），不是列表本身。
 
-    实测（2026-09-20）:原实现 `for mcp_tool in tools:` 直接遍历结果对象
+    实测:原实现 `for mcp_tool in tools:` 直接遍历结果对象
        pydantic 模型迭代出的是 **(key, value) 元组**
        `AttributeError: 'tuple' object has no attribute 'name'`
        ⇒ `/agent/mcp_chat`（三代）**500**。
@@ -538,7 +527,7 @@ def test_get_llm_with_mcp_tools_unpacks_list_tools_result(monkeypatch):
            "重新启用端点时**必须一并取消本 skip**，否则「同步 Playwright 跑在事件循环里」会踩回来。"
 )
 def test_fetch_webpage_is_not_invoked_on_the_event_loop(client, auth_headers, monkeypatch):
-    """实测（2026-09-20）:`playwright._impl._errors.Error: It looks like you are
+    """实测:`playwright._impl._errors.Error: It looks like you are
     using Playwright Sync API inside the asyncio loop.`（`browser_tools.py:13`）
 
     ⇒ 端点必须把**同步**工具调用丢到线程里（`asyncio.to_thread`）。
@@ -643,7 +632,7 @@ def test_stopped_at_approval_also_when_the_model_wrote_text_first():
     判据只需看 `tool_calls`：图带 `interrupt_before=["approval"]` ⇒ 停在审批点时末条消息
        必带 tool_calls；而 ToolMessage **没有 `tool_calls` 属性**，本来就不会误报（见下一条用例）。
 
-    **2026-10-03（B4）更正**：原文这里写「**只要有 tool_calls 就一定停在审批点**」——
+    **（B4）更正**：原文这里写「**只要有 tool_calls 就一定停在审批点**」——
        **B4 之后这句是假的**（非敏感的 `calculator`/`date_today` 直接跑完，不停）。
        但**本用例仍然成立**，因为它是**手工造的 state**、不跑图：
        它测的是「**给定一个停在审批点的返回态，能不能正确报出来**」，
@@ -671,7 +660,7 @@ def test_stopped_at_approval_also_when_the_model_wrote_text_first():
 def test_react_tool_list_has_no_duplicate_names():
     """REACT 子图绑定的工具列表**不能有重名** —— LLM 会直接拒收。
 
-    实测（2026-09-20）:模块级 `agent_graph_advanced_learning.tools` 在第 47-51 行
+    实测:模块级 `agent_graph_advanced_learning.tools` 在第 47-51 行
        已列了 `fetch_webpage` / `fetch_webpage_html` / `screenshot_webpage`，
        紧接着第 54 行又 `tools.extend([fetch_webpage, fetch_webpage_html])`
        ⇒ **两个工具各出现两次** ⇒ `llm_react.bind_tools(tools)` 发给 DeepSeek 时被拒：
@@ -692,7 +681,7 @@ def test_react_tool_list_has_no_duplicate_names():
 def test_llm_tool_table_is_sourced_from_mcp_registry():
     """REACT 的 LLM 工具表必须与 MCP 注册表**同源** —— 否则 LLM 看得、调不到。
 
-    实测（2026-09-20）:`mcp_server.TOOLS` 只有 **6** 个工具，而
+    实测:`mcp_server.TOOLS` 只有 **6** 个工具，而
        `agent_graph_advanced_learning.tools` 有 **7** 个（多出 `fetch_webpage_html`）。
        而 `mcp_server.TOOL_HANDLERS` 是**从 `TOOLS` 生成的** ⇒ `fetch_webpage_html`
        永远取不到 handler ⇒ 走到那一步只回一句「**未找到工具: fetch_webpage_html**」，
@@ -728,7 +717,7 @@ def test_llm_tool_table_is_sourced_from_mcp_registry():
 def test_react_subgraph_sets_final_output(monkeypatch):
     """REACT 子图必须把最终答案落成 `final_output`。
 
-    实测（2026-09-20）:该子图只有 `agent` 与 `tools` 两个节点，**没有任何节点写
+    实测:该子图只有 `agent` 与 `tools` 两个节点，**没有任何节点写
        `final_output`**，而端点读的是 `result.get("final_output", "处理完成")`
        ⇒ **走 REACT 意图时永远返回占位串「处理完成」**（其余四个子图都写了）。
 
@@ -746,7 +735,7 @@ def test_react_subgraph_sets_final_output(monkeypatch):
             return AIMessage(content=_ANSWER)
 
         def stream(self, messages, config=None):
-            """2026-10-04：`agent_decide` 已从 `.invoke` 改成 `.stream`（真流式）
+            """：`agent_decide` 已从 `.invoke` 改成 `.stream`（真流式）
             ⇒ 替身必须跟上，否则 `AttributeError: '_Bound' object has no attribute 'stream'`。
 
             **只吐一块是故意的**：本用例测的是「`final_output` 落没落」，不是「分几块」
@@ -763,21 +752,15 @@ def test_react_subgraph_sets_final_output(monkeypatch):
         def bind_tools(self, tools):
             return _Bound()
 
-    # 2026-10-02（①b）：原来是 `monkeypatch.setattr(L, "ChatOpenAI", _FakeLLM)`。
     #    该模块已改走 `llm_factory.make_llm()`（`ChatOpenAI` 的 import 被**删掉**了）
     #    ⇒ 旧写法会 `AttributeError: module has no attribute 'ChatOpenAI'`。
     #    这里**必须挡 `L.make_llm`**（模块内的属性引用）——
     #       挡 `llm_factory.make_llm` **不管用**：模块是 `from llm_factory import make_llm`
-    #       拿到的**独立名字绑定**，改工厂模块不会改到它。
     monkeypatch.setattr(L, "make_llm", lambda *a, **k: _FakeLLM())
     # **必须同时挡掉记忆注入那条路** —— `agent_decide` 会调
     #    `inject_memories_to_prompt` → `search_user_memory` → **mem0 自己去连
     #    DashScope 做 embedding**。不挡的话这条用例就**依赖真凭据**：
     #    本地有真 key 所以"绿"，CI 是 dummy key
-    #    `openai.AuthenticationError: 401 Incorrect API key` ⇒ **CI 红**。
-    #    这正是"本地绿 ≠ CI 绿"的实例 —— 事后我用 **CI 同款 dummy 环境**
-    #      本地复现了它（`DASHSCOPE_API_KEY=ci-dummy-… pytest …` ⇒ 1 failed）。
-    #    ⇒ **教训：新用例写完，要用 CI 的环境跑一遍，别只在有真 key 的本机跑。**
     monkeypatch.setattr(L, "inject_memories_to_prompt", lambda prompt, state: prompt)
 
     graph = L.create_react_subgraph()
@@ -869,7 +852,7 @@ def test_react_subgraph_aggregates_fragmented_tool_calls(monkeypatch):
 def test_mcp_tools_dynamic_handles_list_tools_result(client, auth_headers, monkeypatch):
     """`/agent/mcp_tools_dynamic` 也必须解 `.tools` —— 与 bug 7 是**同一个 bug 的第二个入口**。
 
-    实测（2026-09-20）:`get_mcp_tools` 返回 `ListToolsResult`，而该端点写的是
+    实测:`get_mcp_tools` 返回 `ListToolsResult`，而该端点写的是
        `for t in tools` + `len(tools)` ⇒ `AttributeError: 'tuple' object has no attribute
        'name'` ⇒ **该路由 100% 500**。
 

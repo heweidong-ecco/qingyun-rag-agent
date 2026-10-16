@@ -1,21 +1,6 @@
 """全局日级 token 总额· **需要真 Postgres** 的那一半。
 
 与 `test_global_daily_budget_offline.py` 的分工：本文件**只放"必须真读写库"的**。
-
-## 本文件补的是一个【真缺口】，不是"对称好看"
-
-`app/billing/specs/token_tracker.md` 的 `①b · ` **只列了离线那份**。
-但离线那份**从头到尾没有执行过那条 SQL** —— 它只 `AST` 取字面量做静态核对。
-⇒ 意味着：**表名打错、列名打错、SQL 语法错，CI 永远绿。**
-
-这与  不对称（那边有 `test_session_budget.py`）。
-本文件把这条补上 —— 补完， 的 SQL **至少有一条路径会真的执行它**。
-
-**跑之前必须带库名隔离**：`POSTGRES_DB=rag_test`
-   （本仓有前科：R2 冒烟忘带库名，`record_usage` 往**真库**写了 4 行 ——
-
-**本文件不进 CI**（CI 无 postgres service，见 `app/pytest.ini`）
-   —— 所以  的**核心判据（SQL 里没有 `user_name`）不在本文件**，在离线那份里。
 """
 import pytest
 

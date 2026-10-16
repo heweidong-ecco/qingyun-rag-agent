@@ -20,7 +20,7 @@
 >    **必须住同一个文件**（分居两处 = 赌"改了这头记得改那头"）。⚠️ 所以 6 个内容页也引它。
 > 📌 **现跑**：`ls app/static/js/*.js | grep -v test | wc -l`（⛔ 别抄数）。
 
-> ## 🔴 2026-10-12：**旧那 12 份 js 全部删掉**（前端重做 ⑥）
+> ## 🔴 ：**旧那 12 份 js 全部删掉**（前端重做 ⑥）
 >
 > `sse.js` · `cost.js` · `lab.js` · `tools.js` · `system.js` · `ops.js` · `trace.js`
 > `approvals.js` · `kb.js` · `panel.js` · `pagenav.js` · `topnav.js`（+ 各自的 `.test.js`）
@@ -39,12 +39,12 @@
 - 🔴🔴 **每个文件整体包在 IIFE 里，对外⛔ 只许留【一个】全局键**（`RagXxx`）。
   ⚠️ **经典脚本（`<script src>`）的顶层 `function` / `const` 全是全局的** ——
   而 8 个页面**各自也有顶层绑定**（每页都有 `const $ = …`、`const key = …`、`function el(…)`）。
-  2026-10-10 实测：`session.js` 顶层写 `function key()` ⇒ 与页面那句顶层 `const key` **撞上**
+  实测：`session.js` 顶层写 `function key` ⇒ 与页面那句顶层 `const key` **撞上**
   ⇒ `SyntaxError: Identifier 'key' has already been declared`
   ⇒ **整段内联脚本一行都不执行，8 个页面全是死的**，而 982 条 pytest + 283 条 node **全绿**。
   ⇒ 现在两份共用文件各包一层 IIFE；**守卫**：两个 `*.test.js` 末条钉「只许漏一个全局」（反证过）。
   📄 复盘
-- 🔴 **页面里那段【内联】JS 也有门了**（2026-10-10 新立）——
+- 🔴 **页面里那段【内联】JS 也有门了**（新立）——
   `app/tests/test_web_pages.py` 会把每页内联的 `<script>` 抽出来过 `node --check`。
   ⚠️ 它只管「**能不能解析**」；逻辑对不对仍归本目录的 `*.test.js` 与各页用例。
   ❗**在这之前，那段代码没有任何判据** —— 写错了没人知道（同上面那份复盘）。

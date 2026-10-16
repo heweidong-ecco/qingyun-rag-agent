@@ -31,7 +31,7 @@ tags: [reranker, performance, batch-processing]
 > ✅ **现在真正在跑的是**：**`app/rag/reranker.py`**（CrossEncoder `BAAI/bge-reranker-v2-m3`
 > 懒加载单例 + `rerank` / `rerank_async`），由 `hybrid_search.py` 与 `rag_pipeline.py` 引用。
 >
-> **判据（可打印，2026-10-07 核）**：
+> **判据（可打印，核）**：
 > ```bash
 > ls app/ | grep -i rerank          # ⇒ 只有 reranker.py（v1/v2/v3 那三个都不在）
 > grep -rn "def rerank" app/rag/reranker.py   # ⇒ rerank / rerank_async 都在这一个文件里

@@ -4,34 +4,6 @@
    把 `%s` 换成 `?` 丢进 `sqlite3` **原地执行** ——
    ⇒ 被测的是**产品代码产出的谓词本身**，不是我在测试里照抄一份
      （照抄只能测"我抄对没有"，产品代码改成什么都照样绿）。
-
-**为什么要防 NULL**：`app/core/db_metadata.py:41` 声明的是
-   `Column("is_active", Integer, server_default="1")` —— **没有 `nullable=False`**
-   ⇒ 真库里**可能**有 `is_active IS NULL` 的行。
-   写成 `WHERE is_active = 1`，那些行会被**静默排除** ⇒ **老 key 集体失效**，
-   而用户只看到一句"凭据无效"，**查不到点上**（同 `deps.py` 剥空白那条教训）。
-   **现状（2026-10-06 实测）**：本机真库 5 行**全是 1，一行 NULL 都没有**
-      —— 所以 `COALESCE` 那半句现在是**保险**，不是"已证实的必需"。
-      留着它，是因为 NULL 仍然可以由人工 `INSERT` 或别的库产生，而代价是零。
-
----
-
-## 本文件在 2026-10-06 犯过一次的事故 —— 两条新用例就是照它写的
-
-当时 `app/access/auth.py` 已经按 `is_active` 过滤，而**真库里根本没有这一列**
-（`CREATE TABLE IF NOT EXISTS` 对已存在的表什么都不做）⇒ **每次 key 认证 503**
-（`UndefinedColumn`），且限流/额度两道闸**同时 fail-open**。
-
-**而本文件当时全绿。** 为什么：`_run_against_sqlite` 的表是**它自己手写的**，
-手写时带了 `is_active`。⇒ 它测的是「**我按文档描述建的表**」，不是「**产品代码将来会跑的那张表**」。
-（同族： 那几篇「代理量 / 空清单静默假通过」。）
-
-⇒ 下面两条把表的来源换成 **`app/core/db.py` 的真 DDL** 与 **`app/schema.sql`（线上口径）**：
-
-| 新增用例 | 挡的是哪种改法 |
-|---|---|
-| `test_table_in_db_py_has_every_column_the_query_touches` | 只改 `auth.py` 的查询、**没改建表 DDL** ⇒ 代码要一列不存在的列 |
-| `test_columns_newer_than_exported_schema_have_an_alter_in_db_py` | 只改建表 DDL、**忘了老库补列那句 `ALTER`** ⇒ 新库有、**老库永远没有** |
 """
 import datetime
 import re
@@ -79,7 +51,7 @@ def _api_keys_ddl_for_sqlite() -> str:
     """`db.py` 里 `api_keys` 的**真**建表语句，改到 sqlite 能跑。
 
     **本函数的全部意义：表来自产品代码，不是测试手写的。**
-       2026-10-06 那次事故正是"手写表"造成的（见文件头）。
+       那次事故正是"手写表"造成的（见文件头）。
     """
     src = DB_PY.read_text(encoding="utf-8")
     m = re.search(r"(CREATE TABLE IF NOT EXISTS api_keys\s*\(.*?\)\s*;)", src, re.S)
@@ -89,7 +61,7 @@ def _api_keys_ddl_for_sqlite() -> str:
 
 
 def test_table_in_db_py_has_every_column_the_query_touches(captured_sql):
-    """**这条就是 2026-10-06 那次事故的尺子**：拿 `db.py` 的**真 DDL** 建表，
+    """**这条就是 那次事故的尺子**：拿 `db.py` 的**真 DDL** 建表，
     跑 `auth.py` 产出的**真 SQL** —— 对不上就红。
 
     别再改成"测试自己写一张带 `is_active` 的表"：那样它测的是**你心里那张表**，

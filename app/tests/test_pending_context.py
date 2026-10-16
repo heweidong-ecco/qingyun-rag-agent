@@ -3,11 +3,6 @@
 **为什么必须新开一个端点**：`/agent/pending` 返回的只有登记表那 7 个字段，
    **没有 messages、没有用户问的原话、没有已生成的部分**；而全仓**没有任何端点**
    暴露某会话的图状态（`aget_state` 只在端点内部被用过）。
-
-定位逻辑与 `/agent/approve` **同构**（不另起一套）：反查候选 → （可选）owner 收窄
-   → 0 条 / 多条各拒绝 → 归属校验（本人 or admin）→ 按**登记的图**取 state。
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_pending_context.py -q -p no:warnings`
 """
 import asyncio
 import types

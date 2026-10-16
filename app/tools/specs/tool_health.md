@@ -31,7 +31,7 @@ async def run_health_check():        # 启动时调一次
 | 缺口 | 说明 |
 |---|---|
 | 🔴 **`_tool_health` 是模块级进程内存** | **重启即清空** · 每个进程**各有一份** ⇒ 多进程部署下**不共享**。⚠️ 且没有落盘、没有 TTL —— `last_checked` 写了但**全仓没有一处读它** |
-| ⚠️ **探测表与注册表要【手动对齐】** | 🔴 2026-10-08  起：`TEST_ARGS_MAP` 有 **7** 项（`calculator` / `date_today` / `date_calc` / `json_extract` / `stats` / `web_search` / `execute_python`），另两项**注释着**。⚠️ 与 `mcp_server.TOOLS` 的 7 项**逐名一致**。<br>🔴 **不在表里 ⇒ 该工具【永远不被探测】（静默）** —— 已由 `app/tests/test_tool_registration_completeness.py` 补成**会红的断言**（改前**零守卫**） |
+| ⚠️ **探测表与注册表要【手动对齐】** | 🔴 ：`TEST_ARGS_MAP` 有 **7** 项（`calculator` / `date_today` / `date_calc` / `json_extract` / `stats` / `web_search` / `execute_python`），另两项**注释着**。⚠️ 与 `mcp_server.TOOLS` 的 7 项**逐名一致**。<br>🔴 **不在表里 ⇒ 该工具【永远不被探测】（静默）** —— 已由 `app/tests/test_tool_registration_completeness.py` 补成**会红的断言**（改前**零守卫**） |
 | ⚠️ **没有任何"健康度随时间衰减"** | 探过就是探过了，`last_checked` 不再被用 ⇒ 一个工具坏掉后**只有等下次手动刷新**才知道 |
 | ⚠️ **零专属测试** | 探测失败 / 字符串误判 / 表外工具 —— 都没有用例 |
 
@@ -39,7 +39,7 @@ async def run_health_check():        # 启动时调一次
 
 > ⭐ 这一节是整份 spec 的价值所在 —— 前面两节读代码也能推出来，这一节**推不出来**。
 
-### 1. ✅ 【已修】注释与代码互相矛盾那条（2026-10-08）
+### 1. ✅ 【已修】注释与代码互相矛盾那条
 
 **改前**，`app/tools/tool_health.py` 的 `TEST_ARGS_MAP` 上方那句注释写着：
 > 「`run_health_check` 是**按 `mcp_server.TOOLS` 遍历**的，表里多两项不会被查到。」
@@ -48,7 +48,7 @@ async def run_health_check():        # 启动时调一次
 ⚠️ 连带它那句**结论**也对不上：按实际代码，**在 `TEST_ARGS_MAP` 里取消注释那两行，是【会】被探测到的**
 （真正卡住它们的是 `mcp_server.TOOLS` 里那两行也没开——那边注释写对了）。
 
-✅ **2026-10-08已按作者口径「注释也得是真的」改准**：注释现在写的是
+✅ **已按作者口径「注释也得是真的」改准**：注释现在写的是
 「它遍历的是**本表**（`run_health_check()` 里的 `for tool_name in TEST_ARGS_MAP`）**结论没变、理由变了**」。
 ⚠️ **改的是【理由】，⛔ 不是结论** —— 「多两项不会被查到」这个**结论依然成立**（它们不在 `mcp_server.TOOLS` 里）。
 ⚠️ **新注释里不写行号** —— 本仓：行号锚点系统性漂移（这次一加行，原 `:103` 就变成了 `:111`）。
@@ -106,7 +106,6 @@ if result and "工具调用失败" not in result and "未找到工具" not in re
 
 ### 7. ⚠️ 已删的 `FALLBACK_MAP` / `get_fallback_tool()` —— 看 git 历史会看到
 
-2026-09-20 删（批次）。**它是双重死代码**：① 全仓零调用 ② 它引用的 `fallback_search` / `chat`
 **全仓都没有定义** ⇒ 就算接上线，返回的也是一个**不存在的工具名**。
 ⇒ ⛔ **别把"降级"理解成"换一个备用工具"** —— 本仓的降级是**把不健康的工具移出清单**。
 
@@ -117,3 +116,18 @@ if result and "工具调用失败" not in result and "未找到工具" not in re
 | MCP Server 模块（`app/tools/mcp_server.py`） | ⭐ **降级真正发生的地方**（`list_tools()` `:63-73`）。⛔ **它还没有 spec** ⇒ 本表不给路径 |
 | `app/tools/specs/search_tools.md` | 探测表里唯一会**打外网**的那个工具 |
 | `app/routing/specs/api_v1_agent.md` | 两个健康端点（含 `_tool_health` 直出） |
+
+
+---
+
+## 📎 原先写在代码 docstring 里的设计说明
+
+> 来源 = `app/tools/tool_health.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+
+本文件原先自称「工具健康检查**与自动降级**」，并带一份 `FALLBACK_MAP` + `get_fallback_tool`。
+   实测那套是**双重死代码**：
+     ① **全仓零调用**（`grep -rn 'get_fallback_tool|FALLBACK_MAP' app/` 除定义处 0 次）
+     ② **连它引用的名字也不存在** —— `fallback_search`、`chat` 全仓都无定义
+        ⇒ **就算接上线，它返回的也是一个不存在的工具名。**
+   ⇒ 它不是"预留的能力"，是**一段从来没能工作过的代码**。
+   真正的降级是"**把不健康的工具移出清单**"，不是"换一个备用工具"—— 已在上方写明。

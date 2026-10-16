@@ -3,7 +3,6 @@ API v1 路由集中定义
 所有 /api/v1 前缀的接口在此管理。
 """
 import json
-# 2026-10-04 删 `import time`：本文件**只有** `/rag/async_ask` 与
 #    `/rag/parallel_ask` 用 `time.time()`，两条端点已删（全仓已核，见 `grep -n '\btime\b'`）。
 import uuid
 from loguru import logger
@@ -25,22 +24,20 @@ from billing.token_tracker import check_session_token_budget, record_from_respon
 #    「导入期不拉重依赖」的既有做法（同上面 `token_tracker` 那条注释的道理）。
 from billing.breaker import circuit, global_key
 from routing.schemas import (
-    ChatHistoryResponse,   # 2026-10-13：PENDING 那三条欠账之一
+    ChatHistoryResponse,   # ：PENDING 那三条欠账之一
     QuestionRequest,
     DocumentInsert,
     BatchDocumentInsert,
     RagSearchResponse,
-    DocListResponse,      # N35：列出文档（2026-10-12）
+    DocListResponse,      # N35：列出文档
     DocFullResponse,      # N35：取整篇全文
     DocInsertResponse,    # 单条入库的回执
     BatchInsertResponse,  # 批量入库的回执
     UploadDocResponse,    # 上传入库的回执
     DocDeleteResponse,    # 删除的回执（N58：前端在用它返回里的 id）
 )
-# 2026-10-04 删 `get_current_user_jwt`：它在本文件**只有** `jwt_ask_question` 一处用，
 #    随该端点一起删 ⇒ 留着就是没人用的 import。
 # `require_admin` 原先挂在这里、**本文件从未用过**（的「先挂起」那批）。
-#    2026-10-07 清存量时**已删** —— 同批删掉的还有：`JSONResponse` · `ACCESS_TOKEN_EXPIRE_MINUTES`
 #    `LoginRequest`/`RefreshRequest`/`UserCreate` · `insert_batch_documents` · `get_weather`
 #    `append_chat_history`/`INTERRUPTED_SUFFIX` · `agent_graph`。**没删任何模块**，只删导入行。
 from routing.deps import get_current_user_hybrid
@@ -48,18 +45,17 @@ from routing.deps import get_current_user_hybrid
 # 不能自定义请求头，`X-API-Key` / `Authorization` 送不上来）。
 from routing.deps import require_ws_user
 from core.db import get_db, insert_document, PUBLIC_OWNER, enable_ann_iterative_scan  # PUBLIC_OWNER：列表/取全文的作用域（N35）· enable_ann_iterative_scan：
-from core.config import MAX_INGEST_CHUNKS, MAX_UPLOAD_BYTES  # 2026-10-14（①b）：字节上限 + 块数上限
-from core.db import search_similar  # 2026-10-03 乙段：stream_search 改走共享层
+from core.config import MAX_INGEST_CHUNKS, MAX_UPLOAD_BYTES  # （①b）：字节上限 + 块数上限
+from core.db import search_similar  # 乙段：stream_search 改走共享层
 from rag.embedding_client import get_embedding
-# （2026-10-08 ·  §六·1）：检索链也要建轨迹 —— 见 `stream_search` 里那两处调用。
+# （·  §六·1）：检索链也要建轨迹 —— 见 `stream_search` 里那两处调用。
 from tools.tool_visualizer import start_trace, finish_trace
 
-from access.permission import get_user_role, UserRole  # 2026-10-03 删 `get_user_quota`（本文件从未使用；该函数已随  一起删）
+from access.permission import get_user_role, UserRole  # 删 `get_user_quota`（本文件从未使用；该函数已随 一起删）
 from core.db import invalidate_bm25_cache
 from rag.hybrid_search import hybrid_search
 from rag.hybrid_search import rerank_search
 from rag.hybrid_search import hybrid_search_with_rewrite
-# 2026-09-20 删（D1/pyflakes 报 redefinition）：这一行与下方（`SearchMode` 那段附近）
 #    的导入**重复**，且下方那份还多带 `create_accurate_norerank_pipeline`。
 #    实测：本行那份在下方覆盖之前**从未被使用** ⇒ 删本行、保留下方更全的那份。
 from fastapi import File, UploadFile
@@ -71,14 +67,8 @@ from rag.document_parser import parse_document
 
 # `INTERRUPTED_SUFFIX` 看着"没用"，但**必须留** —— 它是不是死导入，`ruff` 判不了：
 #    `app/tests/test_cancel_propagation.py` **6 处**写作 `rag_mod.INTERRUPTED_SUFFIX`（**属性访问**，
-#    不是 `from ... import`）。2026-10-07 清存量时**删过一次**，那 6 条用例当场全红
+#    不是 `from ... import`）。清存量时**删过一次**，那 6 条用例当场全红
 #    （`AttributeError: module 'api_v1_rag' has no attribute 'INTERRUPTED_SUFFIX'`）⇒ 已还原。
-#    **这就是"F401 不等于死导入"的实例**：ruff 只看本文件的名字，看不见**别人按属性取**。
-#    下面 import 行行尾那条 `noqa` 指令是**收尾动作**（2026-10-07，与本批清存量
-#       同一刀，注释里不写那个井号，写了 ruff 会把它当成一条坏 noqa 指令打警告）：存量清零后
-#       基线空了，本来可以把它留成基线的一条；**没有那样做** —— 基线的键是 `(文件, 规则)`，
-#       挂一条 = 把 `app/routing/api_v1_rag.py` **所有** F401 一律放行（将来真加了死导入也不报）。
-#       行尾 `noqa` 只放行**这一行**，且理由写在行边上。同理见 `app/agent/agent_checkpointer.py:31`。
 from core.cache import get_chat_history, persist_turn, INTERRUPTED_SUFFIX  # noqa: F401
 
 
@@ -175,7 +165,7 @@ async def insert_single_doc(
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """插入单条文档，自动生成Embedding并入库"""
-    # 🔴 （2026-10-16）：**入库不是对话链** —— 它没有"会话"这个概念
+    # 🔴 （）：**入库不是对话链** —— 它没有"会话"这个概念
     #    ⇒ 给一个**显式**的非会话标记，让账本自己说清「这笔记的不是某个会话」。
     #    ⛔ **别让它静默落 `"system"`** —— 那个值的语义是「**连用户都没有**」（启动预热那种），
     #    而这里**用户是真的**（`user_name` 就是）。
@@ -190,7 +180,7 @@ async def insert_single_doc(
             conn.commit()
     # 文档已变更 → 必须**在函数内**失效 BM25 进程内缓存。
     # (原先写在模块级 = 只在 import 时执行一次 ⇒ 插入后缓存不失效,新文档在 BM25 通路里
-    #  "不存在",必须重启进程才能检索到。2026-09-11 实测:重启前新文档不在 top10,重启后第 2 名)
+    #  "不存在",必须重启进程才能检索到。实测:重启前新文档不在 top10,重启后第 2 名)
     invalidate_bm25_cache()
     return {"status": "inserted","id": new_id, "content": doc.content[:100], "source": doc.source,"requested_by":user_name}
 
@@ -303,14 +293,14 @@ preprocessor = DocumentPreprocessor()
 async def upload_document(
     file: UploadFile = File(...),
     domain: str = "default",  # 新增：用户可指定领域，默认为 "default"，法律"legal",医疗"medical"
-    doc_type: str = "",       # 2026-10-08 新增：**可选**分块档位。
+    doc_type: str = "",       # 新增：**可选**分块档位。
                               # 默认空 = **沿用扩展名推断** ⇒ **访客行为一字不变**；
                               #    灌库脚本（乙的四类语料）走这条显式指定。
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """上传并解析多格式文档（PDF/Word/Markdown/HTML），经过预处理后入库。
 
-    2026-09-20 修：此处原有**两行紧挨着的 docstring** ——
+    修：此处原有**两行紧挨着的 docstring** ——
        第二行（那句「上传并解析多格式文档，经过预处理后入库」，用三引号包着）是**空操作**
        （函数已有一行 docstring）。已把它的信息并入第一行、删掉第二行。
     """
@@ -324,18 +314,8 @@ async def upload_document(
         )
     
     # 保存临时文件
-    # 2026-09-20 删（D1/pyflakes 报 redefinition）：这里原先又 `import tempfile` / `import os`，
     #    而两者**模块级早就导入过**（见文件头部）⇒ 这两行只是把同名对象再绑一次，纯冗余。
-    #
-    # 🔴🔴 2026-10-14（`①b`  ·  §二·4.2 ①）：**大小上限必须卡在 `read()` 之前**
-    #    改前那一句是 `tmp.write(await file.read())` —— **整个文件一次性进内存**
-    #    ⇒ **"读完再判大小"等于没判**：内存已经吃掉了。
-    # ⚠️ **为什么这条不是"锦上添花"**：本服务容器实测 **8 GiB 且 `SwapTotal=0`**
-    #    ⇒ **OOM 直接 kill，没有缓冲**；**一个 200 MB 的文件就能打死容器，不需要恶意、不需要并发**。
-    # ⇒ 做法：**边读边计，一超就停**（⛔ 不是先读完再 `len()`）。
-    # ⚠️ 上限 **48 KB**（`config.MAX_UPLOAD_BYTES`，反推自"每次 1 万 token"）——
-    #    ⛔ **不是 MB 级**，理由写在那个常量自己的注释里。
-    # ⚠️ 先给个名字：`with` 里那句万一就抛了，下面 `finally` 读它会 `NameError`
+    # 🔴🔴 （`①b`  ·  §二·4.2 ①）：**大小上限必须卡在 `read()` 之前**
     tmp_path = None
     try:
         total_bytes = 0
@@ -371,13 +351,6 @@ async def upload_document(
         # 可选：对块进行语义去重
         # chunks = preprocessor.deduplicate_chunks(chunks)
         # 分块（根据文件格式选择分块策略）
-        # PDF 和 Word 通常为技术文档，Markdown 也按技术文档处理
-        #
-        # 2026-10-08 改—— 原来只有下面这一句【按扩展名猜】：
-        #        doc_type = "legal" if ext == "pdf" else "technical"
-        #    ⇒ **除 PDF 外的一切全吃 `technical`** ⇒ `report`/`article`/`faq` 三档**从来用不上**。
-        #    现在：**调用方给了就用**（乙的灌库脚本按类别显式给），**没给才回落到原来的推断**
-        #    ⇒ **访客走的那条路一字不变**（作者 2026-10-08 裁的就是这个默认值）。
         doc_type = doc_type.strip() or ("legal" if ext == "pdf" else "technical")
 
         # 未知档位 ⇒ **当场拒绝**，不许往下走。
@@ -391,7 +364,6 @@ async def upload_document(
             )
         chunks = split_text_with_filter(cleaned_text, doc_type=doc_type, min_length=20)
 
-        # 🔴 2026-10-14（`①b`  ·  §二·4 第 3 条）：**单次块数上限**
         #    —— 与上面那道字节上限是**两个量纲**（字节管**花多少钱**，块数管**耗时/超时**）。
         # ⚠️ **必须在【入库循环之前】判** —— 进去之后就是逐块调 embedding 了，
         #    而 `Swap=0` 的容器上"跑到一半才超时"比"当场拒掉"糟得多。
@@ -408,13 +380,9 @@ async def upload_document(
             embedding = get_embedding(chunk, user_name=user_name, thread_id="ingest")     # 🔴：同上
             insert_document(chunk, file.filename, embedding, user_name)  # user_name 作为 requested_by
 
-        # 2026-10-12 补：**文档已变更 ⇒ 必须失效 BM25 进程内缓存**。
         #    另两条入库路径（`insert_single_doc` / `insert_batch`）**一直都有**这一句，
         #       只有**上传这条漏了** —— 而漏了**不会有任何报错**：
         #       混合检索里 BM25 那一半**看不见新块**，直到进程重启。
-        #    这是**真被看见**的：`kb` 页的「入库完当场验一次」实测报「没召回」，
-        #       而库里确实有、向量那半边也查得到 —— 就是这里缺一句。
-        #    同族的前科写在 `insert_single_doc` 里（"原先写在模块级 = 只在 import 时执行一次"）。
         invalidate_bm25_cache()
 
     
@@ -428,7 +396,6 @@ async def upload_document(
             "requested_by": user_name,
         }
     finally:
-        # 🔴 2026-10-14（`①b`  ·  §二·4.2 ②）：**临时文件必须在 `finally` 里清**。
         #    改前那句 `os.unlink(tmp_path)` 在**函数末尾** ⇒ 中间任何一步抛异常
         #    （解析失败 / embedding 失败 / 上面那条超限拒绝）都**执行不到它**
         #    ⇒ `/tmp` 里攒垃圾，而 服务跑久了**没人会注意到**。
@@ -436,11 +403,10 @@ async def upload_document(
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
-# 🔴 （2026-10-16）：**本条一直缺 `response_model`，而前端真在用它的返回。**
+# 🔴 （）：**本条一直缺 `response_model`，而前端真在用它的返回。**
 #    漏的两半：① 这里没声明；② 那条门**认不出它** —— 删除的 URL 是前端**运行时拼的**
 #    （`kb.js` 的 `FULL_PATH + id` · `kb.html` 的 `'/api/v1/rag/documents/' + id`），
 #    字面量只到引号为止 ⇒ 被当成**列表端点**那条路径（而它**有** schema）⇒ 空过。
-#    ⇒ 本批两半一起修：这里补模型，`app/tests/test_response_model_declared.py` 补两个洞。
 @router.delete("/rag/documents/{doc_id}", response_model=DocDeleteResponse, tags=["文档管理"])
 async def delete_document(
     doc_id: int = Path(..., ge=1, description="要删除的文档ID"),
@@ -470,13 +436,9 @@ async def delete_document(
     invalidate_bm25_cache()
     return {"status": "deleted", "id": doc_id, "requested_by": user_name}
 
-# ==================== 列出文档 + 取整篇（2026-10-12）====================
+# ==================== 列出文档 + 取整篇（）====================
 # 补的是：**全仓此前没有任何"列出文档"的端点** ⇒ `/kb` 只能做成
 #    「传一条 ⇒ 回你 id ⇒ 拿 id 删」的闭环，而**访客看不见自己库里有什么**。
-# 作者 2026-10-12 定的目的（逐字）：「让大部分不想自己提交文档的访客，
-#    能知道已有哪些是已有的，是可以直接搜索，我该搜索什么，会出现内容」—— 即**可发现性**。
-# 作用域：`mine`（默认）只看自己 · `public` 只看公用语料·
-#    **不许把别人的列出来**。
 CATEGORY_NAMES = {
     "A": "产品 / 规格", "B": "流程 / 制度", "C": "常见问题",
     "D": "数据 / 报告", "E": "非知识（负样本）",
@@ -573,13 +535,9 @@ async def get_document_full(
     }
 
 # ==================== 对话历史的**读回** ====================
-# 2026-10-11（前端整体调整 · 批 5）：**这条端点补的是一个真缺陷** ——
 #    在这之前**全仓没有任何"读回对话历史"的出口**（`get_chat_history` 只被服务端用来喂模型），
 #    而对话页**从来没做过回显** ⇒ 访客换个页面再回来，**页面上对话是空的、而模型还记得**
 #    ⇒ 它自己那句写着「本页不显示历史消息；这个会话的上下文模型仍然记得」。
-#    **那不是创空间的限制**（那只是单容器）。作者 2026-10-11 实测报的：
-#       「进行了一个对话，然后点执行轨迹，再点会话，原来的对话就没有了」。
-#    设计 + 裁定 ⇒ `frontend/DES-整体调整-导航与运行区-20261011.md` §七。
 @router.get("/rag/chat_history", response_model=ChatHistoryResponse, tags=["对话"])
 async def get_thread_history(
     # **必填、无默认值**（同一条口径）：
@@ -686,7 +644,7 @@ async def pg_search(
 @router.post("/rag/hybrid_search")
 async def hybrid_search_api(
     req: QuestionRequest,
-    thread_id: str = Query("default", min_length=1),   # 🔴 （2026-10-16）：本条原先【连形参都没有】
+    thread_id: str = Query("default", min_length=1),   # 🔴 ：本条原先【连形参都没有】
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """混合检索：向量 + BM25 关键词（**只在该用户自己的文档内**）"""
@@ -720,11 +678,10 @@ async def rewrite_search_api(
     req: QuestionRequest,
     #  裁定 #12：空串挡在**进端点之前**（422）—— 否则它会一路走到
     #    `session_key()` 的 `ValueError`，而那时**流已经开了一半**，只能变成 500。
-    thread_id: str = Query("default", min_length=1),   # 2026-10-05 加（B8 需要会话维度）
+    thread_id: str = Query("default", min_length=1),   # 加（B8 需要会话维度）
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """带查询改写的混合检索（**只在该用户自己的文档内**）"""
-    # 2026-10-05：本端点**此前零闸** —— 而它**无条件**真调 LLM
     #     （`hybrid_search_with_rewrite` 里改写 + 扩展各一次）
     #     ① 单条请求**无上限** ② B8 会话上限 / B11 全站熔断读的计数器它从不写 ⇒ 对它等于不存在。
     #     **两道都要**，与 `/rag/stream_search` 的现状并列（B8 按会话 / B11 按全站，别合并）。
@@ -747,7 +704,7 @@ async def rewrite_search_api(
 # 添加综合检索接口 RAGPipeline
 from rag.rag_pipeline import create_fast_pipeline, create_accurate_pipeline, create_accurate_norerank_pipeline,create_full_pipeline
 
-# `mode` 必须是**受限枚举**，不能是裸 `str` —— 2026-09-17 修，起因见 `unified_search` 的注释。
+# `mode` 必须是**受限枚举**，不能是裸 `str` —— 修，起因见 `unified_search` 的注释。
 SearchMode = Literal["fast", "accurate", "accurate_norerank", "full"]
 
 # mode → 管线工厂。**用查表代替 if/elif/else**：漏一个 mode 会 KeyError（当场炸），
@@ -766,7 +723,7 @@ async def unified_search(
     mode: SearchMode = "accurate_norerank",
     #  裁定 #12：空串挡在**进端点之前**（422）—— 否则它会一路走到
     #    `session_key()` 的 `ValueError`，而那时**流已经开了一半**，只能变成 500。
-    thread_id: str = Query("default", min_length=1),   # 2026-10-05 加（B8 需要会话维度）
+    thread_id: str = Query("default", min_length=1),   # 加（B8 需要会话维度）
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """
@@ -780,7 +737,6 @@ async def unified_search(
 
     `mode` 是**受限枚举**，取值只有上面四个；传别的值会得到 **422**，而不是被静默兜底。
     """
-    # 2026-10-05：本端点**此前零闸** —— 而默认 mode `accurate_norerank`
     #     **本身就开着改写**（真调 LLM）⇒ 单条请求无上限、账本也收不到数据。
     #     位置在 `PIPELINE_FACTORIES[mode]` **之前** —— 那是本端点第一处真花钱的地方之前。
     #     **两道都要**（B8 按会话 / B11 按全站），同 `/rag/stream_search` 的现状。
@@ -792,7 +748,6 @@ async def unified_search(
     if not ok:
         raise AppException(ErrorCode.QUOTA_EXCEEDED, why)
 
-    # 2026-09-17 修：此处原先是一个**裸 `else`** —— 任何拼错的 mode（如 `fst`）
     # 都不报错，而是**静默换成 `accurate_norerank`**（多跑一次查询改写 = 多花钱、多延迟）。
     # 现在：`mode` 声明为 `SearchMode`（`Literal`），非法值由 FastAPI 在进入函数体之前挡成 422；
     # 且下方改用**查表**，结构上不存在"兜底分支"。决策。
@@ -806,12 +761,11 @@ async def unified_search(
         generate_answer=req.generate_answer,
         strict_mode=req.strict_mode,
         citations=req.citations,
-        user_id=user_name,   # 2026-10-03 加—— 检索只在该用户自己的文档内
-        # 🔴 （2026-10-16）：**这一行是本条缺陷的根源所在** ——
+        user_id=user_name,   # 加—— 检索只在该用户自己的文档内
+        # 🔴 （）：**这一行是本条缺陷的根源所在** ——
         #    上面 774 行那句 `check_session_token_budget(user_name, thread_id)` 用的是
         #    **调用者传的这个** `thread_id`，而在此之前它**从没往下传过**（管线连形参都没有）
         #    ⇒ 链上三处记账各自落 `"default"`/`"system"`/`"unknown"`
-        #    ⇒ **闸查的桶恒空、恒放行**（实测：`get_session_token_usage` = 0）。
         thread_id=thread_id,
     )
 
@@ -823,40 +777,17 @@ async def unified_search(
 
 
 # ==================== 【已删除】POST /rag/jwt_ask ====================
-# 2026-10-04 **删除**—— 端点 `jwt_ask_question` 已移除。三条理由（都可打印地核过）：
-#
-#   ① **拿到 `question` 却不拿它做检索** —— 无 embedding、无 `ORDER BY`，只是
-#      `SELECT content … LIMIT n`。**`LIMIT` 配不上 `ORDER BY`** ⇒ 取哪几行由物理顺序决定
-#      ⇒ **同一问题两次可能拿到不同的行**（"看着像检索、其实不是"—— 本仓反复记的那个形态）。
-#   ② **能力被 `/rag/pg_search` 覆盖，而且是更严的覆盖** —— 它用 `get_current_user_jwt`，
-#      **只收 JWT、不收 API Key**；而 `pg_search` 用 `get_current_user_hybrid`，
-#      **JWT 与 API Key 都收** ⇒ 是它的**超集**。
-#      **最容易读反的一点**：「只收 JWT」看着像独有能力，其实是**限制** ——
-#      ⇒ **删掉它，JWT 用户一个能力都没少**。
-#   ③ **全仓无消费者**（清点，不是"试了没反应"）—— 无前端 · 测试里只有「**钉它不该被接上限**」
-#      的反向守卫（不是"在用"）· Postman 集合里 1 个文件夹。
-#
-# **它【不欠】隔离账** —— 2026-10-03 乙段已补 `WHERE requested_by`（§1.2 第 7 条）。
-#    ⇒ 删它的理由**全部与隔离无关**，别把本段读成隔离收口的一部分（同  §二）。
-#
-# **别照抄这个形状再把端点加回来** —— `app/tests/test_removed_endpoints.py::test_rag_jwt_ask_stays_removed`
-#    会红（判据是 **404**，不是"不是 200"：它删之前带鉴权，回的就是 **401**）。
-# 全文（消费者清点 · 改动清单 · 反悔成本）
 
 # ==================== 流式输出（SSE） ====================
-# 2026-09-20 删（D1/pyflakes 报 redefinition）：此处的 `StreamingResponse` 与 `json`
 #    在文件头早已导入过 ⇒ 删这两行。同段的 `import asyncio` **不是重复**（文件头没有），**必须留**。
-# 2026-10-02 删：同段的 `from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_CHAT`
 #    已**不再被引用** —— 两个构造点都改走 `make_llm()`，那三个值由工厂统一读。
 import asyncio
-# 2026-10-04 删（剩余 4 条链 · 批 3）：`anyio` / `track_stream_cancel` / `logger` /
 #    `StreamingResponse` 四个 import **已从本文件移除** —— 它们此前**只被** `stream_search`
 #    那段内联生成器用到，而那段整块搬进了 `app/routing/sse.py`（`shield=True` 关流 · 计数 · 日志
 #    · `StreamingResponse` 三件都在那边，**只是一份**）。留着就是没人用的 import。
 # 本仓所有流式端点共用 `app/routing/sse.py` 的那副骨架（含 5 条实测约束的顺序）。
 from routing.sse import DONE_FRAME, llm_chunk_text, sse_frame, sse_response, sse_stream
 
-# 2026-09-17 重构 ⑥ 切开点 5：惰性单例。
 #    原先此处是【模块层】直接 `llm_stream = ChatOpenAI(...)`
 #    `import api_v1_rag`（进而 `import main`）**在导入期就构造 LLM 对象**，
 #    哪怕这个进程根本不走流式接口。
@@ -929,7 +860,6 @@ class _StreamUsageTap:
         return usage_summary(llm, self._agg)
 
 
-# 2026-10-04：`INTERRUPTED_SUFFIX` 与 `_persist_interrupted_turn` **搬去
 #    `app/core/cache.py`** —— 6 条流式端点现在共用同一段留痕（`persist_turn`），
 #    本文件只**再导出**这个名字（`app/tests/test_cancel_propagation.py` 按 `rag_mod.INTERRUPTED_SUFFIX` 取它）。
 #    搬家的理由不是"整理"：只有一份实现， 那三条规则（成对写 / 空答案不写 / 非 done 带尾巴）
@@ -939,13 +869,6 @@ class _StreamUsageTap:
 #  ①：无据拒答的那句话**只说一次**，下面**两处共用** ——
 #    ① `citations` 分支的 system prompt（「请**直接说**…」）；
 #    ② 收尾时判定「这一轮算不算拒答」。
-#    非抽常量不可的理由：这两处**必须一致**，而它们分家的表现是**静默的** ——
-#       prompt 里换了措辞 ⇒ 判据认不出来 ⇒ `no_answer` 帧永远不发
-#       页面上只是一句普通回答，**没有任何报错**（本仓「两处各写一遍 ⇒ 静默漂移」那一族）。
-# 判据是「**以它开头**」，不是"含"：2026-10-06 spike 实测 **8/8** 模型都把它放在**开头**
-#    （与 prompt 里那句「请**直接说**」相符）。**误判比漏判有害**（把答得好的那轮画成"资料里没有"）
-#    ⇒ 宁可严。代价写实：换过措辞的拒答（如「文档未提及净利润，因此无法回答该问题。」）会被漏掉，
-#    那只是**退化成今天的样子**，不会更糟。取舍全文。
 REFUSAL_SENTENCE = "根据现有资料，无法回答"
 
 
@@ -960,19 +883,12 @@ async def stream_search(
     """流式RAG问答接口（融合优化版）（支持引用溯源和历史补偿）。
     使用SSE逐字返回生成的答案，提供类似ChatGPT的体验。
 
-    2026-09-20 修：这段 docstring 原先**躺在两句代码之后**（函数体第三句），
+    修：这段 docstring 原先**躺在两句代码之后**（函数体第三句），
        是**空操作** —— 函数本身**没有 docstring**。已上移到签名正下方。
     """
-    # （2026-10-08 ·  §六·1）：**检索链也要建轨迹**。
+    # （·  §六·1）：**检索链也要建轨迹**。
     #    改前全仓只有 2 处 `start_trace`、**都在 Agent 链** ⇒ 演示路径（`/chat` 走的就是本端点）
     #    **从不建轨迹** ⇒ 打开 `/trace`，上半页**是空的**（不是坏，是**从没建过**）。
-    #
-    # **位置：排在 B8 / B11 两道闸【之前】** —— 与 Agent 链**同序**，理由抄
-    #    `app/routing/api_v1_agent.py:1646` 那句原话：「超限被拒时，追踪里仍留得下这次尝试的痕迹」。
-    #    别"顺手"挪到闸后面 —— 那会让**被拦下的请求**在页面上**消失**，
-    #    而"被拦下的请求"恰恰是排查时最想看到的那一类。
-    # `user_name` 是端点参数（`Depends(get_current_user_hybrid)`）⇒ 追踪轴也是**按人分**的
-    #    （存储键 = `session_key(user_name, thread_id)`，见 `tool_visualizer` 模块头）。
     start_trace(user_name, thread_id, req.question)
 
     # 0. 若前端未主动传历史，则从 Redis 加载该用户最近5轮对话
@@ -996,15 +912,11 @@ async def stream_search(
     # 1. 检索（与普通接口相同）
     # 1. 向量检索（这部分不是流式的，一次性查完）
     # 构建当前输入的这条的历史对话，真停止按钮的调用（使它支持历史补偿）
-    # 🔴：本条此前是**半个** —— 答案生成那笔已经带了调用者的 `thread_id`，
-    #    只有 embedding 这一处漏了（落 `"system"`）⇒ 同一个会话的两笔账在两个桶里。
     query_embedding = get_embedding(req.question, user_name=user_name, thread_id=thread_id)
-    # 2026-10-03 乙段（§1.2 第 8 条）：改用**共享层**，不再自己写 SQL。
     #    原先这段 SQL **零 `WHERE`** ⇒ 查全库。实测（`app/tests/test_isolation.py`）：
     #    isolation_b 的检索上下文里**逐字**出现了 isolation_a 的文档。
     #    `search_similar` 已带 `WHERE requested_by = %s`，且**返回同样的 4 列**
     #    （id, content, source, similarity）⇒ 下面 `r[0..3]` 的映射不用改。
-    #    身份是端点传下去的 —— 这就是「共享层承重」（决策 5）。
     results = search_similar(query_embedding, req.top_k, user_id=user_name)
 
     # 2. 构建上下文列表（用于可能的引用模式）
@@ -1073,14 +985,8 @@ async def stream_search(
     ENDPOINT = "rag_stream_search"    # Prometheus 的 label，别与函数名混用
     tap = _StreamUsageTap()           #：流式答案的记账（见类 docstring）
 
-    # 2026-10-04（剩余 4 条链 · 批 3）：**内联生成器整个换成 `sse.sse_stream` 骨架**。
     #    这段原来有 ~80 行 `try / except / except / finally`，与 `/agent/langgraph_chat/stream`
     #    **逐字重复**（那 5 条实测约束因此被抄了两遍）。现在只有 `app/routing/sse.py` 一份。
-    #    **等价不是"看起来一样"** —— 下面两处**很反直觉的旧契约**是本端点特有的，
-    #    **别在"抽公共层"时顺手修正**（前端的适配是照着它们写的）：
-    #      ① `[DONE]` 在 `sources` **之前**（见 `_complete`）；
-    #      ② 错误路径**没有** `[DONE]`（见 `_on_error`）。
-    #    判据：`app/tests/test_cancel_propagation.py` **全绿，且一行断言都没改**。
     async def _complete(collected):
         """收尾尾巴（正常跑完才进）—— **帧序是有讲究的，别整理成"先 sources 再 `[DONE]`"**。
 
@@ -1088,37 +994,26 @@ async def stream_search(
            抽公共层**不是**顺手改行为的理由 —— 所以骨架**不替我们补 `[DONE]`**，
            整条尾巴交给本函数自己产（见 `app/routing/sse.py` 的「②」）。
         """
-        # 2026-10-06：记账排在【任何 `yield` 之前】（`sse.py` 约束① 同源）——
         #    `yield` 是 await 点，被"二次投递的取消"打断 ⇒ 排在它后面的收尾**一件都不跑**，
         #    可钱**已经花了**。`persist_turn` 仍留在原位（那是  定的，本轮不动它）。
         #  契约 B：`record` 现在**返回载荷**（`None` = 没记成）。
         payload = tap.record(get_llm_stream(), user_name=user_name, thread_id=thread_id)
-        # （2026-10-08 ·  §六·1）：**收尾**这条轨迹。
+        # （·  §六·1）：**收尾**这条轨迹。
         #    与上面 `tap.record` **同一个位置理由**：排在**任何 `yield` 之前** ——
         #       `yield` 是 await 点，被"二次投递的取消"打断 ⇒ 排在它后面的收尾**一件都不跑**。
         #    `total_tokens` / `total_cost` **不传** —— 与另两个调用点保持一致。
-        #       `app/static/js/trace.js` 的 `summarizeTrace` 明写：「服务端这两个字段【现在恒为 0】……
-        #       ⇒ 本页**不显示**它们（免得把假数印出来）」⇒ 要传它们是**另一件事**（得连页面一起改）。
-        #    取消 / 出错两条出口**不收尾** —— 与 Agent 链同款（「追踪里留一条'开了没结束'」）。
         finish_trace(user_name, thread_id, "".join(collected))
         # 发送结束信号
         yield DONE_FRAME
         #  ①：**这一轮算不算"无据拒答"** —— 让"拒答了"成为一个
         #    **机器可读的字段**，不是让前端去读正文猜。判据与 prompt 那句**共用同一个常量**
         #    （`REFUSAL_SENTENCE`，理由见它的注释）。
-        # 位置：`[DONE]` 之后、`sources` **之前** —— 它描述的是**刚结束的那段答案**，
-        #    而 `sources` 那一趟前端会重画；标志先到，那一趟才能**一次画对**。
-        #    别挪到 `usage` 后面（前端得多收一帧才敢下判断，白多一次重画）。
-        # 它**只说"这轮拒答了"**，不把提示文案塞进帧里 —— 文案属于呈现层，
-        #    塞进帧就变成又一份要两边同步的契约（`app/static/js/sse.js` 的 `refusalNotice`）。
         if "".join(collected).lstrip().startswith(REFUSAL_SENTENCE):
             yield sse_frame({"no_answer": True}, ensure_ascii=True)
         # ---- 在这里记录对话历史 ----
         # 生成完成后，将本轮问答自动存入 Redis
         #：三条出口（`done` / `cancelled` / `error`）**共用 `persist_turn`**
         #    ⇒ `status` 这个区分只有一份实现，不是在这里手写一遍 `append_chat_history`。
-        #    `done` 的字节与改前**逐字相同**（答案原样，不 strip、不带标记）。
-        #    **唯一的行为变化**：空答案 ⇒ **连提问也不写**（旧代码会写下孤零零的提问）。
         persist_turn(user_name, req.question, "".join(collected), thread_id=thread_id, status="done")
         # 如果有引用，在结束后发送来源列表
         if req.citations and sources_list:
@@ -1173,19 +1068,15 @@ async def stream_search(
 # ==================== WebSocket 端点 ====================
 # 模拟: 客户端发送用户问题，服务端模拟 Agent 的思考-行动-观察循环
 from fastapi import WebSocket, WebSocketDisconnect
-# 2026-09-20 删（D1/pyflakes 报 redefinition）：此处的 `import json` / `import asyncio`
 #    在本文件**已被导入过两次**（文件头 + SSE 段）⇒ 删这两行。
 from routing.websocket_callback import WebSocketAgentCallback
 
-# 2026-10-08：`from datetime import datetime` **删了** ——
 #    它**只**服务于 `get_agent_executor()` 里那个自带的 `date_today`（已删，改为共享工具）。
 
-# 2026-09-17 重构 ⑥ 切开点 5：惰性单例。
 #    原先下面这一整段（初始化 LLM / 定义三个工具 / 建 prompt / create_tool_calling_agent /
 #    AgentExecutor）**全在模块层** ⇒ `import api_v1_rag`（进而 `import main`）
 #    **在导入期就构造 LLM 与 Agent 对象**，哪怕这个进程从不打开 `/ws/agent`。
 #    现整段搬进 get_agent_executor()，**首次使用时才建**，之后复用（与原先单例语义一致）。
-#    工具 docstring 与 prompt 文本**逐字未改** —— 那是给 LLM 看的接口。
 _agent_executor = None
 #：与 `_agent_executor` **同一个单例里**的 LLM —— 记账要用它的 `model_name`。
 # 别让记账去猜模型名（：本仓因写死 `"qwen-turbo"` 按错的单价记过账）。
@@ -1196,33 +1087,8 @@ def get_agent_executor():
     global _agent_executor, _agent_llm
     if _agent_executor is None:
         # 全部放在函数内：导入期不拉 langchain
-        #
-        # 2026-10-09：**这一行原本是 `from langchain.agents import …`** ——
-        #    `langchain` 升到 1.x 之后，**那两个符号在那里已经没有了**
-        #    （实测 `AttributeError: module 'langchain.agents' has no attribute 'create_tool_calling_agent'`），
-        #    本函数**当场 ImportError** ⇒ `/ws/agent` **整条活路径起不来**。
-        #    ⇒ 官方把 legacy agent API 搬进了 **`langchain-classic`**（`langchain-core>=1.4.4` 兼容）
-        #      ⇒ 改成从那里导入，**实现一行没动**。
-        #    **别以为"测试全绿"就是没坏** —— `app/tests/test_ws_auth.py` 那两条用例
-        #       `monkeypatch.setattr(api_v1_rag, "get_agent_executor", …)` **把本函数整个换掉了**
-        #       ⇒ 它们测的是"鉴权之前端点体不许跑"（对的），**但不构成本函数能用的证据**。
-        #    判据（可打印，别用 pytest 当这条的凭证）：
-        #       `./venv/bin/python -c "import sys;sys.path.insert(0,'app');import routing.api_v1_rag as m;m.get_agent_executor()"`
-        #       ⇒ 不抛 ImportError
         from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
         from langchain_core.prompts import ChatPromptTemplate
-        # 2026-10-08 收口：**实现**改为调**共享工具**，**外壳保持 async**。
-        #
-        #    **为什么不能直接把这三个换成 `mcp_server` 那份**：原文是 `async def`，且
-        #       `return await asyncio.to_thread(...)` —— **有意把阻塞丢出事件循环**。
-        #       `mcp_server` 那份是**同步**的 ⇒ 直接替换会**在事件循环里同步跑 20 秒的网络调用**。
-        #       ⇒ 保留 async 外壳，只把**实现**与**工具描述**指向共享工具（那才是本 task 的目的）。
-        #    **【工具 schema 变更】**：工具名由 `search` 改为 `web_search`
-        #       （= 注册表里的真名，与 `SENSITIVE_TOOLS` 默认值一致）；`calculator` /
-        #       `date_today` 的 **docstring 也换成共享那份**（更详细）。
-        #
-        #一 初始化模型
-        # 角色 = 「模型轴 chat」+「长度轴 answer(2000)」—— 见 `app/core/llm_factory.py` 的模块 docstring。
         llm = make_llm("chat", "answer")
         _agent_llm = llm
         #二 定义工具
@@ -1251,8 +1117,6 @@ def get_agent_executor():
         #    `app/tools/safe_math.py`，三道闸与守卫在 `app/tests/test_safe_math_wiring.py`。
         #    这里**曾经是本仓第 6 份 `calculator` 拷贝**，且写的是
         #       `asyncio.to_thread(eval, expression)`（`eval` 是**实参**）⇒ 旧判据
-        #       （只认「`ast.Call` 的 func 是裸名 `eval`」）**两道守卫都看不见它**，
-        #       而**命令真的跑了**（实测返回值 `'0'`）。⇒  已修那两条判据。
         search = _async_shell(_src["web_search"])
         calculator = _async_shell(_src["calculator"])
         date_today = _async_shell(_src["date_today"])
@@ -1286,16 +1150,6 @@ def get_agent_llm():
 async def agent_websocket(websocket: WebSocket, ws_user_name: str = Depends(require_ws_user)):
     # **不要在这里 `await websocket.accept`** —— `require_ws_user` 已经 accept 过了，
     #    而星型 1.6.0 的 `accept()` **不幂等**（第二次会 RuntimeError，实测）。
-    #
-    # **身份来自上面那个依赖**—— 本条 WS 此前**整条没有鉴权**
-    #    （遗留·1）：真花钱（LangChain Agent + chat LLM + `web_search`）
-    #    却匿名可达。端点体要**认证通过之后**才会被执行 —— 判据见
-    #    `app/tests/test_ws_auth.py::test_ws_agent_body_never_runs_before_auth`。
-    #
-    # B8 · 会话级 token 上限—— key = `(user_name, thread_id)`。
-    # `thread_id` 这里**仍是每连接一个**（`ws-<uuid>`）：WS 没有客户端传上来的会话 id
-    #    ⇒ 重连接 = 新桶。**这是已知的、有意留下的口子**，见  遗留·2
-    #    （全局日级熔断 B11 仍然罩着，故不因它而失控）。
     ws_session_id = f"ws-{uuid.uuid4().hex}"
 
     try:
@@ -1359,14 +1213,10 @@ async def agent_websocket(websocket: WebSocket, ws_user_name: str = Depends(requ
                 await websocket.send_text(json.dumps({"type": "done"}))
                 
             except Exception:
-                # 2026-10-10（CodeQL `py/stack-trace-exposure` **同族**）：
                 #    **不把异常原文发给客户端** —— 这一帧是**用户可见**的出口，
                 #    而 `str(e)` 会把 **SQL 片段 / 连接串 / 文件路径**一起带出去。
                 #    **本仓「失败要说出来」那条不变**（不许退化成静默/白屏）——
                 #    仍然**说**，只是**不再说内部细节**：细节进服务端日志。
-                #    形状照 `api_v1_agent.py` / `token_tracker.py` 那两处（同族先例）。
-                # `as e` 已去掉 —— 异常对象交给 `logger.exception` 自己取（`sys.exc_info`），
-                #    留着不用反而会被 `ruff` 的  报（本仓的静态检查门会红）。
                 logger.exception("WS /ws/agent 执行失败")
                 await websocket.send_text(json.dumps({
                     "type": "error",
@@ -1376,64 +1226,13 @@ async def agent_websocket(websocket: WebSocket, ws_user_name: str = Depends(requ
     except WebSocketDisconnect:
         print("客户端断开连接")
 
-# 2026-10-05 **删**（§十）：此处原有 **WS `/ws/test`** ——
 #    一个纯回声的「WebSocket 基础通信」桩，`ecb146b`（首次提交）起就在。
 #    **本墓碑刻意不写那串装饰器字面量**（写成 `WS /ws/test`）——
 #       本文件下面  那条墓碑也是这么写的。理由：本仓判据 `grep -c '@router\.' app/routing/api_v1_rag.py`
 #       是**数路由**用的，注释里留同款字面串会让它**多数一条**（实测过：带 ⇒ 14，去掉 ⇒ 12）。
-#    删的理由（三条，与  删那 4 条**同一套标准**，不是另立一套）：
-#      ① **消费者 = 0** —— 本仓没有任何东西连它（`app/static/websocket_test.html` 连的是
-#         `/api/v1/ws/agent`）；`git log -S 'ws/test' -- 'app/test_*.py'` 在  之前
-#         **零命中**；仓外（任何别的项目）也全 0。
-#      ② **它本来就是「测试桩」** ——  的流式出口普查表里就是这么记的。
-#      ③ **连「探活」这个唯一可能的用途也没了** ——  给它补上首帧认证之后，
-#         它自己也要凭据 ⇒ 留着的唯一理由（免鉴权的 WS 探活口子）已经不成立。
-#    这是**删除**，不是「先隐起来」： 那批也是直接删。
-#    **别改回来** —— `app/tests/test_removed_endpoints.py::test_ws_test_stays_removed` 会红。
 
 # ==================== 测试 接口 ===================
 # ==================== 模拟类 ====================
-# 2026-10-03 **删**：此处原有 `POST /rag/ask` —— 同步函数名 `ask_question`。
-#    删的理由（三条，都可打印地核过）：
-#      ① 它是 `tags=["模拟类测试"]` 的**桩**，却**读真库**（`SELECT content FROM documents …`）；
-#      ② 它的 `LIMIT` **没有配套的 `ORDER BY`** ⇒ **结果不可复现**（同一问题两次可能不同）——
-#         这正是本仓反复记的那种「看着像检索、其实不是」的形态；
-#      ③ 能力被 `/rag/pg_search` **覆盖**（**同鉴权** `get_current_user_hybrid` · **同入参**
-#         `QuestionRequest`，且多了 embedding / `ORDER BY` / 更丰富的输出），而全仓**无消费者**。
-#    **别照抄这个形状再加回来** —— `app/tests/test_removed_endpoints.py` 会红。
-#    顺带消灭了它响应体里那个 **重复的 `"requested_by"` 键**（本仓一处已登记的 dead code）。
-#    全文（含消费者清点 · 7 处改动 · 2 处活口径同步 · 反悔成本）
 
 # ============ 【已删除】POST /rag/async_ask · POST /rag/parallel_ask ============
-# 2026-10-04 **删除**—— 连同它们**专用的**两个 helper
 #    `async_search()` / `parallel_search()` 一并移除（全仓**只有这两条端点**在调它们）。
-#
-# 原先它们是：
-#     async def async_search(query):  await asyncio.sleep(2); return ["异步文档A(…)", …]
-#     async def parallel_search(qs):  return await asyncio.gather(*[async_search(q) for q in qs])
-#     router.post("/rag/async_ask",    tags=["模拟类测试"])  →  async def async_ask_question(req)
-#     router.post("/rag/parallel_ask", tags=["模拟类测试"])  →  async def parallel_ask_question(req)
-#     上面两行**故意去掉 `@`** —— 本仓数路由的判据是 `grep -c '@router\.'`，
-#        留着 `@` 会让【墓碑注释】也被数进去（判据纪律 #2：注释里也有同样的串）。
-#        实测：带 `@` ⇒ 14（错，多算 2）；不带 ⇒ **12**（对）。
-#
-# 为什么删：
-#   **纯 mock** —— 库里没有、embedding 没有、LLM 没有，只是 `asyncio.sleep(2)` 之后
-#      返回硬编码字符串 `["异步文档A({query})", …]`。**消费者 = 0**（仓内无前端
-#      无测试引用 · 只有 Postman 2 个文件夹，已删）。
-#   ⇒ 这两条一删，`tags=["模拟类测试"]` **整组归零**：
-#      `/rag/ask` 2026-10-03 删· `/rag/jwt_ask` 2026-10-04 删。
-#      **那组四条走完，模式完全一样：先没人用，再删。**
-#
-# **顺带收掉 `import time`**（文件头第 6 行）：本文件**只有**这两条端点用 `time.time`
-#    （全仓已核：`grep -n '\btime\b' app/routing/api_v1_rag.py` 只命中 `import` 与这两处）。
-#    `import asyncio` **留着** —— `:794` `:800` 的 `asyncio.to_thread` 还在用。
-#
-# **别照抄这个形状再把端点加回来** ——
-#    `app/tests/test_removed_endpoints.py::test_rag_async_ask_stays_removed` /
-#    `::test_rag_parallel_ask_stays_removed` 会红。
-# **若真要再加一条「不花钱、不查库」的端点**，必须**同时**做一件事：
-#    **重建一份反向接线守卫**（原先是 `test_breaker_wiring.py` 与
-#    `test_session_budget_wiring.py` 里那两张豁免清单）—— 那两张清单**随本次删除已空，
-#    空清单 = `for` 体一次都不跑 = 恒绿假通过 ⇒ 两段守卫**已删**。详。
-# ==============================================================================

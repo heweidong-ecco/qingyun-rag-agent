@@ -1,38 +1,4 @@
 """embedding 维度自检的【接线守卫】（`①b`  · 第 4 条）· **纯离线，进 CI**。
-
-## 为什么要有这个文件
-
-`assert_model_dimension()` **本身**是测过的（`test_embedding_model_from_env.py`）。
-**但它全绿，启动照样可能被一次网络抖动挡住** —— 只要 `main.py` 里**那两类失败被合并处理**。
-
-`app/main.py` 的 `startup_event` 那段（`2026-10-14` B 段接的线）钉的是：
-
-| 失败 | 期望 | 理由 |
-|---|---|---|
-| **维度对不上** | 🔴 **往上抛 ⇒ 启动失败** | 这才是"响亮地断"。维度不同源时检索**不报错、只是全错**（§2.1） |
-| **模型 / 网络不可用** | ⚠️ **只记 warning ⇒ 不阻塞启动** | **起不来 ≠ 配置错**，不该把整个服务挡在门外 |
-
-🔴 **危险在哪儿**：两类失败的异常**在 Python 里是同族的** ——
-`EmbeddingDimensionMismatch` 是 `EnvironmentError` 的子类，而 `EnvironmentError` **在 py3 里就是 `OSError`**，
-一次 HTTP 连接失败抛的 `ConnectionError` **也是** `OSError` 的子类。
-
-⇒ 所以「`except EnvironmentError: raise`」**看着更干净、写起来更像对的**，
-而那**恰好**会把一次网络抖动当成"维度对不上"、**让应用起不来**。
-⇒ **静默、且没有任何运行时用例会红** ⇒ 必须用静态判据钉住。
-
-## 用 AST，不用 grep
-
-`EnvironmentError` / `EmbeddingDimensionMismatch` 这些词**在本文件的注释和 docstring 里就有**
-（上面那张表就是）—— grep 会把"注释里提到"当成"代码里写了"。
-⇒ 与 `test_pending_approvals_wiring.py` 同一条纪律：**判据要看 AST，不看文本**
-（📄 `docs/规范/开发规范.md` §3.1）。
-
-## 本文件保证什么 / 不保证什么
-
-- ✅ **保证**：接线在，且两类失败的处置**没有被合并**
-- ✅ **保证**：两个异常类**确实**能被 `isinstance` 分开（这一条是跑出来的，不是读出来的）
-- ⛔ **不保证运行时行为** —— "真撞上配错的表，启动会断" 需要真库真模型，
-  2026-10-14 已**手工实测**过三种情形（断 / 不断 / 不断），记录在本单
 """
 import ast
 import pathlib
@@ -159,7 +125,7 @@ def test_every_raise_in_the_handler_is_gated_by_the_isinstance_check():
                     gated += 1
                     # 🔴 光"提到了那个类名"不够 —— `not isinstance(...)` 把两类**对调**，
                     #    而它在 AST 上只是多了一个 `Not`，⛔ 光看名字是看不出来的。
-                    #    （2026-10-14 变异实测：不加这一条，M2 那个取反**照样全绿**。）
+                    #    （变异实测：不加这一条，M2 那个取反**照样全绿**。）
                     if any(isinstance(x, ast.Not) for x in ast.walk(n.test)):
                         negated.append(inner.lineno)
                 else:
@@ -193,7 +159,7 @@ def _mentions_mismatch(node: ast.AST) -> bool:
 def test_mismatch_is_distinguishable_from_a_plain_os_error():
     """⚠️ 这一条是本文件的**地基**：如果两者分不开，上面那条 `isinstance` 就是摆设。
 
-    实测（2026-10-14）：`isinstance(EmbeddingDimensionMismatch(...), EnvironmentError)` ⇒ **True**
+    实测：`isinstance(EmbeddingDimensionMismatch(...), EnvironmentError)` ⇒ **True**
     ⇒ 这正是不许写 `except EnvironmentError` 的原因；
     而**反过来**要成立：一个普通的 `ConnectionError` **不是** `EmbeddingDimensionMismatch`。
     """

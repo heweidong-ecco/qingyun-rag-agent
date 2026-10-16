@@ -1,21 +1,4 @@
 """`record_from_response` 的**离线**单元判据。
-
-## 为什么需要这个文件
-
-三条会真调 LLM 的链（`/agent/langgraph_chat` · `/agent/advanced_chat` · `/agent/memory_chat`）
-**一分钱不记**。第 3 条尤其难看：它的判据 `hasattr(response, "usage")`
-（`app/agent/agent_checkpointer.py:83`）**恒为 False** —— `AIMessage` / `AIMessageChunk`
-**没有** `.usage` 属性（真属性是 `usage_metadata`）⇒ 那段记账**从未执行过**。
-
-⇒ 修法是给三张图一个**唯一实现**（本文件测的那个函数）。本文件钉两件事：
-
-1. **判据必须是 `usage_metadata`** —— `test_does_not_record_on_the_old_wrong_attribute`
-   拿一个**只有 `.usage`** 的假对象去调，**必须不记账**。这条就是那个 bug 的墓碑。
-2. **模型名必须从对象取** —— 本仓踩过两回「写死 `"qwen-turbo"` ⇒ 按**错的单价**记账」
-   （`agent_graph_advanced.py:352-354` · `agent_checkpointer.py:85-87`）。
-
-本文件**不带** `needs_db` ⇒ **进 CI**。它只验「判据对不对」，不碰库
-（真记账被 monkeypatch 掉，断言的是传给 `record_usage` 的**参数**）。
 """
 from langchain_core.messages import AIMessage
 

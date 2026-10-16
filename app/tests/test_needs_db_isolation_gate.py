@@ -1,32 +1,4 @@
 """**真库闸**（§2.7）—— 要真库的用例，库名必须以 `_test` 结尾。
-
-## 守的是什么
-
-`needs_db` / `integration` 的用例会**真写库**。不带库名跑 ⇒ 写进**真库**
-`token_usage_logs` 里多出**假的用量记录**，而那些记录**会进全站日 token 顶的 SUM**
-（`get_global_daily_token_usage` **不带 `user_name` 过滤**）
-⇒ **一条 `total_tokens = 999 999` 的假记录就能吃掉当天一大截预算**，
-而**没有任何异常** —— 要到当天晚些时候全站额度突然耗尽才看得出来。
-
-本仓前科：。
-
-## 为什么只测那个【纯函数】
-
-真跑那条 fixture（"起个子进程、看它红不红"）在本仓**走不通** ——
-子进程一旦 import `main` 就撞 mem0 的 Qdrant **单实例锁**
-（实测记录见 一条已下线的旧用例 的文件头）。
-⇒ 判据只能落在**被抽出来的那个纯函数**上。
-
-**那半边的判据是【手工跑一次】（已跑过，两个方向都验了）**：
-
-```bash
-# 不带库名 ⇒ 必须红（错误里要点名 `POSTGRES_DB`）
-venv/bin/python -m pytest app/tests/test_session_budget.py -q
-# 带上库名 ⇒ 闸放行（用例本身正常跑）
-POSTGRES_DB=rag_test venv/bin/python -m pytest app/tests/test_session_budget.py -q
-```
-
-判据（可打印）：`venv/bin/python -m pytest app/tests/test_needs_db_isolation_gate.py -q -p no:warnings`
 """
 import pytest
 

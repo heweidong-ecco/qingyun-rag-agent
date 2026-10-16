@@ -1,39 +1,4 @@
-"""批 7：图内「预算已用完」的**软返回** → 429 / error 帧 的判据（2026-10-05）。
-
-## 病是什么
-
-`check_token_budget` 的软返回共 **10 处 / 4 张图**，形态都是
-「塞一句『今日Token预算已用完，请明天再试。』**当正常答案返回**」⇒ **HTTP 仍 200**
-⇒ 调用方在响应里**看不出"被拒了"**。与 （工具触发的那一类）同一个病。
-
-## 为什么不是「在节点里 raise」
-
-同  —— 实测：节点内 `raise` 会把 checkpoint 留成
-`next=('tools',)` + 一条没人回答的 `AIMessage(tool_calls)` ⇒ 真 provider **400**
-⇒ 那个 thread **从此废掉**。⇒ 走 **state**（`budget_intercept`）出来，端点层转 429 / error 帧。
-
-## 与  的关系：**同一个键，契约没变**
-
-`budget_intercept` 存的一直是**原因**（`str`）。本批只是**多了 10 个写入点**，
-并让端点层用 `m.agent_budget_intercept_message` **统一**拼给调用方的那句话。
-⇒ `app/tests/test_budget_hard_intercept.py` 的 11 条守卫**只动了 1 条**，且是**有意的语义翻转**
-（见该文件 `test_软返回那一轮的出口也要带上本轮的值` 的 docstring）。
-
-## 四条轴
-
-| # | 轴 | 用例 |
-|---|---|---|
-| ① | 文案：一个纯函数，所有端点共用 | `test_拦截文案*` |
-| ② | 节点：**4 张图**的软返回都要置标志，且**拦在 LLM 调用之前** | `test_*_软返回时置标志` |
-| ③ | 图：**入口节点每轮清零** | `test_*_上一轮的标志不串轮` |
-| ④ | 端点：非流式 **429** · 流式 **error 帧** | `test_*端点*` |
-
-轴 ③ 的 `mcp_agent` 那一条**已由 `test_budget_hard_intercept.py` 覆盖**
-（`test_上一轮的拦截标志不会串到下一轮` / `test_软返回那一轮的出口也要带上本轮的值`）
-—— 本文件不重复写一份。
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_budget_soft_return.py -q -p no:warnings`
+"""批 7：图内「预算已用完」的**软返回** → 429 / error 帧 的判据。
 """
 import asyncio
 import inspect
@@ -121,20 +86,7 @@ def test_拦截文案原因缺失时不返回空串():
 
 
 # ==================== ② 四张图：软返回置标志 + 拦在 LLM 调用之前 ====================
-#
 # **为什么是【直调节点】，不是"跑整张图再看最终 state"**
-#
-#    最初写成"驱动器跑到软返回 ⇒ `out["budget_intercept"]` 非空"，**变异自证时发现它是假判据**：
-#    删掉入口节点的置标志，用例**照样绿** —— 因为同一张图里**后面还有第二个预算守卫**
-#    （`mcp_agent`：入口 `agent_decide` 拦下后落到 `chat_node`，而 `chat_node` 自己也查预算）
-#    ⇒ 后者把前者的缺失**掩蔽**掉了。10 处出口**逐处**都得有判据，否则删掉任意一处都不会红。
-#
-#    ⇒ 每处**直调那个节点函数**（本仓既有做法：`test_budget_hard_intercept._drive_tool_execute`
-#      也是直接调 `aga.tool_execute(state)`）。这些节点是 `build_*` 里的**闭包**，
-#      模块级拿不到名字 ⇒ 从**编译好的图**里取（`graph.nodes[name].bound.func / .afunc`）。
-#
-# 判据同时钉两件事（都用「**爆炸模型**」）：
-#    ① state 上留下了原因 · ② 没走到 LLM 调用（若守卫被挪到调用之后，`.stream()` 当场炸）。
 
 def _node_fn(graph, name, dept=None):
     """从**编译好的图**里取回节点函数本身。
@@ -260,17 +212,12 @@ def test_advanced_agent_每个软返回出口都置标志(monkeypatch):
 
 
 # ==================== ③ 入口清零：上轮的值不许串轮 ====================
-#
-#：`budget_intercept` 是普通 state 键（last-write-wins + 落 checkpoint）
-#    ⇒ 不清零的话，**上一轮被拦**会让**下一轮不需要工具的正常提问也返回 429**
-#    —— 而"下一轮"恰恰是预算恢复之后最可能发生的那一次。
 
 def test_agent_graph_上一轮的标志不串轮(monkeypatch):
     monkeypatch.setattr(agent_graph, "check_token_budget",
                         lambda u, estimated_tokens=500: True)
     monkeypatch.setattr(agent_graph, "llm_with_tools", _bind(_RouteFake()))
     monkeypatch.setattr(agent_graph, "record_from_response", lambda *a, **k: None)
-    # 2026-10-13：本图首轮会检索长期记忆（走外网 embedding）⇒ 打桩。
     import agent.memory_store as _ms
     monkeypatch.setattr(_ms, "search_user_memory", lambda *a, **k: [])
 
@@ -477,10 +424,6 @@ def test_advanced_chat_stream_被拦时发error帧(monkeypatch):
 
 
 # ==================== ⑤ `/agent/approve`：补门（B8+B11）+ 补出口形状 ====================
-#
-# 它是全仓**唯一**既无 B8 也无 B11 的**烧钱**端点（R1.3 由中间件覆盖 ⇒ 不是"零门"）。
-#    而且它的**续跑**同样会花钱：`agent` 是入口节点、每轮都查预算 ⇒ 续跑那一轮
-#    也可能被拦下，不补出口形状的话，`answer` 会是那句"预算用完了"的伪答案。
 
 OWNER = "u"
 SESS = "u:approve-thread"

@@ -14,7 +14,7 @@ redis_client = redis.Redis(
 def get_cache_key(text: str, model: str) -> str:
     """缓存键 = **模型名 + 文本 MD5**。
 
-    2026-10-08：`model` 是**新加的必填形参**，不是可选。
+    ：`model` 是**新加的必填形参**，不是可选。
       改前是 `"emb:" + md5(text)` —— **模型名不在键里** ⇒ 换 embedding 模型后，
       同一句话会**命中旧模型的向量**，而**不报任何错**（§2.1 那类静默错配）。
     **`model` 不设默认值**：漏传要 `TypeError`，不是悄悄回落到某个默认桶
@@ -37,7 +37,7 @@ def set_cached_embedding(text: str, embedding: list, model: str, expire_seconds:
     redis_client.set(key, json.dumps(embedding), ex=expire_seconds)
 
 #：一轮问答**没能正常走完**（取消 / 异常）时，存进历史的半截**必须带这个尾巴**。
-#    与  用的是**同一个字符串**（原文在 `api_v1_rag.py`，2026-10-04 搬来这里 ⇒ 单一来源）。
+#    与  用的是**同一个字符串**（原文在 `api_v1_rag.py`，搬来这里 ⇒ 单一来源）。
 INTERRUPTED_SUFFIX = "…（本次回答被中断，以上为已生成部分）"
 
 
@@ -139,11 +139,8 @@ def warmup_cache():
     for query in HOT_QUERIES:
         try:
             # 调一次 get_embedding，内部会自动存入 Redis 缓存
-            # 2026-10-11：**这一处不传 `user_name`，是对的** ——
             #    它是**启动时**的系统级预热，**不属于任何用户**
             #    ⇒ 归到 `"system"` 名下（那是这个默认值存在的理由）。
-            #    判据是「**调用方有没有用户**」，不是"能不能凑一个名字出来" ——
-            #    把预热算到某个真人头上，就是**把我们的启动成本记到访客账上**。
             get_embedding(query)
             success += 1
         except Exception as e:

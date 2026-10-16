@@ -1,41 +1,4 @@
-""" · 两条历史链的**记忆注入 fail-open** —— 接线判据（2026-10-13）。
-
-## 这一份守的是什么
-
-`/agent/mcp_chat`（图 = `agent_graph_advanced`）与 `/agent/advanced_chat`
-（图 = `agent_graph_advanced_learning`）在**记忆检索失败**时会**整条 500**。
-
-记忆是「有更好」的锦上添花：检索失败（key 不对 / 网络不通 / mem0 或向量库挂了…）
-只该**少一段上下文**，不许把整条链打挂。
-
-改前那三处都是**裸调用** `search_user_memory`（下面三条用例各自钉一处）：
-
-1. `agent_graph_advanced.inject_memories_to_prompt`
-2. `agent_graph_advanced_learning.inject_memories_to_prompt`
-3. `agent_graph_advanced_learning.supervisor`（**入口节点**，**直调** —— 第 2 处的处置盖不到它）
-
-**第 3 处是这次新照出来的**： 的  原先只写了前两处。
-漏了它 ⇒ `/agent/advanced_chat` 照旧整条 500，而上面两条用例**照样全绿**。
-
-## 每一条都必须先跑【正控】
-
-「检索失败 ⇒ 回原样」这句话，**在一个根本不注入记忆的实现上也成立**（恒真）。
-⇒ 每条用例先证明「有记忆时**确实**注入进去了」，否则它对"fail-open"这件事**证明不了任何东西**。
-
-## 为什么不动 `test_budget_soft_return._no_memory` 那个探针
-
-它把 `search_user_memory` 换成一个**一调就炸**的 `AssertionError` 探针，
-守的是「预算已被拒 ⇒ 不许再花那笔 embedding」。而 `AssertionError` **是
-`Exception` 的子类** ⇒ 新加的 `except Exception` 会**把它一起吞掉**、那条守卫**静默失效**
-（本仓  就是这么烂的）。
-
-⇒ 处置：三处守卫里都写了 `except AssertionError: raise`（不是冗余）。
-**反证**：把那三行删掉 ⇒ `test_budget_soft_return` 的四条对应用例**仍然绿**
-—— 那正是"守卫失效"的样子，而**没有任何门会红**。所以这一条只写在注释里、
-**钉不住**，判据落在下面 `test_探针不会被 fail_open 吞掉`。
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_memory_injection_failopen.py -q -p no:warnings`
+"""· 两条历史链的**记忆注入 fail-open** —— 接线判据。
 """
 import asyncio
 import importlib

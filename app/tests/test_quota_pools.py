@@ -1,15 +1,4 @@
-"""两个额度池 —— **按路径归池**的判据（2026-10-11）。
-
-## 本文件钉什么
-
-| # | 钉什么 | 不钉会怎样 |
-|---|---|---|
-| 1 | **路由模板集合 ⇔ 归池表键集合**（**双向**） | 新加一条路由忘了归池 ⇒ 它**静默不受限**，而**没有任何门会红** |
-| 2 | 归类是**纯函数**，且**带参路径**也匹配得上 | `/agent/trace/{thread_id}` 这类会**静默归错**（运行时的路径是填过参的） |
-| 3 | 匹配是**分段**的，不是前缀 | 前缀匹配会把 `/api/v1/rag/searchX` 也算成 LLM |
-| 4 | **总额 = 两池【相加】**，不是「× 2」 | 写死倍数 ⇒ 将来某一池改了，总额**不会跟着变**（作者 2026-10-11 明确要加法） |
-
-本文件**不连库、不连 Redis** —— 全是纯函数与集合比对。
+"""两个额度池 —— **按路径归池**的判据。
 """
 import os
 import sys
@@ -125,7 +114,7 @@ def test_non_pool_paths():
 
 
 def test_unknown_paths_are_not_in_a_pool():
-    """表外路径 ⇒ `POOL_NONE`（作者 2026-10-11 裁「**不进池**」）。
+    """表外路径 ⇒ `POOL_NONE`（作者 裁「**不进池**」）。
 
     这条**看着像在放行**，其实是**故意的** —— 把 `/static/*` 当成 LLM 用会几刷就顶满
     （那正是  那个 429 的同一件事）。代价靠上面那道覆盖门兜。
@@ -152,7 +141,7 @@ def test_matching_is_by_segment_not_by_prefix():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_pool_limit_follows_the_role():
-    """每个池取的是**它自己那张表**里的值（2026-10-11 起两池**不再同源**）。"""
+    """每个池取的是**它自己那张表**里的值（两池**不再同源**）。"""
     from billing.token_config import EMBEDDING_DAILY_TOKEN, LLM_DAILY_TOKEN
 
     assert qp.pool_daily_limit(qp.POOL_LLM, "free") == LLM_DAILY_TOKEN["free"]
@@ -182,7 +171,7 @@ def test_pool_none_has_no_limit():
 
 
 def test_total_is_the_sum_of_the_two_pools(monkeypatch):
-    """**作者 2026-10-11 定的：用加法，不要用乘法。**
+    """**作者 定的：用加法，不要用乘法。**
 
     构造：**两池给不同的数**（100 和 7）⇒ 总额必须是 **107**。
     - 写成 `2 × 某一边` ⇒ 会得到 200 或 14 ⇒ **本条红**
@@ -202,7 +191,7 @@ def test_total_is_the_sum_of_the_two_pools(monkeypatch):
 def test_total_is_the_sum_of_the_two_TABLES():
     """总额 = **LLM 表 + Embedding 表**（逐角色核一遍真值）。
 
-    **2026-10-11本条改过一次**：它原先叫 `..._both_pools_start_equal`，
+    **本条改过一次**：它原先叫 `..._both_pools_start_equal`，
     钉的是"两池同源 ⇒ 恰好 2×"。**那一版自己就写着**「将来某一池调小了，
     该改的是这一条」—— **那一天就是今天**（free 的 LLM 调到 50 000，Embedding 仍是 10 000）。
     **不是删断言**：现在的判据更硬 —— 它钉「总额**确实**是两张表相加」，

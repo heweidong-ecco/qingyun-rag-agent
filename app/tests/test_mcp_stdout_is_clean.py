@@ -1,23 +1,4 @@
 """MCP 服务端**不许往 stdout 写** —— 那是 stdio 传输通道。
-
-## 为什么（2026-10-08 -B 立 · 实锤）
-
-`app/tools/mcp_server.py` 原先有两处 `print(...)`（写 **stdout**）。后果：客户端把那一行当 JSON 解析
-
-```
-ValidationError: 1 validation error for union[JSONRPCRequest, …]
-  Invalid JSON: expected value at line 1 column 1
-  input_value='MCP Server 启动中... 已注册 7 个工具'
-```
-
-**每次工具调用稳定 1 条**（实测 3/3）。其中 `list_tools` 那处更危险 ——
-它跑在 `tools/list` **请求当中**，正是客户端在等响应的时候。
-
-**它不致命**（客户端记一条错就过去了，调用照常返回结果）—— **但那正是它危险的地方**：
-**一个每次都报的错，不该因为它不影响结果就当没事**（本仓：**「从不命中」与「没人违规」
-在机器痕迹上完全一样**）。
-
-现场与数据 ⇒ `docs/说明/mcp长驻会话-调研-20261008.md` §五
 """
 import ast
 import subprocess

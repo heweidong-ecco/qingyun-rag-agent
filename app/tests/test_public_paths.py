@@ -1,13 +1,4 @@
-"""公开路径名单的回归测试（对应 docs/重构计划-2026-09-15.md 的 N1）
-
-背景（2026-09-16 修）：
-    main.py 的限流中间件与配额中间件**各写了一份**"跳过名单"，且两份都写的是
-    `/auth/login` / `/auth/refresh` / `/admin/create_user` ——
-    但三个 router **都带 `/api/v1` 前缀**（api_v1.py:53 / api_v1_rag.py:44 / api_v1_agent.py:37），
-    真实路径是 `/api/v1/auth/login` ⇒ **名单对不上，等于没跳过**。
-    后果：登录/刷新/建用户实际会打到 Redis 限流；Redis 抖动时登录返回 500 而非按预期放行。
-
-本测试**不需要 Redis、不需要 DB** —— 只断言"名单"与"真实路由"的关系。
+"""公开路径名单的回归测试（对应 docs/重构计划-.md 的 N1）
 """
 from main import app, MIDDLEWARE_EXEMPT_PATHS
 
@@ -102,7 +93,7 @@ def test_public_paths_is_shared_by_both_middlewares():
     判据：`main` 模块里不应再出现旧的局部变量名 `public_paths`
     （它原先只存在于 QuotaMiddleware.dispatch 的局部作用域里）。
 
-    **2026-10-11（待办）靶子改过一次** —— 原先钉的是
+    **（待办）靶子改过一次** —— 原先钉的是
     `src.count("request.url.path in MIDDLEWARE_EXEMPT_PATHS") >= 2`。
     那一批把判定收口成了纯函数 `is_middleware_exempt(path)`
     （理由：`/static/*` 要前缀匹配，而这份名单是 `frozenset` + 精确匹配 ⇒ 塞进去等于没塞）

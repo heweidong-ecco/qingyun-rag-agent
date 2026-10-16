@@ -7,12 +7,10 @@ from billing.token_tracker import record_usage  # 新增导入
 
 load_dotenv()
 
-# 批 6：客户端**惰性构造**，不许在模块级建。
 #   改前是模块级 `OpenAI(api_key=DASHSCOPE_API_KEY, ...)` —— 缺 key（`os.getenv` 无默认 ⇒ `None`）
 #   时在 **import 期**就抛 SDK 那句通用 `OpenAIError`，**炸掉整条 import 链**
 #   （`rag_pipeline` / `api_v1` / `hybrid_search` 全都起不来），
 #   而那句话提的是 `OPENAI_API_KEY` —— 本仓根本不用那个名字。
-#   CI 一直没照出来：`ci.yml` 塞了 dummy key（= 门挂在别处）。
 _client = None
 
 
@@ -46,12 +44,12 @@ def get_embedding(
 ) -> list:
     """带缓存的Embedding调用。
 
-    2026-10-08（§二·2）：`model` 的**默认值不再写死** —— 走
+    （§二·2）：`model` 的**默认值不再写死** —— 走
         `EMBEDDING_MODEL_MAIN`（先 env 后 `config`，与 `_get_client` 取 key **同一种写法**）。
         **别把默认值改回字面量** —— 换模型要改代码，而那正是本次要消掉的。
     **形参 `model` 必须保留**：`test_isolation.py` 有 4 处按 `lambda text, model=None:` 打桩。
 
-    **2026-10-11：新增 `user_name`（关键字限定）—— 修一个真缺陷**。
+    **：新增 `user_name`（关键字限定）—— 修一个真缺陷**。
 
     **改前**：这里**写死** `user_name="system"`（原注释还自认「可后续改为动态获取当前用户」）
     ⇒ **全仓每一次 embedding 都记在一个叫 `system` 的假用户名下**
@@ -65,7 +63,7 @@ def get_embedding(
     ② `assert_model_dimension`（启动自检）③ 本文件的 `__main__`。
     ⇒ **判据是"调用方有没有用户"，不是"默认值改了没"**：谁手里有用户，谁就得传。
 
-    **`thread_id` 同理 —— 2026-10-16起【已经接了】**：
+    **`thread_id` 同理 —— 【已经接了】**：
         有会话的调用点（`rag_pipeline` / `hybrid_search` / `api_v1_rag`）**都得传**；
         不传就落进 `"system"`，而**会话闸查的是调用者传的那个桶**
         **闸恒看到 0**（实测：`get_session_token_usage(user, 调用者的 thread)` = 0）
@@ -102,7 +100,6 @@ def get_embedding(
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=0,
             purpose="embedding",
-            # 2026-10-11：**不再写死 `"system"`** —— 由调用方传（见函数 docstring）。
             #    改前那一行是「Embedding 池永远拦不住」的根因。
             user_name=user_name,
             thread_id=thread_id,
@@ -116,7 +113,7 @@ def get_embedding(
 class EmbeddingDimensionMismatch(EnvironmentError):
     """**维度对不上**（配置漂移）—— ⛔ 与「网络/模型不可用」**是两回事**。
 
-    🔴 **为什么要单开一个类**（2026-10-14 · B 段接线时撞到的）：
+    🔴 **为什么要单开一个类**（· B 段接线时撞到的）：
        py3 里 **`EnvironmentError` 就是 `OSError`** ⇒ 启动那段若写 `except EnvironmentError: raise`，
        **会把 HTTP 连接失败一起当成"维度对不上"** ⇒ **一次网络抖动就把应用挡在门外**。
        ⇒ 单开一个子类：调用方**只对它**响亮地断，别的（网络类）只记 warning。
@@ -131,12 +128,12 @@ def assert_model_dimension(expected: int) -> None:
     **不是警告** —— 维度不匹配时检索**不是变慢、是变错**。
     它**要在 startup 里调**（`app/main.py` 的 `startup_event`，`validate_config` 那一族），
        **不在 import 期** —— 那会炸掉整条 import 链。
-    2026-10-11：**本函数在这里，接线留到 B 段** —— 接线需要一个 `expected` 的**来源**，
+    ：**本函数在这里，接线留到 B 段** —— 接线需要一个 `expected` 的**来源**，
        而全仓现在**没有**那个来源（`app/core/db.py` 是**行内字面量** `vector(1536)`）。
        在 A 段硬接 = 在 `main.py` 里再写一份 1536（第三处）。
        ⇒ （**B 段**）立起「模型名 + 维度 + 表定义 = 三件套」之后，接线才有个真的落点。
 
-    ✅ **2026-10-14 · B 段到了，接线已做**（`main.py` 的 `startup_event`）：
+    ✅ **· B 段到了，接线已做**（`main.py` 的 `startup_event`）：
        **`expected` 的来源 = 【表自己】** ⇒ `core.db.embedding_dim_in_db()`
        （PG 查 `pg_attribute.atttypmod`，对 `vector(N)` 就是 N）。
        ⇒ ⛔ **不抽常量、也不在 `main.py` 里写死一个数** —— 那正是当初不敢在 A 段硬接的原因。

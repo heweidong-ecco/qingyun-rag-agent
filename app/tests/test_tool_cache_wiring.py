@@ -3,15 +3,6 @@
 判据不是"文件里有 `cached_tool` 几个字" —— 那是**动作**，不是**结果**。
    这里是真调一次（调的是 `mcp_server.TOOLS` 里那个 `@tool` 对象，**和 Agent 用的是同一个**），
    看**缓存有没有被写进去**。
-
-**全离线**：`monkeypatch` 掉 `tool_cache.redis_client`（不碰真 redis），
-   网络也一律不打（`httpx` 被换成替身）。
-
-**2026-10-08 与的两处出入**（没写到实际形状，按实际改测试，没改实现）：
-   ① 让 `monkeypatch` 目标是 `search_tools._search_bing` —— **本仓没有这个函数**；
-      实际是 `httpx.get`（`test_search_tools.py` 用的也是这个）。
-   ② 说 `web_search` 的实现体"可能不是独立函数" —— **确实不是**，
-      已按它的要求抽成 `_web_search_impl`（搬家，逻辑一行未改），再在外面包缓存。
 """
 import types
 

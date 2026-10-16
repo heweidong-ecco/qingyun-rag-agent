@@ -1,23 +1,9 @@
 """预算闸门的单位回归测试（`#2` · 决策）
 
-背景（2026-09-16 修）：
+背景（修）：
     三处闸门写成 `remaining = get_user_token_budget(...) - get_daily_usage_cost(...)`
     —— **Token 预算** 减 **「元」消耗**。后果是剩余恒 ≈ 预算值，而单次预估花费只有 ¥0.0x，
     于是 `cost > remaining` 永不成立 ⇒ **三处闸门恒放行**、80% 告警永不触发。
-
-## 本测试的核心手法：**只 patch `get_daily_token_usage`，刻意不 patch `get_daily_usage_cost`**
-
-| | 修复**前** | 修复**后** |
-|---|---|---|
-| 闸门调的是 | `get_daily_usage_cost`（元） | `get_daily_token_usage`（Token） |
-| 该函数在本测试里 | **真走库** → 拿到 ¥0.0002 | **被 patch** → 拿到 9999 |
-| 判据 | `est > 10000 − 0.0002`？→ 否 | `est > 10000 − 9999`？→ **是** |
-| 断言 | **FAIL（红）** | **PASS（绿）** |
-
-⇒ 天然"先红后绿"，且**零写库**。
-
-> **为什么不用"往库里插假数据"**：那条路**区分不了红绿** —— 修复前的代码根本不读
-> `total_tokens` 列，插多少 token 都一样。这是原验证方案的致命缺陷（写进 CHANGELOG 存档）。
 """
 import pytest
 

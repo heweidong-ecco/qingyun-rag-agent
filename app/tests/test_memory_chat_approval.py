@@ -1,15 +1,4 @@
 """`/agent/memory_chat` 的**审批门** + `/agent/approve` 的**按图路由**（丙段）。
-
-**两条现状**：
-   1. `agent_checkpointer.py`（`/agent/memory_chat` 走它）**没有审批门**
-      —— 无 `interrupt_before` / 无 `SENSITIVE_TOOLS`（§遗留·2）
-      **同一个仓里，一条路停下等人批，另一条直接执行。**
-   2. `/agent/approve` 把 **`agent_graph` 写死**了 ⇒ 光给 ① 加门而不改它，
-      **会话会停在审批点、永远没人能放行**（比不加固还糟）。
-   ⇒ 作者 2026-10-03 裁：**按登记表里的图路由**（一个入口，两张图都认）。
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_memory_chat_approval.py -q -p no:warnings`
 """
 import asyncio
 import types
@@ -41,7 +30,7 @@ class _ScriptedLLM:
        `agent → tools → agent …` **转到递归上限**，红灯变成 `GraphRecursionError`
        （吵、且看不出是哪条断言坏的）。
 
-    2026-10-04：`agent_decide` 已从 `.invoke` 改成 `.stream`（真流式）
+    ：`agent_decide` 已从 `.invoke` 改成 `.stream`（真流式）
        ⇒ 替身必须跟上，否则 `AttributeError: '_ScriptedLLM' object has no attribute 'stream'`。
     敏感那一次**故意用碎片化的 `tool_call_chunks`**（而不是组装好的 `tool_calls`）——
        这正是流式到达的**真实形态**，于是本用例**顺带守住**了「节点的 `+` 聚合

@@ -20,7 +20,7 @@
    ⚠️ 代价认了：**"没记账"与"记了 0"在日志里长得像** —— 真要查得看 `usage_metadata` 在不在。
 3. ⚠️ **它是 `BaseCallbackHandler` 的子类** ⇒ 方法名（`on_llm_end` 等）是**框架约定**，
    ⛔ 改名字 = 回调**静默不触发**（没有报错）。
-4. ⚠️ **2026-10-09 改过 import**：`from billing.token_tracker import record_from_response`。
+4. ⚠️ **改过 import**：`from billing.token_tracker import record_from_response`。
    📌 判据：`grep -n "^from" app/routing/websocket_callback.py`。
 
 ## 关联

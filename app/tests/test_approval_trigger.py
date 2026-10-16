@@ -1,17 +1,7 @@
-"""硬门 D 的触发条件（B4）。
+"""硬门 D 的触发条件。
 
 改前的现状：**只要产生任意 tool_calls 就进审批** ⇒ 问一句"今天几号"也会停下来等人批。
    那条路在验收上是**过不去**的 —— 硬门 D 要的是「**该被接管时被接管**」，不是「全都接管」。
-
-不碰 DB / Redis / 网络 —— 只测路由函数的返回值。
-
-裁定 ⇒ `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` 的 B4 · `裁` 栏
-   （白名单第一版 = `{web_search}` · 写在 `.env` 的 `SENSITIVE_TOOLS`）
-
-**2026-10-03勘误**：上面那个名字**原来写的是 `search_tool`** ——
-   那是**变量名**，不是工具名（真名是 `duckduckgo_search`，后换成 `web_search`）。
-   ⇒ 交集恒空 ⇒ **审批永不触发**，而这份文件**全程没红**（它自己就钉着那个错名字）。
-   别再写变量名 —— `SENSITIVE_TOOLS` 装的是**工具名**，判据在 `app/tests/test_tool_dispatch.py`。
 """
 import os
 
@@ -105,7 +95,7 @@ def test_validate_approval_config_passes_with_the_shipped_default():
 
     与上面两条配成一对：只测"错了会炸" ⇒ **可能误报**（比如判据写反、恒炸）。
 
-    **2026-10-03加强**：原来只断言"不抛" —— 而**错名字当年也不抛**，
+    **加强**：原来只断言"不抛" —— 而**错名字当年也不抛**，
        于是这条用例**在 bug 存在时照样是绿的**。⇒ 补一条"默认值必须真的命中工具"。
     """
     import agent.agent_graph as agent_graph

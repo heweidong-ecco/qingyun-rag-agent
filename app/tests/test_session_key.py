@@ -4,12 +4,6 @@
    的 key 里**都没有人**；而 `thread_id` 在 6 条端点上的**默认值就是 `"default"`**
    ⇒ 两个用户都用默认值 ⇒ **共用一个 checkpoint 桶**，而 reducer 是
    `Annotated[List, operator.add]` ⇒ **消息 append 到别人的历史上，模型看得到**。
-
-   对照：**花费**那条轴**没有**这个问题 —— `check_session_token_budget(user_name, thread_id)`
-   的 key 含 `user_name`。⇒ 同一个仓里两套口径：**花钱的账按人算，对话记忆不按人算。**
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_session_key.py -q -p no:warnings`
 """
 import inspect
 

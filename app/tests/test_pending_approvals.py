@@ -1,10 +1,7 @@
-"""待接管队列（B5）。不碰 DB / Redis / 网络 —— 纯内存注册表。
+"""待接管队列。不碰 DB / Redis / 网络 —— 纯内存注册表。
 
 **为什么需要这张表**：`MemorySaver`（`agent_graph.py`）**没有"列出所有 thread"的 API**
    ⇒ **没法从 checkpoint 反查"谁卡在审批"** ⇒ 只能自己记账。
-
-裁定 / 计划 ⇒ `app/routing/specs/api_v1_agent.md` 的「实施计划 ② · 」·
-   模块 spec ⇒ `app/agent/specs/pending_approvals.md`
 """
 import agent.pending_approvals as pa
 

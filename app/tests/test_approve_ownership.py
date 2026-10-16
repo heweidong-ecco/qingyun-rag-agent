@@ -3,14 +3,6 @@
 **改动前是什么样**：`/agent/approve` **没有任何归属校验** ——
    任何登录用户拿一个 `thread_id` 就能**批准并续跑**那个会话。
    更糟的是：它用**调用方自己**的键去取 checkpoint ⇒ 拿到的是**别人的**图状态。
-
-**难点（为什么不能"按调用方拼"）**：`/agent/pending` 是**跨用户队列**（硬门 D）
-   ⇒ **admin 必须能批别人的会话**。若按调用方拼，admin 会拼出 `admin:default`
-   而属主的是 `alice:default` ⇒ **admin 永远批不了** ⇒ 硬门 D 直接死掉。
-   ⇒ 正确形状：**先从队列里查出【属主】⇒ 按属主拼 ⇒ 再判「本人或 admin」**。
-
-判据（可打印）：
-    `venv/bin/python -m pytest app/tests/test_approve_ownership.py -q -p no:warnings`
 """
 import asyncio
 import types
@@ -35,7 +27,7 @@ class _FakeGraph:
     """记下 approve 对图做过的**每一个动作**（含没做动作 ⇒ `trace == []`）。
 
     **`values["messages"]` 必须给**：`/agent/approve` 现在要读**卡住的那条 `tool_calls`**，
-       去回填配对的 `ToolMessage`（2026-10-04 硬门 D 修复）。给空 dict 会直接 `KeyError` ——
+       去回填配对的 `ToolMessage`（硬门 D 修复）。给空 dict 会直接 `KeyError` ——
        而那是**假图的缺陷**，不是被测代码的（真 `StateSnapshot` 一定有 `.values["messages"]`）。
     **`next_after`**：**放行之后** `get_state.next`。默认 ``（走完了）。
        approve 现在读两次 state（放行前判"停没停"、放行后判"该不该注销登记"）——

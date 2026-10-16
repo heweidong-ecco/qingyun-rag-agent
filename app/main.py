@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 
 from core.config import validate_config, TRUST_PROXY_HEADERS
-from core.logger_config import setup_logger  # 2026-09-20 删 `logger`（D1/pyflakes 报 redefinition）：:59 会 `logger = setup_logger` 覆盖它，覆盖前从未使用
+from core.logger_config import setup_logger  # 删 `logger`（D1/pyflakes 报 redefinition）：:59 会 `logger = setup_logger` 覆盖它，覆盖前从未使用
 from core.exceptions import AppException, ErrorCode
 from routing.api_v1 import router as public_router
 from routing.api_v1_rag import router as rag_router
@@ -99,48 +99,17 @@ async def log_and_track_request(request: Request, call_next):
 
 # 新增 令牌桶 在 main.py 中集成限流中间件：
 # ============ 中间件豁免路径（限流 / 配额两个中间件共用）============
-#
-# 2026-10-05 改名：原名 `PUBLIC_PATHS` **会误导**。
-#    它**从来没表示"公开"** —— 只表示"**跳过下面这两个中间件**"。
-#    最刺眼的现成反例：`/api/v1/admin/create_user` **在这个名单里，但它要 `require_admin`**
-#    （`api_v1.py:161`，非管理员 403）⇒ 旧名字直接与事实相反。
-#
-# **这个名单与"该端点要不要鉴权"【完全无关】** ——
-#    要不要身份，由**该端点自己的依赖**决定（`Depends(get_current_user*)` / `require_admin`）。
-#    ⇒ 判断一条端点"公不公开"，别读这个名单，去跑。
-#
-# 2026-09-16 修正：原名单写的是 `/auth/login`、`/auth/refresh`、`/admin/create_user`，
-#    但三个 router **都带 `/api/v1` 前缀**（api_v1.py:53 / api_v1_rag.py:44 / api_v1_agent.py:37），
-#    真实路径是 `/api/v1/auth/login` —— **名单对不上，等于没跳过**。
-#    后果：登录/刷新/建用户实际会打到 Redis 限流；Redis 抖动时登录返回 500 而非按预期放行。
-#    两个中间件原先**各写一份**（其中一处注释还写着"与另一处保持一致"）—— 现提取为单一常量，
-#    并加了一条测试断言"名单里的 API 路径必须真的存在于 app.routes"（见 test_public_paths.py）。
 MIDDLEWARE_EXEMPT_PATHS = frozenset({
     "/", "/docs", "/redoc", "/docs/oauth2-redirect", "/openapi.json",
     "/health", "/ready", "/metrics",
-    # 2026-10-09（刀 1）：`/api/v1/info` **与 `/` 是同一份静态服务索引**
     #    （`/` 改成页面后，那段 JSON 挪到了这里）。
     #    ⇒ 两者【同待遇】—— `/` 早就在本名单里（静态入口，不参与限流与配额），
     #      一个豁免、一个记成"债"，读的人只会问"为什么同一个东西两种待遇"。
     #    它**零成本**（一个静态 dict，不碰库、不碰 Redis），没有限流的理由。
-    #    副作用：它因此**不进**  的无鉴权盘点
-    #       （那道门跳过本名单里的路径）⇒ 盘点数仍是 **5 条**（2026-10-09 实测）。
     "/api/v1/info",
     "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/admin/create_user",
 })
 
-# 2026-10-11（待办）：**前缀**豁免 —— 与上面那份**精确**名单并存，语义不同。
-#
-# **要修的是什么**：`/` 在本名单里，而它 **302 到的 `/static/*` 不在**
-#   ⇒ **豁免形同虚设**。一次页面加载 ≈ 8 个请求（HTML + `app.css` + 6 个 js），
-#   而匿名桶是 **3/秒 · 容量 20** ⇒ **约两三次刷新就顶满**
-#   ⇒ 连着刷页面会在几秒内收到 **429**，而 429 的是**页面自己的 css/js**
-#   ⇒ **页面直接渲染不出来**，访客会以为站点坏了（2026-10-11 实测）。
-#
-# **为什么必须另立一个常量、不能只往上面那个集合里塞一条 `/static/`**：
-#   上面那份是 **`frozenset` + `in` 精确匹配**，`"/static/web/app.css"` 永远匹配不上
-#   ⇒ 塞进去**等于没塞**，而且**不会有任何门报错**（本仓最怕的那类"静默失效"）。
-#   自证 ⇒ `app/tests/test_static_exempt.py::test_naive_fix_would_not_have_worked`。
 MIDDLEWARE_EXEMPT_PREFIXES = frozenset({
     # 只放**零成本**的东西：静态文件是磁盘读，不碰库、不碰 Redis。
     # 别把 `/api/` 这类加进来 —— 那会一次性放行整片业务接口。
@@ -168,7 +137,7 @@ def is_middleware_exempt(path: str) -> bool:
     )
 
 
-# ==================== 限流身份解析（2026-09-30 抽出，便于单测） ====================
+# ==================== 限流身份解析（抽出，便于单测） ====================
 def resolve_rate_limit_identity(x_api_key: str | None, auth_header: str | None) -> str | None:
     """从请求头算出**限流用**的用户身份（桶名）。
 
@@ -178,7 +147,7 @@ def resolve_rate_limit_identity(x_api_key: str | None, auth_header: str | None) 
 
     **本函数只管"限流分桶"，不是鉴权** —— 鉴权在 `app/routing/deps.py`，它会真查库。
 
-    2026-10-05（待办）：**返回 `None` = "我现在判不了"**（认证服务不可用），
+    （待办）：**返回 `None` = "我现在判不了"**（认证服务不可用），
        **不是 `"anonymous"`**。这两个必须分得开 ——
 
        * `"anonymous"` = **判了，就是匿名**（用户侧的问题）
@@ -190,18 +159,11 @@ def resolve_rate_limit_identity(x_api_key: str | None, auth_header: str | None) 
        **1008 / 1011** 那条禁止的**归错因**是同一件事的限流版。
     """
     if x_api_key:
-        # 2026-09-30 修（B9-b）：原先这里是 `f"user:{x_api_key[:8]}"` ——
         #    只取**前 8 个字符**，**不查库、不验签** ⇒ 编一个串就拿到一个**全新的桶**，
         #    换着串发 = **无限刷新限流配额**。实测：与下方 `QuotaMiddleware` 走的
         #    `resolve_quota_identity`（那条**验了**）**不一致** —— 同一个文件里两条中间件两种做法。
-        #    **原先这里写的是「:211」那种行号** —— 2026-10-05 改掉了：
-        #    行号会烂（本次一改就全错），而**名字**不会。
-        #
-        # 验不过时**降级到匿名桶，不是拒绝** —— 因为**匿名还开着**，
-        #    客户端本来就可以不带 key。拒绝会把匿名入口一起关掉，那是**另一个决定**（B9 仍挂着）。
         from access.auth import verify_api_key
 
-        # 2026-10-05：**验不了**（库不可用）与**验不过**是两回事 —— 见 docstring。
         # **只捕 `AppException`**：`verify_api_key` 声称库不可用时抛的就是它。
         #    写 `except Exception` 会把 `app/tests/test_rate_limit_identity.py` 的 `_no_db` 守卫
         #    （靠抛 `AssertionError` 抓"谁碰了库"）**一起吞掉** ⇒ 那道门静默失效。
@@ -224,7 +186,7 @@ def resolve_rate_limit_identity(x_api_key: str | None, auth_header: str | None) 
 
 
 #: 没身份时的桶名（`resolve_rate_limit_identity` 的返回值之一）。
-#: **2026-10-11 起它【不再直接当桶用】** —— 中间件会把它换成按 IP 的桶
+#: **它【不再直接当桶用】** —— 中间件会把它换成按 IP 的桶
 #: （`anonymous_rate_limit_bucket`），见 `RateLimitMiddleware.dispatch`。
 ANONYMOUS_BUCKET = "anonymous"
 
@@ -238,7 +200,7 @@ def resolve_client_ip(headers, client_host: str | None, *, trust_proxy: bool) ->
       · `True` ⇒ 取 `X-Forwarded-For` 的**第一跳**，缺了回落 `X-Real-IP`，再缺回落对端。
         **为什么是第一跳**：`X-Forwarded-For` 是**从左往右追加**的 ——
         每过一跳，代理把**上一跳的地址**加在**后面** ⇒ **列表最前面那个才是原始客户端**。
-        🔵 这条是 **2026-10-11 在魔搭创空间上实测**出来的；⚠️ **那个平台已弃用**
+        🔵 这条是 **在魔搭创空间上实测**出来的；⚠️ **那个平台已弃用**
         ⇒ 下面这条引用现在只当**当时的实测事实**读。
         📄 `docs/说明/魔搭创空间-部署与平台约束.md` §4.2。
 
@@ -276,9 +238,9 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
 
     **抽出来与 `resolve_rate_limit_identity` 是同一条理由**：让这段逻辑**能被单测**
     （中间件本体要连库，行为测试会退化成"环境依赖型通过"）。
-    2026-10-05（待办）才抽的 —— 原先它**写在 `dispatch` 里**，那段没法单独测。
+    （待办）才抽的 —— 原先它**写在 `dispatch` 里**，那段没法单独测。
 
-    **2026-10-09（作者裁「A1」）：本函数【已与限流那条对齐】——**
+    **（作者裁「A1」）：本函数【已与限流那条对齐】——**
        原先它与限流**故意不同**（`None` 把"真匿名"和"判不了"混在一起，匿名因此**整层绕过配额**）。
        现在与 `resolve_rate_limit_identity` **同一口径**：
        * **`"anonymous"` = 判了，就是匿名** ⇒ **进配额**，`get_user_role("anonymous")`
@@ -290,13 +252,13 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
        旧行为（匿名完全不受限）比它**更糟**；而**全站日级**上限仍在，不依赖身份。
        逐条见 `SECURITY.md` §3.1。
 
-    2026-10-05：**认证服务不可用（库挂了）⇒ 返回 `None`**，
+    ：**认证服务不可用（库挂了）⇒ 返回 `None`**，
        不是让它抛出去 —— 抛出去会把这个**成本控制**层变成一处新的 500
        （它所处的位置与限流一样：中间件里的异常**不会被 `AppException` 处理器接住**）。
        理由见 `auth.verify_api_key` 的 docstring；取向同 `token_tracker` 的 fail-open。
     """
     user_name = None
-    _unavailable = False          # 2026-10-09（A1）：**"判不了"**（库挂了）—— 与"判了是匿名"分开
+    _unavailable = False          # （A1）：**"判不了"**（库挂了）—— 与"判了是匿名"分开
 
     # 方式一：从X-API-Key获取
     if x_api_key:
@@ -319,7 +281,6 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
 
     if user_name:
         return user_name
-    # 2026-10-09（作者裁「A1」）：**真匿名 ⇒ 返回 `"anonymous"`（进配额，走 FREE 最低档）**；
     #    **只有"判不了"才返回 `None`**（那才该 fail-open）。
     return None if _unavailable else "anonymous"
 
@@ -327,7 +288,7 @@ def resolve_quota_identity(x_api_key: str | None, auth_header: str | None) -> st
 def _rate_limited_payload(retry_after: int = 60) -> dict:
     """全局限流触发时的响应体（抽成纯函数 ⇒ 可单测，不必真打 Redis）。
 
-    2026-10-01 修：此处原写 `"error": "Internal server error"` ——
+    修：此处原写 `"error": "Internal server error"` ——
        状态码是 429、文案却说"内部错误" ⇒ 调用方会以为**系统坏了**，
        而实际是**自己发太快**。这正是 `通用方法 §7.1` R3.3 要防的。
     """
@@ -345,7 +306,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # 跳过豁免名单里的路径（判定收口在 `is_middleware_exempt` —— 原先这里与 QuotaMiddleware 各写一份）
         # 健康检查/就绪/指标必须豁免，否则被限流会导致 K8s/Docker 健康探针误判为不健康
-        # 2026-10-11：`/static/*` 也走这条 —— 页面自己的 css/js 被 429 会让页面直接渲染不出来
         if is_middleware_exempt(request.url.path):
             return await call_next(request)
         # ----- 第一层：全局限流（所有请求共享） -----
@@ -363,7 +323,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             request.headers.get("Authorization"),
         )
 
-        # 2026-10-05（待办）：`None` = **认证服务不可用、身份判不了**
         #    ⇒ 本次请求**不参与用户级限流**（fail-open）。
         #    **不落匿名桶**（那会把库抖动算到用户头上 ⇒ 大面积假 429）——
         #    理由与实测见 `resolve_rate_limit_identity` 的 docstring。
@@ -371,7 +330,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if user_name is None:
             return await call_next(request)
 
-        # 2026-10-11：**匿名 ⇒ 按来源 IP 分桶**（改前：所有匿名共用一个 `anonymous` 桶
         #    ⇒ 一个人刷就能把别人的页面打成 429 ——  那次实测到的就是它）。
         #    身份**认得出来**的（`user:...`）不走这里 —— 它们本来就是一人一桶。
         #    拿不到 IP ⇒ `anonymous_rate_limit_bucket` 会回落成**原样那个共用桶**。
@@ -426,19 +384,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RateLimitMiddleware)
 
 # ==================== 权限分级中间件（按用户按天的 token 上限 · R1.3） ====================
-# 2026-10-03 改（决策一落地）—— 原先是「**每日请求次数**」配额
 #    （`permission.ROLE_QUOTA` + `quota_limiter`），与 token 那套**互不知情**：
 #     实测两者口径**差 35 倍**（`plan_execute` 一次 ~3346 token
 #    ⇒ 按次数能跑 100 次、按 token 只能跑 ~3 次）⇒ 作者裁「统一到 token 一套」()。
-#
-# 这里是**原位置换**，不是「把这一层删掉」：
-#    次数配额是当时**唯一**覆盖「所有非公开路径 + 按用户 + 按天」的一层
-#    （会话级  按 (用户,会话) 计、换个 `thread_id` 就重置；全局日级  看不到「某一个人」）
-#    ⇒ 直接撤会开一个「单用户跨会话无限花」的洞。所以撤旧的同时**就地**接上 token 口径 = `R1.3`。
 from datetime import datetime, timedelta
 
 from billing.token_tracker import get_pool_budget_info
-# 2026-10-11（两个额度池）：归池表 + 纯函数 `pool_for_path`
 from billing.quota_pools import pool_for_path, POOL_EMBEDDING, POOL_NONE
 
 
@@ -460,7 +411,7 @@ def quota_reject_payload(info: dict) -> dict | None:
     中间件本体要连 DB（`token_tracker` 查 `token_usage_logs` 表），抽出来才能**不连库单测**
     （见 `app/tests/test_quota_middleware.py`）。
 
-    **2026-10-11（两个额度池 ·）**：`info` 现在可以是**某一个池**的数
+    **（两个额度池 ·）**：`info` 现在可以是**某一个池**的数
     （由中间件按**路径**选出来），也可以是**总计**。
     键名 `daily_budget` / `used_today` / `remaining` **保持原样** ——
     它们对"池"和"总计"**意思是一样的**（就是那一个的日额度 / 今日已用 / 剩余）。
@@ -497,7 +448,7 @@ def quota_headers(info: dict) -> dict:
     头名**故意不改**：客户端已经在读它们，改名的破坏面比改语义更大。
        但**值的意思变了** —— `X-Quota-Limit` 现在是**每天的 token 预算**，不是次数。
 
-    **2026-10-11 加 `X-Quota-Pool`** —— 两个池之后，`X-Quota-Limit/Remaining`
+    **加 `X-Quota-Pool`** —— 两个池之后，`X-Quota-Limit/Remaining`
     **必须说清指的是哪一份**，否则读的人会把它当成"总剩余"（而它其实是**管这次请求的那一份**）。
     取值：`llm` · `embedding` · `total`（表外路径给 `total`，那种路径**不参与判定**，只是报个数）。
     `X-Quota-Reset` 仍是「次日 0 点的 Unix 时间戳」（与改动前一致）。
@@ -515,13 +466,11 @@ class QuotaMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next):
         # 跳过豁免名单里的路径（判定收口在 `is_middleware_exempt` —— 原先这里与 RateLimitMiddleware 各写一份）
-        # 2026-10-11：静态资源也豁免 —— 配额用尽的用户**仍然要能把页面打开**
         #    （页面才显示得出"额度已用完"），否则他会看到一片白。
         if is_middleware_exempt(request.url.path):
             return await call_next(request)
         
         # 获取用户身份（支持API Key和JWT两种方式）
-        # 2026-10-05：**逻辑抽到 `resolve_quota_identity` 了** ——
         #    原先它内联在这里，**没法单测**（这里要连库；而"库挂了"的用例
         #    必须能在**不碰库**的前提下跑）。行为逐字保留，只是搬了个家。
         user_name = resolve_quota_identity(
@@ -531,18 +480,13 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
         # 未识别身份的请求**原样放行**（与改动前一致）——
         # 「匿名可打」是另一个问题，本任务不碰它，撤次数配额不应顺带改变匿名行为。
-        # 2026-10-05：**"库挂了"也走这个出口**（`resolve_quota_identity` 返回 `None`）——
         #    这个中间件**本来**就把"识别不了"当放行 ⇒ 库里抖一下，不该变成全站 500。
         #    上面那行 ERROR 日志保证它**不静默**（与 `rate_limiter` 的 fail-open 同一条纪律）。
-        # 2026-10-09（A1）：**从 `if not user_name` 改成 `is None`** ——
-        #    真匿名现在返回 `"anonymous"`（**要进配额**），只有"判不了"才是 `None`。
-        #    **写成 `if not user_name` 会把匿名又放过去** ⇒ 这条门等于没修。
         if user_name is None:
             return await call_next(request)
 
-        # 2026-10-11（两个额度池 ·）：**按【路径】选出这次要看哪一份额度**。
         #    表外路径（`POOL_NONE`：静态的 / 纯读的 / 探活的）**不做判定** ——
-        #      作者 2026-10-11 裁「不进池」。代价：这类路径**只剩限流那一层**。
+        #      作者 裁「不进池」。代价：这类路径**只剩限流那一层**。
         #    它们**仍返回配额头**（报「总计」），只是不参与拦截。
         pool = pool_for_path(request.url.path)
         budgets = get_pool_budget_info(user_name)
@@ -556,14 +500,8 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         body = None if pool == POOL_NONE else quota_reject_payload(info)
         retry_after = max(1, _next_day_reset_ts() - int(time.time()))
 
-        # 🔴 2026-10-14（§二·8 · 作者裁「甲」）：**全站 embedding 的滚动窗口**。
         #    上面那一段管的是【这一个用户】的日额度；这一条管的是【全站加起来】——
         #    ⚠️ 两者不是一回事，⛔ 别读成"重复"（§3.2 那张表专门区分过）。
-        # 🔴 **为什么落在这里**：① 它**按池覆盖所有 embedding 路径**（`quota_pools` 已经分好类）；
-        #    ② 它**在 handler 之前** ⇒ 拒绝时**一个 token 都还没花**；
-        #    ③ ⛔ **不能放进 `embedding_client.get_embedding()`** —— 那个函数在**启动时的
-        #       缓存预热**里也会被调 ⇒ 额度用完后**应用会起不来**（而那正是最需要它活着的时候）。
-        # ⚠️ 口径照：**全站 · 两个滚动窗口 · 到顶 429 + `Retry-After`**。
         if pool == POOL_EMBEDDING and body is None:
             from billing.token_tracker import check_global_embedding_budget
             ok, why, wait = check_global_embedding_budget()
@@ -592,7 +530,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
             )
             response = JSONResponse(status_code=429, content=body)
             # `retry_after` 与 `X-Quota-Reset` 同源：次日 0 点（见 `_next_day_reset_ts`）
-            # ⚠️ 2026-10-14：它挪到了上面（全站 embedding 那条也要用）—— **同源，⛔ 别各算一份**
+            # ⚠️ ：它挪到了上面（全站 embedding 那条也要用）—— **同源，⛔ 别各算一份**
             response.headers["Retry-After"] = str(retry_after)
         else:
             # 未满（或这条路径不参与判定），放行
@@ -709,33 +647,17 @@ app.include_router(public_router)
 app.include_router(rag_router)
 app.include_router(agent_router)
 
-# 2026-10-09（刀 1 · 规格 §〇.五 #6）：`/` 从【返回 JSON】改成【总览首页】。
 #    那段服务索引 JSON **没有丢** —— 它**原样挪到了 `GET /api/v1/info`**（`app/routing/api_v1.py`）。
-#    裁定的原话就是「**挪走**，不是删」（那条要求来自作者 2026-10-09 的选择项）。
+#    裁定的原话就是「**挪走**，不是删」（那条要求来自作者 的选择项）。
 #    为什么非改不可：原先访客打开域名，第一眼是**一坨 JSON** —— 而最高判据说
 #       「**95% 的人不会去看代码**……**显示了，才知道你有做**」。
-#    302 而不是 301（同 `/chat` 那族的理由）：页面将来换位置时，
-#       被永久缓存的 301 会把老用户钉在 404 上。
-#    公开面**没变**：`/` 本来就在 `MIDDLEWARE_EXEMPT_PATHS` 里（静态入口，不参与限流配额）
-#       ⇒ 本条**不需要**动 （2026-10-09 实测确认）。
 @app.get("/", include_in_schema=False)
 async def overview_page():
     """把人送到**总览首页**。`include_in_schema=False`：它是页面，不是 API。"""
     return RedirectResponse(url="/static/web/index.html", status_code=302)
 
 # ══════════════════════════════════════════════════════════════════════════
-# 7 个页面入口（2026-10-12 · 前端重做 ⑥ 落地）
-#
-#   旧那 10 条入口（`/chat` `/approvals` `/trace` `/eval` `/lab` `/cost` `/tools` `/system` …）
-#      **随旧骨架一起删** —— 它们的内容已经进了新页的嵌套层（`编排 §10.4` 逐条裁过）：
-#      `/lab` ⇒ 内部RAG 的「端点级」层 · `/chat` `/trace` `/approvals` ⇒ 外部检索页
-#      `/tools` `/system` `/ops` ⇒ 系统观测页 · `/cost` ⇒ 拆两半 · `/kb` ⇒ 知识入库页。
-#   302 而不是 301（沿旧理由）：页面将来换位置时，被永久缓存的 301 会把老用户钉在 404 上。
-#   `/`（总览）在上面那一条，不动它。
-#   代价已认：这些都是**新公开路由** ⇒ `check_route_auth.py --baseline` 会 exit 1
-#      ⇒ **已显式写进 **（一次有意识的操作）。
-#      页面本身**不含数据**：真正的边界在它们调的接口上，那些都带鉴权。
-# ══════════════════════════════════════════════════════════════════════════
+# 7 个页面入口（· 前端重做 ⑥ 落地）
 
 @app.get("/rag", include_in_schema=False)
 async def rag_page():
@@ -765,7 +687,7 @@ async def guide_page():
 @app.get("/stream", include_in_schema=False)
 async def stream_page():
     """**流式问答** —— 内部资料线的流式形态。它**不进那 7 格导航**：
-    作者 2026-10-12 定它是**子页**，入口只有两个跳转键（检索问答页的接口块那一行 · 页头那颗按钮）。"""
+    作者 定它是**子页**，入口只有两个跳转键（检索问答页的接口块那一行 · 页头那颗按钮）。"""
     return RedirectResponse(url="/static/web/stream.html", status_code=302)
 
 @app.get("/reference", include_in_schema=False)
@@ -780,7 +702,7 @@ async def login_page(request: Request):
     ⚠️ **它不进那 7 格导航**（与 `/stream` 同一种"格外的页"）：
        它是**所有页面的前置**，⛔ 不是第 8 个内容页。
 
-    🔴 **2026-10-15：它必须把【查询串】带到落点上** —— `RedirectResponse` 默认**会丢掉它**。
+    🔴 **：它必须把【查询串】带到落点上** —— `RedirectResponse` 默认**会丢掉它**。
         这个坑是**在真浏览器里撞出来的**（`test_page_routes.py` 那三条**全都照样绿** ——
         它们只看 302 与 location 的**路径**）：
         在 `/login?next=%2Fops` 上走一遍登录，**跳回去的是 `/` 而不是 `/ops`** ——
@@ -812,7 +734,7 @@ async def get_openapi():
 async def _compute_health() -> dict:
     """**纯计算**健康状态 —— **永远返回 `dict`，绝不构造 HTTP 响应**。
 
-    2026-09-20 拆分（全仓审计 A）：
+    拆分（全仓审计 A）：
       此前这里是**两种返回类型** —— 健康时返回 `dict`，不健康时 `return JSONResponse(503, ...)`。
       而 `/ready`（`main.py:440`）拿到它后**无条件**调 `.get("status")`
       ⇒ `JSONResponse` 没有 `.get` ⇒ `AttributeError` ⇒ 全局处理器兜住
@@ -866,7 +788,6 @@ async def health_check():
         return JSONResponse(
             status_code=503,
             content={
-            # 2026-10-01 修（B12）：原写 "Internal server error" ——
             #    503 是「暂时别把流量给我」，500 才是「我坏了」。报错口径要分清。
             "error": "服务尚未就绪，请稍后重试",
             "code": ErrorCode.SERVICE_UNAVAILABLE.value,
@@ -889,7 +810,6 @@ async def readiness_check():
         return JSONResponse(
             status_code=503,
             content={
-            # 2026-10-01 修（B12）：原写 "Internal server error" ——
             #    503 是「暂时别把流量给我」，500 才是「我坏了」。报错口径要分清。
             "error": "服务尚未就绪，请稍后重试",
             "code": ErrorCode.SERVICE_UNAVAILABLE.value,
@@ -897,7 +817,6 @@ async def readiness_check():
         )
 
     # 也可以用健康检查的逻辑
-    # 2026-09-20（审计 A）：改调 `_compute_health` 而不是 `health_check`。
     #    后者在**不健康时会返回 JSONResponse**（不是 dict），而这里对它调 `.get()`
     #    ⇒ `AttributeError: 'JSONResponse' object has no attribute 'get'` ⇒ **500 而非 503**。
     #    `_compute_health()` 保证**永远返回 dict**。
@@ -906,7 +825,6 @@ async def readiness_check():
         return JSONResponse(
             status_code=503,
             content={
-            # 2026-10-01 修（B12）：原写 "Internal server error" ——
             #    503 是「暂时别把流量给我」，500 才是「我坏了」。报错口径要分清。
             "error": "服务尚未就绪，请稍后重试",
             "code": ErrorCode.SERVICE_UNAVAILABLE.value,
@@ -930,7 +848,6 @@ async def startup_event():
     init_pool()  # 启动连接池
     create_table()
 
-    # 🔴 2026-10-16：**pgvector 版本自检** —— 不够就**拒绝启动**。
     #    为什么必须是"断"而不是"警告"：`iterative_scan` 那两个 GUC 在 `pgvector < 0.8` 上
     #    **不存在**，而 `SET` 会被 PG 当**占位符**静默收下、`SHOW` 还回设定值
     #    ⇒ 防护**静默空转**，**日志正常、用例也绿**（本仓  就是栽在这个形态上）。
@@ -938,19 +855,11 @@ async def startup_event():
     _pgver = assert_pgvector_supports_iterative_scan()
     logger.info(f"✅ pgvector 版本自检通过（{_pgver} ≥ 0.8 · ANN 防护可用）")
 
-    # 🔴 2026-10-14（**B 段** ·  §2.1）：**embedding 维度自检**
     #    拿**真模型实测一次**，与**表定义**对不上就**响亮地断**（⛔ 不是警告、⛔ 不是回落）。
     # 🔴 **为什么必须有**（§2.1 原文）：「**真正危险的是『维度恰好相同』的情况**：
     #    不报任何错，但老向量与新查询向量**不同源** ⇒ 检索结果全是垃圾」。
     #    自检挡不住那一种，但它**能挡住配置漂移**（`.env` 改了、表没改 —— 那正是 B 段现场）。
     # 🔴 **`expected` 来自【表自己】**（`embedding_dim_in_db()` 查 `pg_attribute.atttypmod`）
-    #    ⇒ ⛔ **不在本文件写死一个数** —— 那正是当初不敢在 A 段硬接的原因。
-    # ⚠️ **两类失败的处置【相反】，⛔ 别合并**：
-    #    · **维度对不上** ⇒ `EmbeddingDimensionMismatch` ⇒ **往上抛 ⇒ 启动失败**（那才是"响亮地断"）；
-    #    · **模型/网络不可用** ⇒ 只记 warning ⇒ **不阻塞启动**
-    #      （与下面 MCP 那段同一条理由：**起不来 ≠ 配置错**，不该把整个服务挡在门外）。
-    #      ⚠️ **⛔ 别写成 `except EnvironmentError`** —— py3 里它就是 `OSError`，
-    #         那样会把一次 HTTP 连接失败也当成"维度对不上"。
     try:
         _dim = embedding_dim_in_db()
         if _dim is None:
@@ -976,9 +885,7 @@ async def startup_event():
     # 新增 Agent 工具 启动后台定时健康检查
     asyncio.create_task(scheduled_health_check())
 
-    # 2026-10-08：把 MCP **长驻会话**起起来（改前是每次工具调用自开自关，实测 ~2s/次）。
     # **起不来【不阻塞启动】** —— 拿 try/except 包住。这条是刻意的：
-    #    2026-09-20 那次池化的教训反面 —— 当时它**让应用启动直接失败**
     #    （`Application startup failed. Exiting.`），比"MCP 挂了"本身更糟。
     #    ⇒ 这里起不来就**只记一条 warning**，首次真正调用时 actor 会自己重试。
     try:
@@ -993,13 +900,12 @@ async def startup_event():
 async def graceful_shutdown():
     """应用关闭时执行清理操作。
 
-    2026-09-20 修：这段 docstring 原先**躺在 `close_pool` 之后**，是**空操作** ——
+    修：这段 docstring 原先**躺在 `close_pool` 之后**，是**空操作** ——
        函数本身**没有 docstring**。已上移到签名正下方（代码一行未动）。
     """
     close_pool()  # 关闭连接池
     logger.info("收到关闭信号，开始优雅关闭...")
 
-    # 2026-10-08：关掉 MCP 长驻会话。
     # **不调它也不会漏子进程**（loop 关时 holder task 会走到 finally，实测跑完全量无残留），
     #    但显式关能让"什么时候释放那 ~84 MB"是**可预期**的。
     try:
@@ -1039,11 +945,11 @@ static_dir = os.path.join(current_dir, "static")
 
 
 class _VersionedStaticFiles(StaticFiles):
-    """`/static/` 的**缓存头** —— 🔴 2026-10-16 加。治的是一次**真事故**，⛔ 不是"顺手优化"。
+    """`/static/` 的**缓存头** —— 🔴 加。治的是一次**真事故**，⛔ 不是"顺手优化"。
 
     ## 背景
 
-    2026-10-15 发布之后，作者在**线上**撞到：「**登录之后按钮没变成「已登录」、额度那一行不见了**」。
+    发布之后，作者在**线上**撞到：「**登录之后按钮没变成「已登录」、额度那一行不见了**」。
     查下来**不是发布错了** —— 服务器发的 34 个静态文件与本机**逐字节一致**；
     是**浏览器缓存了旧的 `authbar.js`、而 HTML 是新的**：旧 JS 找的是旧挂点
     （`#auth-in` / `#auth-out`），新版已改名（`#auth-btn` / `#auth-strip`）
@@ -1077,22 +983,10 @@ class _VersionedStaticFiles(StaticFiles):
 
 app.mount("/static", _VersionedStaticFiles(directory=static_dir), name="static")
 # 访问路径（示例）：http://localhost:8000/static/websocket_test.html
-# 2026-10-07：原先那两个调试页 `static/stream_test.html` 与
 #    `static/trace_viewer.html` **已删** —— 前者调的 `/api/v1/user/chat_history` **根本不存在**，
 #    后者 `fetch` 轨迹**不带认证头**（加了鉴权后打开必 401）⇒ 两个都是**存量的坏页**。
 
 # ==================== 挂载Gradio成本统计可视化面板 ====================
-# 2026-09-17 重构 ⑥ 切开点 4：加环境门控。作者裁决取 **A 方案（默认值保持现状）**。
-#
-# **收益口径必须说清（不要读成"不再拉"）**：
-#    这给的是「**可以**不拉 gradio + matplotlib」，**不是**「不再拉」。
-#    因为默认值取 `"true"`（= 保持改动前的行为），**默认路径上 `import main` 仍然会拉它们**。
-#    只有**显式设 `ENABLE_DASHBOARD=false`** 时才真正省掉 ——
-#    门关时 `cost_dashboard` 整个不会被 import，gradio / matplotlib 随之都不进 `sys.modules`。
-#
-# 下面最后一行 `app = gr.mount_gradio_app(app, ...)` **会重绑定 `app`**（不是原地修改）。
-#    门关时该重绑定**不发生** ⇒ **`/dashboard` 路由不存在**、且 `len(app.routes)` 会**变小**。
-#    这是"关掉面板"的应有语义；默认分支（门开）与改动前**逐位一致**。
 if os.getenv("ENABLE_DASHBOARD", "true") == "true":
     from billing.cost_dashboard import create_dashboard
     import gradio as gr

@@ -71,25 +71,25 @@ if not IS_DOCKER:
 旧版是 `LLM_API_KEY = os.getenv("LLM_API_KEY") or DASHSCOPE_API_KEY`。
 **问题**：那会把 **embedding 的 key** 拿去请求 **DeepSeek 端点** —— **静默错配**（能跑，但用的是别人的 key）。
 
-⇒ 2026-10-02 起：**必须显式给 `LLM_API_KEY`**。
+⇒ ：**必须显式给 `LLM_API_KEY`**。
 ⇒ ⛔ **别顺手把 `or DASHSCOPE_API_KEY` 加回来"做容错"** —— 那正是被撤掉的写法。
 
 ⚠️ **embedding 仍固定走 `DASHSCOPE_API_KEY`**（**端点**不变），本文件那段只管**生成/对话**模型。
 ⇒ **两个 key 分工不同，⛔ 别合并成一个。**
-🔴 **2026-10-11 更正**：`text-embedding-v2` 这个**模型名**不再写死 —— 它现在由
+🔴 **更正**：`text-embedding-v2` 这个**模型名**不再写死 —— 它现在由
 `EMBEDDING_MODEL_MAIN` 管（本文件 §3 新增那一行）。
-🔴 **2026-10-14（B 段）默认值也改了**：`text-embedding-v2` ⇒ **`qwen3.7-text-embedding-flash`**。
+🔴 **（B 段）默认值也改了**：`text-embedding-v2` ⇒ **`qwen3.7-text-embedding-flash`**。
    ⚠️ **那不只是文档债** —— 本服务容器里 `.env` **不进镜像**，平台没设这个变量时**会回落到默认值**
    ⇒ 默认值若不与表定义（`vector(1024)`）同代，**检索当场坏**（§2.1）。
 ⚠️ **换它必须连【维度 + 表定义】一起改**（§2.1）。
 🔴 **还有第二处 embedder**：`app/agent/memory_store.py` 的 mem0 embedder ——
-它**不走 `validate_config()`**、key 也曾经是**裸 `os.getenv`** ⇒ 2026-10-11 起两处**同一个变量**。
+它**不走 `validate_config`**、key 也曾经是**裸 `os.getenv`** ⇒ 两处**同一个变量**。
 
 ### 4. 🔴 「启动时校验」这句话**比实际时机晚** —— 先炸的往往是 **import 期**
 
 `validate_config()` 在 `app/main.py:709`（startup）被调。
 ⚠️ **但**：`make_llm()` 在 **import 期**就判 `LLM_API_KEY`，拿不到就抛
-**点名它**的 `EnvironmentError`（2026-10-05 改的；改前是把 `None` 递给 `ChatOpenAI`
+**点名它**的 `EnvironmentError`（改的；改前是把 `None` 递给 `ChatOpenAI`
 ⇒ SDK 那句通用话提的是 **`OPENAI_API_KEY`**，而本仓根本不用那个变量）。
 
 ⇒ **不是"更安全"，是"更难定位"**：错误发生在「导入某个模块」时，堆栈指向 **import 那一行**，
@@ -130,7 +130,6 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))   # ⇒ 仓�
 
 ### 9. 🔴 `TRUST_PROXY_HEADERS` 默认 `false` —— 那是**安全边界**，⛔ 不是"功能没做好"
 
-2026-10-11 加（按 IP 限流）。名字与 Python 名**同名**（没有 `DOCKER_ENV` 那种错位）。
 
 🔴 **为什么默认必须是 `false`**：它决定**要不要信**客户端的 `X-Forwarded-For` / `X-Real-IP`。
 - 在**真代理后面**（如魔搭创空间）时，代理会**覆盖**客户端塞的那一跳 ⇒ 头里第一跳是**真的**；

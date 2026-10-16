@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 from loguru import logger
 
-# 2026-10-07：`logs/` 原来是**相对 CWD** 的 ⇒ 从 `app/` 起 uvicorn 日志进 `app/logs/`，
 #    从仓根起就进 `<仓根>/logs/` —— **本机两个目录都真的存在过**（实测 `ls -d logs app/logs`）。
 #    ⇒ 改成基于 `__file__` 的**绝对路径**，日志**永远进 `app/logs/`**，与从哪起无关。
 #    ⇒ 因此 `README.md` 那句「必须在 `app/` 目录下起 uvicorn（有一处路径按相对位置解析）」
@@ -30,7 +29,6 @@ def setup_logger():
     )
     
     # 2. 文件输出：**管道分隔的纯文本**（不是 JSON），便于 grep 与人工排查
-    #    2026-09-20 修：原注释写「JSON 格式」，与下面的 `format=` 不符。
     logger.add(
         str(_LOG_DIR / "api_{time:YYYY-MM-DD}.log"),
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[request_id]} | {message}",

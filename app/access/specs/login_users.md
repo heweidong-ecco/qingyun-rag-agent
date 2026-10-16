@@ -14,9 +14,9 @@
 - **口令一律哈希**：`pbkdf2_sha256$轮数$盐$哈希`（**标准库 `hashlib.pbkdf2_hmac`**，
   20 万轮，每行独立 16 字节 salt）。
 - **建号 / 换口令 / 停用 / 列出** ⇒ `app/manage_users.py`（**在容器里跑的一条命令**，⛔ 不是端点）。
-  ⚠️ **建号默认 15 天到期**（`DEFAULT_EXPIRE_DAYS`）—— 作者 2026-10-15 原话：
+  ⚠️ **建号默认 15 天到期**（`DEFAULT_EXPIRE_DAYS`）—— 作者 原话：
   「**15 天没有联系，这个 HR 基本是放弃了**」。要永不过期得**显式** `--forever`。
-- 🔵 **「撤销立即生效」**（2026-10-15 同日补）：`deps.verify_jwt_token` + `/auth/refresh`
+- 🔵 **「撤销立即生效」**（同日补）：`deps.verify_jwt_token` + `/auth/refresh`
   都过 `login_account_blocked` ⇒ **已发出的令牌在撤销后最多 30 秒失效**
   （⛔ 不加这一步的话，「撤销」只在下一次**登录**时生效，而 `refresh` 有 **7 天**）。
 
@@ -40,7 +40,7 @@
 | 🔴 **「角色也要在建号时一起设」** | ⛔ **不用** —— 角色由 `api_keys.role` 定，而**库里查不到的新用户名默认就是 FREE**（`access/permission.py::_hardcoded_role`）⇒ 建号时**⛔ 不需要**插 `api_keys` 行 |
 | ⚠️ **「表没建好也能登录」** | ⛔ 表不存在 / 库挂 ⇒ `authenticate_from_db` **返回 `False`**（fail-closed）—— 但**环境变量那条路照常能用** ⇒ 新库部署时 `admin` 不会被锁在外面 |
 | 🔴🔴 **「`login_account_blocked` 查不到行 / 库读不到 ⇒ 应该【拦】才安全」** | ⛔ **不该** —— 第一版就是这么写的，**全量当场 12 failed**：本仓用例大量**自签 JWT**（`create_access_token(f"m6-{uuid4()}")`）模拟登录，那些名字**根本不在库里** ⇒ 全线 401；而 **CI 压根没有 Postgres** ⇒ **每次 CI 全红**。<br>✅ 正确口径：**只有「查到了这一行、且它说停用/过期」才拦**；查不到 / 读不到 ⇒ **不拦**。<br>⚠️ **换来的保护是零**：能自签 JWT 的人**已经拿到了 `JWT_SECRET_KEY`** —— 那个秘密才是边界。<br>📌 代价：库不可用期间**已撤销的人仍可能进得来**，但那时应用本来就全 500（每个页面都在打 API）。<br>📌 守卫 ⇒ `test_库里没有这一行_不拦` · `test_库读不到_不拦_因为无法判定`（**⛔ 别把这两条改成"拦"**）。 |
-| 🔴 **「`revoke` 之后就立刻进不来了」** | ✅ **2026-10-15 起是对的** —— `deps.verify_jwt_token` 与 `/auth/refresh` **都会过 `login_account_blocked`**。<br>⚠️ **但有 30 秒延迟**（进程内缓存 TTL）⇒ 撤销是"**最多 30 秒内生效**"，⛔ 不是 0 秒。<br>⚠️ **两个入口都要堵** —— 只堵 `verify_jwt_token` 的话，那张 refresh 还能**一直换新令牌**（最长 7 天）。 |
+| 🔴 **「`revoke` 之后就立刻进不来了」** | ✅ **是对的** —— `deps.verify_jwt_token` 与 `/auth/refresh` **都会过 `login_account_blocked`**。<br>⚠️ **但有 30 秒延迟**（进程内缓存 TTL）⇒ 撤销是"**最多 30 秒内生效**"，⛔ 不是 0 秒。<br>⚠️ **两个入口都要堵** —— 只堵 `verify_jwt_token` 的话，那张 refresh 还能**一直换新令牌**（最长 7 天）。 |
 
 ## 判据（可打印）
 
@@ -65,3 +65,26 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://<host>/api/v1/auth/login
 - `app/access/specs/permission.md` —— **角色从哪来**（`api_keys.role` + `_hardcoded_role` 回退）
 - `app/routing/specs/deps.md`（若在）· `app/routing/deps.py::get_current_user_hybrid` ——
   **JWT 与 `X-API-Key` 两条路在这里汇流**，最终都解析成同一个 `user_name`
+
+
+---
+
+## 📎 原先写在代码 docstring 里的设计说明
+
+> 来源 = `app/access/login_users.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+
+## 它解决什么
+
+在此之前，**能登录的账号只有环境变量里那两个**（`LOGIN_USER_NAME` / `test_user`）——
+`auth._get_users_db()` 每次现读环境变量 ⇒ **加一个账号 = 改 `.env` + 重启**。
+要给外面发 N 个账号，那条路不成立（§一）。
+
+## 三条边界（⛔ 改之前先读）
+
+1. **口令一律哈希存储** —— `pbkdf2_hmac`（**标准库**，每行独立 salt）·
+   🔴 **⛔ 不引 `passlib` / `bcrypt`**：本仓镜像已经 1.28 GB，
+   而 `hashlib.pbkdf2_hmac` 是标准库、够用。
+2. **环境变量仍然【优先】**（判断在 `auth.authenticate_user`，⛔ 不在这里）——
+   它保住了本地开发 / CI / 以及「**第一个管理员从哪来**」那条引导路径。
+3. **fail-closed** —— 库读不到 / 报错 ⇒ **当成「这个人不存在」**（返回 `False`），
+   ⛔ **绝不**放开。⚠️ 这一条与 `auth._get_users_db` 的取向一致，别写成两套。

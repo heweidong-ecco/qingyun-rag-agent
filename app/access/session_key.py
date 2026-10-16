@@ -1,32 +1,4 @@
 """会话键 —— **把身份拼进 checkpoint / 会话 id**（丙段）。
-
-## 为什么要有这个模块
-
-4 张图（`agent_graph` · `checkpointer_agent` · `advanced_agent` · `mcp_agent`）、
-**7 处** `{"configurable": {"thread_id": thread_id}}` —— **key 里都没有人**。
-而 `thread_id` 在 **6 条端点上**的默认值就是 `"default"`
-（`api_v1_agent.py` 的 `:112` `:157` `:389` `:428` `:484` `:735`）
-⇒ **两个用户都用默认值 ⇒ 共用一个 checkpoint 桶**。
-而 reducer 是 `Annotated[List, operator.add]` ⇒ **消息是 append 的**
-⇒ B 的提问接在 A 的历史后面，**模型两边的都看得到**。
-
-**不是"理论上会串"，是默认就串** —— 默认值本身就是 `"default"`。
-
-## 对照：花费那条轴【没有】这个问题
-
-`check_session_token_budget(user_name, thread_id)` 的 key **含 `user_name`**（`token_tracker.py:847`）
-⇒ 同一个仓里两套口径：**花钱的账按人算，对话记忆不按人算。**
-
-## 为什么要"长度前缀"而不是 `f"{user}:{thread}"`
-
-朴素拼法**有歧义**：`("a", "b:c")` 与 `("a:b", "c")` 都会拼成 `"a:b:c"`
-⇒ **两个不同的人共用一个桶**。
-而用户名由 `create_user_api_key` 创建，**没有字符校验** ⇒ 含 `:` 是可能的
-⇒ 在一个**专门修隔离**的改动里留一条歧义拼法，等于没修。
-⇒ 用**长度前缀**：用户名占多少字符是写死的 ⇒ **切分点唯一** ⇒ 无歧义。
-
-裁定 ⇒ （决策 1 · 丙段）
-模块 spec ⇒ `app/access/specs/session_key.md` · 判据 ⇒ `app/tests/test_session_key.py`
 """
 
 

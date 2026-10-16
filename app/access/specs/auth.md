@@ -27,14 +27,14 @@
 
 > ⭐ 这一节是整份 spec 的价值所在 —— 前面两节读代码也能推出来，这一节**推不出来**。
 
-### 0. 🔴 **`_is_expired` 的入参可能是 `str`**（2026-10-14 ·  的甲）
+### 0. 🔴 **`_is_expired` 的入参可能是 `str`**（· 的甲）
 
 **SQLite 那条路上 `expires_at` 回来是 `str`，不是 `datetime`** —— 那一列类型是 `TIMESTAMP`，
 而 SQLite 是**动态类型**，存进去的就是**一串文本**。
 
 ⇒ 直接 `expires_at < datetime.now()` 会当场
 `TypeError: '<' not supported between instances of 'str' and 'datetime.datetime'`
-（2026-10-14 实测：**四个检索端点的隔离用例全红**）。
+（实测：**四个检索端点的隔离用例全红**）。
 
 🔴 **解不出来时回 `True`（= 已过期）是有意的**：这是鉴权路径，**fail-closed** 是唯一正确方向
 （⛔ 不是 fail-open 地放行）。⚠️ **⛔ 别在这里顺手补时区** —— 解析出来仍是
@@ -47,7 +47,7 @@
 | **`is_active`** | `ACTIVE_PREDICATE = "COALESCE(is_active, 1) = 1"` | `verify_api_key` **和** `ensure_admin_exists` |
 | **未过期** | `_is_expired(expires_at)` | 同上 |
 
-⛔ **别在别处另写一遍** —— **2026-10-06 的缺陷就是这么来的**：
+⛔ **别在别处另写一遍** —— **的缺陷就是这么来的**：
 自检只 `COUNT(*)` **数行数**、不看 `is_active` ⇒ `issue_api_key.py admin --revoke` 之后，
 **自检照样报「管理员账户已存在」，而认证侧一把都过不去** ⇒ **admin 锁死，而日志说一切正常。**
 
@@ -97,7 +97,7 @@
 若这里自动补发，操作员那次「撤销」会被**下一次重启静默还原**，且新 key 的**明文会打进日志**
 （正是本仓花力气清掉的那类残渣）⇒ **决定权留给人。**
 
-⚠️ 情形 3 在 2026-10-06 之前会被**误当成情形 1** —— 那正是上面 §1 那条缺陷的症状面。
+⚠️ 情形 3 在 之前会被**误当成情形 1** —— 那正是上面 §1 那条缺陷的症状面。
 
 ### 6. 🔴 `authenticate_user` 比的是**环境变量里的明文口令**，⛔ 与 `verify_api_key` 无关
 

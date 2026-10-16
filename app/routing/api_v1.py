@@ -16,14 +16,12 @@ from routing.schemas import (
     LoginRequest,
     RefreshRequest,
     UserCreate,
-    # 🔴 2026-10-15 加（§七·1）：`/auth/login` 与 `/auth/refresh` 的返回形状。
     #    加它们之前那两条的 200 schema 是**空的 `{}`** —— 而前端登录页会打它们，
     #    `test_response_model_declared.py` 那条门会当场红（门没错：空 schema = 没承诺）。
     TokenResponse,
     AccessTokenResponse,
 )
-# `get_current_user_hybrid` **2026-10-07 曾被当死导入删掉**（见下面那段沿革），
-#    2026-10-10**又接回来了** —— 本节 4 条 `/debug/*` 从「要管理员」降为
+# `get_current_user_hybrid` **曾被当死导入删掉**（见下面那段沿革），
 #    「登录即可」，用的就是它。别再按"它没被用到"删第二遍：判据要现跑 `ruff`，不是看历史。
 from routing.deps import require_admin, get_current_user_hybrid
 from core.db import get_db
@@ -40,22 +38,8 @@ from access.permission import get_user_role
 from billing.token_tracker import get_token_budget_info
 from access.rate_limiter import user_limiter
 from core.cache import redis_client
-# 批 6删掉 `from embedding_client import client` —— 它**全仓只有这一处**，
 #    且**从未被使用**；而 `client` 已改成惰性构造，留着这行会让 `api_v1` 直接 ImportError。
-# 2026-10-04 删 `get_weather`：它在本文件**只有** `/tool/benchmark` 一处用，
 #    那条端点已删。
-#
-# 2026-10-07：本文件**又删掉 27 个从未被引用的导入**（存量 · 判据 `ruff --select F401`）：
-#    `json` · `StreamingResponse`/`JSONResponse` · `DocumentInsert`/`BatchDocumentInsert`
-#    `get_current_user_hybrid`/`get_current_user_jwt` · `insert_document`/`insert_batch_documents`
-#    `calculator`（`D1` 旧账，本条即它的收口）· `invalidate_bm25_cache`
-#    `hybrid_search`/`rerank_search`/`hybrid_search_with_rewrite`
-#    `create_fast_pipeline`/`create_accurate_pipeline`/`create_full_pipeline`
-#    `File`/`UploadFile` · `tempfile` · `DocumentPreprocessor` · `split_text_with_filter`
-#    `parse_document` · `get_chat_history`/`append_chat_history` · `agent_graph` · `os`。
-#    **删的只是【本文件里的导入行】，没有删任何模块** —— 那些模块本身照旧存在、照旧可 import，
-#       将来要接回来就是**补一行**的事。`tools_with_cache.py` / `tool_cache.py` 两个**死模块**
-#       仍在  的「先挂起」里，**本刀没碰**。
 
 
 router = APIRouter(prefix="/api/v1")
@@ -214,48 +198,16 @@ async def create_user(
 
 
 # ==================== 【已删除】GET /api/v1/users/{user_id} ====================
-# 2026-10-04 **删除**—— 函数 `get_user` 已移除。
 # 原先是：
 #     async def get_user(user_id: int = Path(...), include_detail: bool = Query(False)):
 #         return {"user_id": user_id, "detail": include_detail}
-#
-# 为什么删（三条）：
-#   ① **一行数据都不读** —— 不查库、不看 `user_name`，纯粹回显入参。它是 **Path/Query
-#      参数校验的演示**，却挂了 `tags=["用户管理"]` + `summary="获取用户信息"`，
-#      **极易被当成真接口**。
-#   ② 本仓**自己早就点名要处理它**：`app/routing/specs/api_v1.md` ④ 与「待办」表第 4 条
-#      原文写着「**要么真查库，要么删**」⇒ 本次裁「删」。
-#   ③ 消费者 = 0（仓内无前端 · 无测试引用 · 只有 Postman 1 个文件夹，已删）。
-#
-# **别照抄这个形状再把端点加回来** —— `app/tests/test_removed_endpoints.py::test_users_by_id_stays_removed`
-#    会红。若真要恢复，**先读 **，且必须**同时**给出真实数据来源
-#    与 `Depends(require_admin)`（它读的是**任意** user_id）。
-# ================================================================================
 
 
 
 # ==================== 调试接口 ====================
-# 2026-10-04：本节的 4 条 + `/rag/benchmark-embedding` 全部补上
 #    `Depends(require_admin)`。此前它们**匿名可打** —— 其中 `/debug/quota/{user_name}` 与
 #    `/debug/rate_limit/{user_name}` **泄露任意用户的角色/配额/限流桶**（**可枚举用户名**），
 #    `/rag/benchmark-embedding` 更是**全仓唯一匿名真烧钱**的端点。
-#
-# 2026-10-10：**本节 4 条从「要管理员」降为「登录即可」** ——
-#    做法是把**越权面本身删掉**：`/debug/quota/{user_name}` 与 `/debug/rate_limit/{user_name}`
-#    的**路径参数没了**，**永远查调用者自己**。
-#    为什么这比"再加一个按部署形态分的开关"好：删掉形参之后**"查别人"这条路径不存在了**
-#      ⇒ 对**任何**部署放开都是安全的 ⇒ **没有理由让 两种部署行为不同**
-#      （**反例**：`tools/mcp_server.py` 当年确实有一个开关 —— 那种部署**只有一个容器、
-#       没有执行器**，行为**真的不同** ⇒ 那才配一个开关。⚠️ 那个开关已随那套部署一起删）。
-#    **代价已认**：**管理员不再能通过这两条查别人**的配额/限流桶
-#      （记过「那对管理员是对的」）。要查别人 ⇒ **另行设计**，
-#      别把形参直接加回来 —— `app/tests/test_debug_endpoints_self_only.py` 会红。
-#    动机之二（前端刀 7「运维探针」页）：这一族是「限流桶 / 配额 / 缓存」**唯一的可见证据**
-#      （`frontend/页面与接口规格.md` §3.7）。原先要**管理员** key ⇒ 访客 4 格全 403
-#      ⇒ 按最高判据「**看不见 = 等于没做**」，那一页等于没做。
-#
-# **`/rag/benchmark-embedding`【不在这 4 条里】—— 它仍要 `require_admin`。**
-#    它是**真烧钱**的那条（`get_embedding` 真调 DashScope）⇒ 别顺手把它也放开。
 @router.get(
     "/debug/count",
     summary="调试：查看数据库中文档数量",
@@ -285,11 +237,11 @@ async def debug_count(_user: str = Depends(get_current_user_hybrid)):
 async def check_quota(user_name: str = Depends(get_current_user_hybrid)):
     """查看**自己**的日配额（**token 口径**）。
 
-    2026-10-03 改：原先返回「每日**请求次数**」（`permission.ROLE_QUOTA` + `quota_limiter`）。
+    改：原先返回「每日**请求次数**」（`permission.ROLE_QUOTA` + `quota_limiter`）。
     两者口径实测**差 35 倍**⇒ 作者裁「统一到 token 一套」。
     字段名 `daily_limit` / `remaining` **保留**，但**单位已从「次」变成 token**。
 
-    2026-10-10：`user_name` **从路径参数改成依赖注入的返回值** ——
+    ：`user_name` **从路径参数改成依赖注入的返回值** ——
     它现在**只能是调用者自己**，传不进别人。这正是本节 4 条能放开的那一步。
     """
     role = get_user_role(user_name)
@@ -310,18 +262,15 @@ async def check_quota(user_name: str = Depends(get_current_user_hybrid)):
 )
 async def benchmark_embedding(req: QuestionRequest, _admin: str = Depends(require_admin)):
     # B11 · 全站日级熔断（`①b`）。
-    # 2026-10-04**补上 `Depends(require_admin)`** ——
     #    此前本端点在全仓**独一份**：**匿名可打、且真花钱**（下面 `get_embedding()` 真调 DashScope）。
     #    **熔断层与鉴权层是两件事，别因为有了 B11 就不加鉴权**：
     #      B11 管的是「**全站今天超预算了就别再烧**」，**管不住「谁都能烧」**。
-    #    它仍然接不上 B8（会话级要 `user_name`/`thread_id`，这里只有身份、没有会话）；
-    #      B11 是**全站**级、`circuit("global:…")` 不需要用户身份 ⇒ 它仍是唯一能管住这条的那层。
     ok, why = circuit(global_key())
     if not ok:
         raise AppException(ErrorCode.QUOTA_EXCEEDED, why)
 
     start = time.time()
-    # 🔴 （2026-10-16）：**本条没有会话**（上面 317 行早就写着"接不上 B8"）
+    # 🔴 （）：**本条没有会话**（上面 317 行早就写着"接不上 B8"）
     #    ⇒ 给一个**显式**标记，⛔ 别让它静默落 `"system"` —— 那个值的语义是「连用户都没有」，
     #    而这里 `_admin` 是真的。`user_name` 那块与 `thread_id` 这块是两根轴，别合并。
     vec1 = get_embedding(req.question, user_name=_admin, thread_id="benchmark")
@@ -365,21 +314,7 @@ async def cache_stats(_user: str = Depends(get_current_user_hybrid)):
 
 
 # ==================== 【已删除】GET /api/v1/tool/benchmark ====================
-# 2026-10-04 **删除**—— 函数 `benchmark_tool` 已移除。
 # 原先它把 `get_weather("Beijing")` 调两次、比耗时，输出 `speedup`。
-#
-# 为什么删：
-#   **它 benchmark 的是一个 mock** —— `tools_with_cache.get_weather` 的本体是
-#      `time.sleep(2)` + 硬编码 `f"{city}当前温度25°C，晴"`。⇒ 这个端点证明的只是
-#      「**缓存装饰器在一个假函数上生效了**」，**证明不了任何生产事实**。
-#      而缓存装饰器本身已有单测覆盖（`app/tests/test_audit_fixes.py`）⇒ **信息量为零**。
-#   它还**匿名可打**（是待办  的两条之一）—— 虽然不花钱，但一个只会
-#      `sleep(2)` 的端点挂在公网上没有任何理由。
-#
-# **别照抄这个形状再把端点加回来** —— `app/tests/test_removed_endpoints.py::test_tool_benchmark_stays_removed`
-#    会红。若将来真要 benchmark 缓存，**必须拿真函数**（如 `/rag/benchmark-embedding`
-#    那样真调 DashScope），且**必须带鉴权**。
-# ==============================================================================
 
 # 新增命令桶 调试接口：
 @router.get(
@@ -393,7 +328,7 @@ async def cache_stats(_user: str = Depends(get_current_user_hybrid)):
 async def check_rate_limit(user_name: str = Depends(get_current_user_hybrid)):
     """查询**自己**的剩余令牌数。
 
-    2026-10-10：`user_name` **从路径参数改成依赖注入的返回值**（同 `check_quota`）。
+    ：`user_name` **从路径参数改成依赖注入的返回值**（同 `check_quota`）。
 
     **桶在 Redis 里，不在进程内存** —— `user_limiter` 是 `access/rate_limiter.py:211`
     建的 `TokenBucketLimiter`，它的实现是操作 **Redis HASH 的 Lua 脚本**（`_TOKEN_BUCKET_LUA`）。

@@ -1,28 +1,4 @@
 """B1 · `get_user_role` 接 DB 的**行为契约**。
-
-## 这一组钉的是什么
-
-`app/access/permission.py` 的 `get_user_role` 从**按用户名硬编码**改成
-**查 `api_keys.role`（带 60s 进程内缓存 + 写侧失效）**。四条不变量：
-
-1. **DB 有值 ⇒ 以 DB 为准**（连 `admin` 也一样 —— 那正是"接 DB"的意思）
-2. **DB 没值（NULL）/ 脏值 / 库挂了 ⇒ 【回退】到原先那套硬编码**
-   —— **不是**"默认 PREMIUM"、**不是**抛异常
-3. **缓存**：TTL 内不再查库；`invalidate_role_cache` 之后**立即**重查
-4. **`_PREMIUM_PROBE_USERS` 的语义一个字不改** ——
-   `app/tests/test_isolation.py` 的跨角色用例靠它（`isolation_c`=PREMIUM / `a`,`b`=FREE）
-
-## 本文件**没有一条碰数据库**
-
-DB 访问被收口在**唯一入口** `permission._fetch_role_from_db` ——
-本文件把它换成替身（`_stub_fetch`），所以：
-
-* **能在默认的离线批次里跑**（`-m "not integration and not needs_db"`）——
-  不必等一个真库；
-* 同时它也是 `app/tests/test_rate_limit_identity.py::_no_db` 那道守卫要替换的**同一个名字**
-  （见那边 fixture 里的说明）。
-
-真库那一侧由 `app/tests/test_user_role_db_roundtrip.py` 负责（**带 `needs_db` 标记**）。
 """
 import psycopg2
 
@@ -118,7 +94,7 @@ def test_非数据库异常必须冒泡(monkeypatch):
 
     **而它还有一个具体的副作用**：`app/tests/test_rate_limit_identity.py::_no_db`
     那道守卫靠**抛 `AssertionError`** 抓"谁碰了库" —— 捕获写宽了，**那道门就静默失效**
-    （2026-10-09 实测过：`core.db.get_db` 被调了 1 次、异常被吞、守卫不报错）。
+    （实测过：`core.db.get_db` 被调了 1 次、异常被吞、守卫不报错）。
     """
     _stub_fetch(monkeypatch, raises=TypeError("这是代码 bug，不是库挂了"))
     with pytest.raises(TypeError):

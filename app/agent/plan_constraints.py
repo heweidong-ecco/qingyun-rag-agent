@@ -1,13 +1,4 @@
-"""
-手动实验脚本：对比不同约束条件下的任务规划结果。
-
-2026-10-07：本文件原名 `test_plan_constraints.py`，但它 **不是 pytest 用例**
-   —— `test_plan` 的两个参数都是必填、没有对应夹具，pytest 收进去只会报错，
-   原来靠 `@pytest.mark.skip` 捂着。
-   ⇒ 去掉 `test_` 前缀，并删掉 skip 装饰器与随之无用的 `import pytest`；
-   2026-10-07 第二刀：**函数名 `test_plan` 也一并改成 `run_plan`** —— 文件去了前缀、
-      函数还叫 `test_*` 的话，`grep -rn "def test_"` 之类的排查口径照样会把它当用例。
-   运行方式：`cd app && python plan_constraints.py`（会真调 LLM）。
+"""手动实验脚本：对比不同约束条件下的任务规划结果。
 """
 from agent.plan_execute import planner_llm
 from langchain_core.messages import HumanMessage, SystemMessage

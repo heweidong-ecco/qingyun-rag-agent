@@ -36,7 +36,7 @@
 - **`owner` 与 `actor` 是两个身份**：admin 接管 alice 的会话时 `owner="alice"`、`actor="admin"`。
   合成一个字段 ⇒ 留痕当场变假话，**而且不报错**。
 - **`list_decisions(owner=..., limit=50, offset=0)` 是必填关键字参数**：`None` = 全量。
-- 🔴 **`offset` 是 2026-10-08 加的**（分页 · 口径 ⇒ 下面那条「⛔ 不许拿 `count == limit` 猜」· 门 ⇒ `app/tests/test_truncation_declared.py`）——
+- 🔴 **`offset` 是 加的**（分页 · 口径 ⇒ 下面那条「⛔ 不许拿 `count == limit` 猜」· 门 ⇒ `app/tests/test_truncation_declared.py`）——
   ⚠️ **翻页要正确，`ORDER BY` 必须是【全序】**：本表是 `created_at DESC, id DESC`，
   第二条排序键 `id` 是**承重的**（连写的几条 `created_at` 极可能同毫秒）。
   ⇒ **不是全序就会漏行/重行，而且不报错**。真库用例 ⇒ `app/tests/test_approval_events_db.py::test_offset_paging_neither_skips_nor_repeats`。
@@ -49,7 +49,7 @@
  · `app/agent/specs/pending_approvals.md`
 `app/routing/specs/api_v1_agent.md` · `app/schema.sql` · `app/tests/test_approval_events_db.py`（真库那一半）
 
-> ✅ **2026-10-08 已结清 —— `approval_events` 进 `app/schema.sql` 了**
+> ✅ **已结清 —— `approval_events` 进 `app/schema.sql` 了**
 >
 > * **主判据（⛔ 不会把自己数进去 —— 靠【行首锚】）**：
 >   `grep -c '^CREATE TABLE public\.approval_events' app/schema.sql` ⇒ **1**（**改前 0**）。
@@ -69,3 +69,18 @@
 > ⚠️ **一条仍要记住的**：这表是**惰性**建的（`CREATE TABLE IF NOT EXISTS` 在写入路径里）
 > ⇒ **在一个全新的库上，不先真跑一次 approve，`pg_dump` 照样导不出它**。
 > 本文件上面那句「`_DDL` 是唯一权威」**现在可以改成**：**`_DDL` 与 `app/schema.sql` 是同一份东西的两个视角**。
+
+
+---
+
+## 📎 原先写在代码 docstring 里的设计说明
+
+> 来源 = `app/agent/approval_audit.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+
+**为什么不塞进 `pending_approvals.py`**：那个模块的 docstring 全篇在论证
+   「**为什么必须是内存**」，往里加 PG 写会把它变成"两种存储各说一半"的模块。
+
+本模块是 **fail-open** 的：写/读失败一律**打一行日志继续** ——
+   留痕是**旁路**，不该让「批准」这个动作 500，也不该让页面整页崩。
+
+表形状 ⇒ 下面 `_DDL` · spec ⇒ `app/agent/specs/approval_audit.md`

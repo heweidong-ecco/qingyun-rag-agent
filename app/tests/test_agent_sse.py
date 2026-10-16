@@ -1,38 +1,6 @@
 """B1 · Agent 端 SSE—— 范围**只** `/agent/langgraph_chat`。
 
 **本文件存在的理由：「有这个路由」和「真的是流式」是两件事。**
-
-`通用/四硬门 §3-A` 的判据是「**逐字出现**」。而**假流式**（后端一次性拿到整段、
-前端再用 `setInterval` 切字符）**照样有 `text/event-stream`、照样有 `data:` 帧** ——
-计划里那条弱测试（`content-type` + `data:` ≥ 2）**抓不到它**：
-后端只发「整段 + `[DONE]`」就是 2 条 `data:`，**照样绿**。
-
-⇒ 本文件把判据钉在**后端出块**这一层，两道：
-
-1. **结构性**（`test_agent_decide_declares_config_parameter` /
-   `test_agent_decide_forwards_config_to_the_model`）——
-   **真流式的必要条件是节点声明 `config` 并把它转发给模型的流式调用**。
-2. **机制性**（`test_graph_streams_one_chunk_per_token` /
-   `test_stream_route_emits_one_frame_per_token`）——
-   实际数块：**每 token 一块**，不是攒完一次发。
-
----
-
-## 三条**实测**事实（假模型探针，非推断；探针脚本已随  记档）
-
-| 事实 | 实测 |
-|---|---|
-| 真流式**不要求**节点是 `async` | 同步节点 + `.stream(msgs, config=config)` ⇒ 6 块、时间戳递增 |
-| **不能**把节点改成 `async` | 会让**同步的** `graph.invoke` 直接抛 `TypeError: No synchronous function provided to "agent"` —— 而非流式路径（`/agent/langgraph_chat` · `api_v1.py` · `api_v1_rag.py`）**都在用它** |
-| `.stream` 不读 `ChatOpenAI.streaming` 字段 | `_should_stream` 只看 `disable_streaming` + `_stream` 有没有实现 ⇒ **不必动 `llm` 的构造** |
-
-## 一条**没有**在源码里被保证、只被实测钉住的性质
-
-`stream_mode="messages"` 的三个来源（`langgraph/pregel/_messages.py`）本会**重复**：
-① `on_llm_new_token`（真·token）② `on_llm_end`（整段）③ `on_chain_end`（节点返回值）。
-**实测**（4 个剧本）：② 被 `dedupe` 拦掉、③ **根本没发** ⇒ 每 token **恰好一块**、不重复。
-⇒ 这个性质**只在实测里成立**，所以 `test_stream_route_emits_one_frame_per_token`
-把它**钉成用例** —— 哪天 langgraph 升级后开始发 ③，这条会红，而不是**悄悄把答案吐两遍**。
 """
 import asyncio
 import inspect
@@ -109,12 +77,9 @@ def _install_fake_model(monkeypatch, **kw):
        （同 `app/tests/test_approval_resume.py` 的 `_approve` 里的注释。）
     """
     monkeypatch.setattr(agent_graph, "llm_with_tools", _bind(_FakeStreamingModel(**kw)))
-    # 2026-10-13：`agent_graph` 现在**本任务的第一步会去检索长期记忆**。
     #    不打这一针 ⇒ 它会真去连 mem0（本地 Qdrant + 一次 DashScope embedding），
     #    而那一次 embedding 走 `core.cache.redis_client` —— 本文件的替身 `FakeRedis`
     #    没有 `.get` ⇒ **节点当场抛**，端点把它变成一帧 error，下面那些断言就集体失准。
-    #    **回空数组 = 不注入**（记忆那一段整段跳过）⇒ 与本文件要量的那件事（状态取自哪）无关，
-    #       行为与"补记忆之前"逐字一致。守卫 ⇒ `app/tests/test_memory_injection_wiring.py`
     monkeypatch.setattr(memory_store, "search_user_memory", lambda *a, **k: [])
 
 
@@ -426,7 +391,6 @@ def test_stream_route_forwards_question_and_thread_id(monkeypatch):
     assert len(fake.astream_calls) == 1, f"图被调了 {len(fake.astream_calls)} 次"
     payload, config, stream_mode = fake.astream_calls[0]
     assert payload["messages"][0].content == "帮我算 6*7"
-    # 2026-10-03（丙段）【口径变了】：进图的键**不再是裸 thread_id**，
     #    而是 `session_key(user_name, thread_id)` —— 否则两个用户用同一个 `thread_id`
     #    会**共用一个 checkpoint 桶**（消息是 append 的 ⇒ 模型看得到别人的对话）。
     assert config["configurable"]["thread_id"] == session_key("tester", "t-42"), (
@@ -461,7 +425,7 @@ def test_status_comes_from_final_state_not_from_streamed_chunks(monkeypatch):
     """**真服务上跑出来的缺陷**：状态必须取自**图的最终状态**，
     不是"把 `agent` 节点的流式块攒起来"。
 
-    **实测经过**（2026-10-03 ·   Step 4）：问一句会触发搜索的话，模型因为
+    **实测经过**（· Step 4）：问一句会触发搜索的话，模型因为
     `tool_execute` 不认 `duckduckgo_search` 这个名字而**重试了好几轮**。
     端点当时用的是「把每一轮的 `agent` 输出 `+` 起来」⇒ 攒出的消息**带着上一轮的
     `tool_calls`** ⇒ `summarize_agent_result` 判成 `pending_approval`
@@ -472,7 +436,7 @@ def test_status_comes_from_final_state_not_from_streamed_chunks(monkeypatch):
     `"date_todayduckduckgo_search"` 这种**两个名字粘在一起**的串
     （两轮的 name 被拼到一条上了）—— 在真服务上就是这么看到的。
 
-    **2026-10-03更正**：上面那句是**当时的观察记录**（原文保留）。
+    **更正**：上面那句是**当时的观察记录**（原文保留）。
       它当时的**根因**是 `tool_execute` 按字面量 `"search"` 分派、而真名是
       `duckduckgo_search` ⇒ 模型收到"未找到工具"后**反复重试**（名字现在已改成 `web_search`，
       分派也改成查表了）。**根因修掉 ≠ 本用例可以删** —— 它守的是**端点该从哪取状态**，

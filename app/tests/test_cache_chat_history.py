@@ -1,12 +1,9 @@
-"""`app/core/cache.py` 的 `chat_history` 落痕口径（N1）。
+"""`app/core/cache.py` 的 `chat_history` 落痕口径。
 
 **本文件存在的理由**： 的全部意义是「**读的人能分辨**这一轮是**说完了**还是**被打断了**」。
 判据只有一个 —— 存进去的那条**带不带 `status`、带的是什么**。
 ⇒ 这条判据**不钉在存储层**（唯一能同时看见三条出口的地方），就只能散到 6 条端点去证，
 而那时红的是端点，**看不出是存储层漏了**。
-
-**不碰真 redis**：`cache.redis_client` 换成 `conftest.FakeRedis`（`fake_redis` 夹具）。
-   本机  复用**长期容器 `qingyun-rag-agent-redis-1`**，真写会攒 key 且跨用例互相污染。
 """
 import json
 
@@ -45,7 +42,7 @@ def test_append_chat_history_requires_status(fake_store):
 
      契约 C 起**必须显式传 `thread_id`**：不传的话本用例会因为
        "缺 `thread_id`"而红 —— **照样是 `TypeError`，却不再是在量 `status`**
-       （本仓 2026-10-05 收的【反证检验】：把 `status` 的必填拿掉，本用例还会红吗？）。
+       （本仓 收的【反证检验】：把 `status` 的必填拿掉，本用例还会红吗？）。
     """
     with pytest.raises(TypeError):
         cache.append_chat_history("u1", "user", "问题", thread_id=THREAD)

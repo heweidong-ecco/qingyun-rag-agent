@@ -1,33 +1,6 @@
-"""M6 · `/rag/search` 单模块测试闭环（2026-09-17）
+"""M6 · `/rag/search` 单模块测试闭环
 
 本仓第一个「改代码 → 跑测试 → 看结果」闭环的**先例**。见 「⑦ M6」与。
-
-分四层，**按代价递增** —— 分层是为了让 CI 能跑得起：
-
-| 层 | 测什么 | 需要 | 进 CI |
-|---|---|---|---|
-|  纯逻辑 | `_rrf_fusion` 融合/排序/截断 · 四个 factory 的开关矩阵 | 只要 langchain | |
-|  契约 | 401 · `top_k` 422 · `mode` 是 query 参数 · 404 | **redis**（中间件） | |
-|  行为 | **mode→pipeline 分派** · RRF 真融合 · `top_k` 传递 · 响应形状 | redis + patch 6 个缝 | |
-|  集成 | 真 pgvector + 真 BM25 + 真 DashScope embedding | postgres + 外网 | `@pytest.mark.integration` |
-
-**为什么 L1/L2 需要 redis**：`RateLimitMiddleware` 对**每个非公开路径**都打 Redis。
-
-> **2026-10-05 更正（批 3）**：这里原写「`rate_limiter.py` 没有 `except RedisError`
-> ⇒ **Redis 不通时全站 500**（实测）」。**那句现在是假的** ——  已加兜底，
-> Redis 不通改成 **fail-open**（放行 + ERROR 日志）⇒ L1/L2 在这一层**不再会 500**。
-> **但"要 redis"这个前提本身没变**：中间件仍然每个非公开路径都**拨** Redis，
-> 只是拨不通时不再炸。**别据此把 redis 从这套用例里撤掉** ——
-> 「测得过」与「测的是真东西」是两件事：兜底一旦生效，**限流那一层其实整层没生效**，
-> 这时候绿的 L1/L2 是**假绿**。
-Postgres **不需要** —— L1/L2 的断言要么在中间件层、要么在 handler 之前就被挡下，
-要么把库调用 patch 掉了，handler 之外的库连接一次都不发生。
-
-**认证走自签 JWT**（`jwt_handler.create_access_token`），**不走 `/auth/login`** ——
-登录要查库，会把 L1/L2 从"只要 redis"拖成"还要 postgres"，M6 的 CI 目标就没了。
-
-**每个用例用独立的 `user_name`** —— 否则会撞上限流（3 次/秒、容量 20）
-与配额（免费 100 次/天），测试互相污染。
 """
 import uuid
 
@@ -112,7 +85,7 @@ def test_rrf_fusion_handles_empty_inputs(pipeline):
 
 
 def test_rrf_fusion_requires_four_tuple(pipeline):
-    """**回归守卫** —— 2026-08-17 复审的第 4 个 bug 就在这里。
+    """**回归守卫** —— 复审的第 4 个 bug 就在这里。
 
     当时 `recriprocal_rank_fusion` 按 **3 元组**解包，而 `db.search_similar` 实际返回
     **4 列** `(id, content, source, similarity)` ⇒ 每次调用必抛 `ValueError`。
@@ -207,7 +180,6 @@ def offline_retrieval(monkeypatch):
     """
     import rag.rag_pipeline as rag_pipeline
 
-    # 2026-10-03：两个假函数加 `*, user_id`—— `search_async` 现在把它
     #    透传下来。这里**不校验** `user_id`：本文件测的是「mode 路由」，
     #    隔离的判据在 `app/tests/test_isolation.py`（别在这儿重复一遍）。
     async def fake_similar(_embedding, top_k=3, *, user_id):
@@ -222,11 +194,10 @@ def offline_retrieval(monkeypatch):
     monkeypatch.setattr(rag_pipeline, "get_embedding", lambda text, model=None, **k: [0.0] * 1024)
     monkeypatch.setattr(rag_pipeline, "search_similar_async", fake_similar)
     monkeypatch.setattr(rag_pipeline, "bm25_search_async", fake_bm25)
-    # 2026-10-05：两个桩必须吃下 `user_name` —— 真函数的签名是
     #    `(*, user_name: str)`（必填 keyword）。别把真签名改回去来迁就桩。
     # 🔴 **替身只负责"接得住任何调用"** —— ⛔ 别跟着真签名逐个改
     #    （本仓  的原话：真签名每加一个参数，这批 CI 筛不到的用例就再烂一次）。
-    #    （2026-10-16）给这两个真函数加了 `thread_id=` ⇒ 这里加的是 `**kw`，⛔ 不是再补一个形参。
+    #    （）给这两个真函数加了 `thread_id=` ⇒ 这里加的是 `**kw`，⛔ 不是再补一个形参。
     monkeypatch.setattr(rag_pipeline, "rewrite_query", lambda q, h=None, *, user_name, **kw: q)
     monkeypatch.setattr(rag_pipeline, "expand_query", lambda q, num_variants=3, *, user_name, **kw: [q])
     monkeypatch.setattr(rag_pipeline, "rerank_async", fake_rerank)
@@ -249,7 +220,7 @@ def test_route_dispatches_mode_to_correct_pipeline(client, offline_retrieval, mo
 
     **"未知 mode"的用例不在这里** —— 它曾是个裸 `else`（`mode=garbage` 静默落进
     `accurate_norerank`）；M6 当时按裁决**只记录、不写进测试**（测试不该把缺陷固化成"预期行为"），
-    **已于 2026-09-17 修为 422**，用例见下方的 `test_unknown_mode_is_rejected`。
+    **已于 修为 422**，用例见下方的 `test_unknown_mode_is_rejected`。
     """
     r = client.post(
         SEARCH_PATH, params={"mode": mode}, headers=_auth_headers(),
@@ -299,7 +270,7 @@ def test_top_k_is_passed_through(client, offline_retrieval):
 
 
 def test_unknown_mode_is_rejected(client):
-    """未知 `mode` 必须 **422**，不许静默兜底（2026-09-17 修）。
+    """未知 `mode` 必须 **422**，不许静默兜底（修）。
 
     修前：mode 分派是**裸 `else`** —— `mode=garbage` → **200**，静默落进
     `accurate_norerank`（多跑一次查询改写 = 多花钱、多延迟，**且不报错**）。
@@ -341,7 +312,7 @@ def test_search_fast_against_real_stack(client):
 
     `POSTGRES_DB=rag_test` **不能省** —— `rag_db` 里是**真数据**，跑用例不许碰它。
     本用例只读，但 `embedding_client` 会**记账**（`record_usage` 真写库）——
-    这正是 2026-09-17 切开点 2 那次污染的形状。
+    这正是 切开点 2 那次污染的形状。
     """
     r = client.post(
         SEARCH_PATH, params={"mode": "fast"}, headers=_auth_headers(),

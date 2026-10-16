@@ -5,7 +5,7 @@
 
 ---
 
-## 一 · 为什么有它（作者 2026-10-04 原话）
+## 一 · 为什么有它（作者 原话）
 
 > 「documents 你给它们造好并写文档……**调用接口模拟真实用户的操作，写入数据库和向量数据库，
 > 没有真实写入以后怎么用作判断和测试**。我要：**真库里有三家各自的文档、肉眼可查**，
@@ -115,7 +115,7 @@ docker exec qingyun-rag-agent-postgres-1 psql -U postgres -d rag_db -c \
 
 ### 2 · ✅ 「自定义 `thread_id` 落进真库」—— **用 `/agent/mcp_chat`，做到了**
 
-> 🔴 **2026-10-04 更正**：本节原先写的是「**做不到**」。**那是错的** ——
+> 🔴 **更正**：本节原先写的是「**做不到**」。**那是错的** ——
 > 我当时核的是 `/agent/advanced_chat`（它走**不记账**的 `agent_graph_advanced_learning`），
 > 而**会记账的 `agent_graph_advanced.py` 是给 `/agent/mcp_chat` 用的**。
 > 用户一句「**thread_id 不是哈希，怎么是常量？**」把这条断言问翻了。
@@ -131,7 +131,6 @@ docker exec qingyun-rag-agent-postgres-1 psql -U postgres -d rag_db -c \
 | `/agent/plan_execute` | 🟡 记 `user_name`（真实）+ `thread_id="plan_execute"`（**常量**） | `app/agent/plan_execute.py:172-179` |
 
 🔴 **别用 `plan_execute`**：一次大约吃掉 **9,800 token** —— **接近 `FREE` 档一整天的额度（10,000）**。
-2026-10-04 那一次探针就把 `isolation_a` 的当日额度用光了（第二次调用直接 429）。
 ⇒ **它又贵、`thread_id` 又是常量**，两头都不占。
 
 ⇒ **正确做法**：（三家各 2 轮真对话，`thread_id` 由我们指定）。

@@ -1,34 +1,4 @@
-""" · **剩余 4 条链**的真流式（`2026-10-04`）。
-
-## 这个文件补的是哪一块空洞
-
-`app/tests/test_agent_sse.py` 只覆盖了 **1 条**链（`/agent/langgraph_chat`）。
-本批新加了 4 条流式路由 —— **每一条都可能"看起来在流、其实是假流式"**，
-而假流式的接口**完全正常**（`text/event-stream` 在、`data:` 帧在、答案也对）。
-
-⇒ 四条链**各钉四件事**（与 `test_agent_sse.py` 同一套判据，不另发明）：
-
-| # | 判据 | 为什么少了它就会静默失败 |
-|---|---|---|
-| ① | 节点**声明 `config` 并**把它转发给 `.stream`/`.astream` | 少了它 ⇒ `stream_mode="messages"` **只出 1 块整段** |
-| ② | 端点**确认逐块出帧**（不是攒着发） | 只发「整段 + `[DONE]`」也是 2 个 `data:` —— 弱测试**抓不到** |
-| ③ | 汇总帧取自 **`aget_state`**（不是攒流过的块） |  真服务上撞出来的缺陷：攒块 ⇒ **报"在等审批"而图早跑完了** |
-| ④ | 客户端断开 ⇒ **关上游 + 计数 + 日志** | 关不掉 = 上游继续烧钱，而前端只是"不显示了" |
-
-外加两条链的**独有红线**：
-* **A**：`supervisor` 的路由词 / `calc_execute` 的提取串**一帧都不许漏**（`§1.1`）；
-  且**必须**传 `subgraphs=True`（本图 5 个部门全是子图，不开 ⇒ 假流式）。
-* **D**：`_invoke_llm` 换成 `stream` 之后**仍然记账** —— 这条**不能**用"接口返回正常"代替。
-
-## 夹具：**复用**既有两份，不新造一套
-
-`test_agent_sse`（假模型 / 假图 / 收帧）与 `test_cancel_propagation`
-（**手动迭代器**式假上游 / ASGI 层断开）。后者的假上游**故意不是 async generator** ——
-否则 `shutdown_asyncgens` 会替我们关掉它，"被我们关了"和"被事件循环收尾关了"**长得一模一样**
-⇒ 取消用例**假绿**（那份文件头有实测记录）。
-
-判据（可打印）：
-    `POSTGRES_PORT=59999 venv/bin/python -m pytest app/tests/test_agent_stream_chains.py -q -p no:warnings`
+"""· **剩余 4 条链**的真流式（``）。
 """
 
 import ast
@@ -109,11 +79,6 @@ CHAINS = {
 
 
 # ==================== ① 结构性：节点必须声明 `config` 并转发给**流式**调用 ====================
-#
-# 链 A / C 的节点**嵌在图构建函数里**（`create_*_subgraph()` / `build_mcp_agent()`），
-# 运行期取不到对象 ⇒ 走 **AST**。用 AST 不用 `grep`：`config` 在注释与 docstring
-# 里也出现，本仓栽过（"替换了 10 处" 是假结论 —— 注释里同样的串也算）。
-# 同型样板 ⇒ `app/tests/test_agent_sse.py::test_agent_decide_forwards_config_to_the_model`。
 
 #: (模块, 节点函数名, 该节点该走的流式方法名)
 STREAMING_NODES = [
@@ -373,7 +338,7 @@ _FINAL_BY_CHAIN = {
 def test_summary_comes_from_final_state_not_from_streamed_chunks(chain_key, monkeypatch):
     """汇总帧必须取自**图的最终状态**，不是"把流过的块攒起来"。
 
-    **真服务上跑出来的缺陷**（2026-10-03）：端点当时用「把每轮的 `agent` 输出
+    **真服务上跑出来的缺陷**：端点当时用「把每轮的 `agent` 输出
     `+` 起来」⇒ 攒出的消息**带着上一轮的 `tool_calls`** ⇒ 判成 `pending_approval`
     ⇒ **接口报"在等人工审批"，而图早就跑完了**。
 
@@ -488,13 +453,8 @@ def test_normal_completion_is_not_counted_as_cancel(chain_key, monkeypatch):
 
 
 # ==================== ⑤ 留痕（三条出口各写各的 status） ====================
-#
 # **判据（可打印）**：`grep -n "persist_turn\|append_chat_history" app/routing/api_v1_agent.py`
 #    ⇒ 改前**零命中**（5 条 Agent 链一个钩子都没接）。
-#
-# 这三条**不是**"顺手补的覆盖" —— 它们是  决策 2/3 的**落点**：
-#    `chat_history` 与 LangGraph checkpoint 是**两套互不相通的存储**，
-#    而 Agent 链此前只写 checkpoint ⇒ 中断/异常时**一个字都不留**。
 
 @pytest.mark.parametrize("chain_key", ["A", "B", "C"])
 def test_completed_turn_is_persisted_with_done_status(chain_key, monkeypatch):
@@ -647,15 +607,7 @@ def test_chain_a_whitelist_is_the_graph_module_s_own(monkeypatch):
     assert not defined_here, "端点在**自己**定义 STREAMABLE_NODES ⇒ 又变成两处口径了"
 
 
-# ==================== 白名单 × 图 对账（评审收口 · 2026-10-04）====================
-#
-# **为什么需要这一条**：白名单里写错一个名字（例如 `chat_node` 而不是 `chat`）
-#    **不会有任何用例报错** —— 那段 token 只是**静默丢掉**，接口一切正常。
-#    上面那些 `test_real_chain_*` 只抓**反方向**（"实际出块的节点不在白名单"），
-#    抓不到"白名单里有**不存在**的名字"。
-#
-# 本条**只建图、不 invoke** ⇒ 不联网、不花钱、不碰 mem0。
-#    四张图的 builder 全是纯构图（`StateGraph` + `add_node` + `compile`）。
+# ==================== 白名单 × 图 对账（评审收口 · ）====================
 
 #: (模块名, builder 名) —— 用字符串走 `importlib`（`agent_graph` 未在本文件 import）
 _STREAMABLE_WHITELISTS = [
@@ -726,12 +678,6 @@ def test_chain_b_registers_pending_approval_with_graph_name(monkeypatch):
 
 
 # ==================== 链 D（plan_execute）：不是图，形态与 A/B/C 不同 ====================
-#
-# **链 D 的测试必须把「调端点」和「跑流」放进同一个事件循环** —— 这是**脚手架**的要求，
-#    不是端点的缺陷：`_ThreadTokenBridge` 记的是端点被调用时的 `asyncio.get_running_loop`
-#    （生产里两者本来就在同一个 loop）。若先 `asyncio.run(endpoint())` 再换一个 loop 去收帧，
-#    桥就攥着一个**已经关掉的** loop ⇒ 工作线程 `call_soon_threadsafe` 当场 `RuntimeError`。
-#    ⇒ 所以这里用小包装器把"建响应"推迟到**正在跑的那个 loop 里**。
 
 
 class _LazyResponse:
@@ -780,7 +726,7 @@ def test_plan_execute_streams_the_planning_segment(monkeypatch):
     """链 D：**规划段的每个 token 一帧** —— 这是「只流规划段」那条裁定的落点。
 
     流出去的是**正在生成的 JSON 片段**（`plan_task` 的提示词要求严格 JSON），
-       **不是人读终稿**（作者 2026-10-04 裁定"甲"）。本用例不断言 JSON 完整，
+       **不是人读终稿**（作者 裁定"甲"）。本用例不断言 JSON 完整，
        只断言**逐块到达**且**顺序拼得回去**。
     """
     def fake_plan(goal, user_name="unknown", on_token=None):
@@ -979,7 +925,7 @@ def test_plan_execute_stream_frames_match_the_other_three_chains(monkeypatch):
     """**不另发明一种「JSON 流」格式** —— 帧格式与 A/B/C 三条**同一套**。
 
     ⇒ 判据：每一帧都是 `data: ` 前缀；内容帧是 `{"content": …}`；末帧是 `data: [DONE]`。
-      （作者 2026-10-04 的裁定正是"照原样流 JSON"，指的是**内容**是 JSON 片段，
+      （作者 的裁定正是"照原样流 JSON"，指的是**内容**是 JSON 片段，
        **不是**帧格式要变成 JSON 流事件。）
     """
     def fake_plan(goal, user_name="unknown", on_token=None):
@@ -1240,7 +1186,6 @@ class _FragmentedThenAnswerModel(_FakeStreamingModel):
         #    `if hasattr(response, "usage_metadata"): usage = response.usage_metadata`
         #    然后**直接** `usage.get(...)`；而 `AIMessageChunk` **天然有**该属性（默认 `None`）
         #    ⇒ 少了这块会 `AttributeError: 'NoneType' object has no attribute 'get'`。
-        #    真 provider 也把 usage 挂在最后一块（`content=''`）上，见 `_UsageCarryingModel`。
         yield ChatGenerationChunk(message=AIMessageChunk(
             content="",
             usage_metadata={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
