@@ -76,7 +76,7 @@ def expand_query(original_query: str, num_variants: int = 3, *,
         completion_tokens=response.usage.completion_tokens,
         purpose="query_expand",
         user_name=user_name,
-        # 🔴 （）：**必须带会话** —— 不带就落 `record_usage` 的默认桶 `"unknown"`，
+        # 🔴：**必须带会话** —— 不带就落 `record_usage` 的默认桶 `"unknown"`，
         #    而会话闸查的是调用者传的那个 ⇒ **闸恒看到 0**（那条路上的会话上限永远不触发）。
         thread_id=thread_id,
     )
@@ -101,7 +101,7 @@ from billing.token_tracker import record_usage # Token统计模块
 def _history_lines(conversation_history) -> list:
     """把对话历史规整成**字符串列表**（最多取最近 5 条）。
 
-    为什么需要这个函数（修）：
+    为什么需要这个函数：
         历史的**真值类型是 `list[dict]`** —— `schemas.py` 的 `QuestionRequest.conversation_history`
         就是这么声明的，`cache.py:get_chat_history` 从 Redis 读回来也是 dict 列表。
         但本模块（以及 `hybrid_search.py`）的历史签名曾写成 `list[str]`，

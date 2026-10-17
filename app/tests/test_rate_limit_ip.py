@@ -295,3 +295,62 @@ def test_no_other_module_reads_forwarded_headers():
     # 防空跑：扫到 0 个模块 ⇒ 这条恒真（本仓栽过，见 `app/tests/CLAUDE.md` 第 1 条）
     assert scanned > 10, f"只扫到 {scanned} 个模块 —— 枚举口径又变了，这条判据已经没在测东西"
     assert not offenders, f"这些模块自己读了代理头 —— 应该走 main.resolve_client_ip：{offenders}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 四 · 两条 429 出口**必须分得开**
+# ═══════════════════════════════════════════════════════════════════
+
+class _DenyingLimiter(_RecordingLimiter):
+    """永远拒绝 —— 用来把某一条 429 出口真的打出来。"""
+
+    def is_allowed(self, key):
+        self.seen.append(key)
+        return False
+
+
+def test_全局限流的_429_带_layer_global(monkeypatch):
+    """**第一层**：全局限流触发 ⇒ `layer="global"` + `retry_after` + 头 `Retry-After`。"""
+    import json
+
+    import main
+
+    monkeypatch.setattr(main, "global_limiter", _DenyingLimiter())
+    monkeypatch.setattr(main, "user_limiter", _RecordingLimiter())
+    monkeypatch.setattr(main, "TRUST_PROXY_HEADERS", False)
+
+    resp = asyncio.run(
+        main.RateLimitMiddleware(main.app).dispatch(_request(), _call_next)
+    )
+
+    assert resp.status_code == 429
+    body = json.loads(resp.body)
+    assert body["layer"] == "global", f"全局限流那条出口的 `layer` 不对：{body!r}"
+    assert "retry_after" in body, "全局限流的响应体一直带 `retry_after`（用户层没有）"
+    assert resp.headers.get("Retry-After") == "60"
+
+
+def test_用户限流的_429_带_layer_user(monkeypatch):
+    """**第二层**：用户级限流触发 ⇒ `layer="user"` + `X-RateLimit-*`，**且没有** `retry_after`。
+
+    ⚠️ **正控**（全局那层必须放行）—— 否则这条打出来的可能是第一层，那就测错了对象。
+    """
+    import json
+
+    import main
+
+    fake_global = _RecordingLimiter()
+    monkeypatch.setattr(main, "global_limiter", fake_global)
+    monkeypatch.setattr(main, "user_limiter", _DenyingLimiter())
+    monkeypatch.setattr(main, "TRUST_PROXY_HEADERS", False)
+
+    resp = asyncio.run(
+        main.RateLimitMiddleware(main.app).dispatch(_request(), _call_next)
+    )
+
+    assert fake_global.seen == ["global"], f"全局限流器没被问过 ⇒ 打的不是第二层：{fake_global.seen}"
+    assert resp.status_code == 429
+    body = json.loads(resp.body)
+    assert body["layer"] == "user", f"用户限流那条出口的 `layer` 不对：{body!r}"
+    assert "retry_after" not in body, "`retry_after` 是全局限流那条出口的记号，别混到这一层"
+    assert resp.headers.get("X-RateLimit-Limit") == "20"

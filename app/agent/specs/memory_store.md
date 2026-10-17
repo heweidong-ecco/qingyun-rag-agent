@@ -6,7 +6,7 @@
 
 - 客户端构造用 **`Memory.from_config(dict)`**。
   ⚠️ **⛔ 不是 `Memory(dict)`** —— `mem0ai>=2.0` 的 `__init__` 只接受 `MemoryConfig` 对象。
-- 🔴 **：LLM 与 embedder 换成 `langchain` provider** ——
+- 🔴 **LLM 与 embedder 换成 `langchain` provider** ——
   塞进去的是 `make_llm(..., callbacks=[_UsageRecorder()])` 与 `RecordingEmbeddings()`
   ⇒ **它们的 token 从此记在真实用户头上**（改前一个都不记，见「看代码会误判」第 5 条）。
 
@@ -15,13 +15,13 @@
 - **5 处产品代码引用 · 1 个测试文件提到**（`app/tests/test_agent_repairs.py`）。
 - 用它的链路：`app/agent/agent_graph_advanced.py` · `agent_graph_advanced_learning.py`
   · `app/routing/api_v1_agent.py` —— 即**二代/三代 Agent 在入口注入长期记忆**。
-- 🔴 **：embedder 的模型名收口**（§二·2）—— 它与 `rag/embedding_client.py`
+- 🔴 **embedder 的模型名收口**（§二·2）—— 它与 `rag/embedding_client.py`
   **同一个变量** `EMBEDDING_MODEL_MAIN`（⛔ 别再在这里写第二份字面量）；`api_key` 也补上了
   `config` 回落（改前是**裸 `os.getenv`**）。
 
 ## ⚠️ 看代码会误判的地方 ⭐
 
-0. 🔴🔴 **「Qdrant 存在哪」曾经**跟着 CWD 跑**，本机**已经裂成两份**（· `①b`）
+0. 🔴🔴 **「Qdrant 存在哪」曾经**跟着 CWD 跑**，本机**已经裂成两份**（`①b`）
 
    改前那句是 **`"path": "./.mem0/qdrant"`（相对路径）**，而它在**模块导入时**就被
    `Memory.from_config(...)` 解析掉了 ⇒ **落点取决于当时从哪启动**。

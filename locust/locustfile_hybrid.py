@@ -42,7 +42,7 @@ class HybridUser(HttpUser):
     def on_start(self):
         """登录获取 Token
 
-        口令从 `.env` 读（不再硬编码）—— 。
+        口令从 `.env` 读（不再硬编码）——。
         登录失败必须**显式报错**：原写法只是把 headers 置空，于是整轮压测会跑出
            一堆静默 401 却看不出原因 —— 与 #3 那个"mode 被静默忽略"是同一类坑。
         """
@@ -74,7 +74,7 @@ class HybridUser(HttpUser):
             # `mode` 是**查询参数**，不是请求体字段 ——
             #    api_v1_rag.py 把它独立声明为 query 参数，**遮蔽了** body 里 QuestionRequest.mode，
             #    所以原先放在 json 里的 mode 会被**静默忽略**，恒走默认的 accurate_norerank。
-            #    取值统一为 `accurate_norerank`（= 修复前的实际行为）以保证与历史基线可比 —— 。
+            #    取值统一为 `accurate_norerank`（= 修复前的实际行为）以保证与历史基线可比 ——。
             params={"mode": "accurate_norerank"},
             json={
                 "question": random.choice(RAG_QUESTIONS),

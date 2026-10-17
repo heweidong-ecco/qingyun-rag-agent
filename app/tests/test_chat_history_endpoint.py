@@ -1,4 +1,4 @@
-"""`GET /api/v1/rag/chat_history` —— **读回对话历史**（前端整体调整 · 批 5 · ）。
+"""`GET /api/v1/rag/chat_history` —— **读回对话历史**（前端整体调整 · 批 5）。
 
 本文件**不连库、不连 Redis**（裸 `TestClient(app)` + 把取历史那个函数打桩）——
    `check.txt` 那族的理由是：别写成 `with TestClient(app) as client:`，那会触发 lifespan。

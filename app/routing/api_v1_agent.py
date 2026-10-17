@@ -15,7 +15,7 @@ from routing.deps import get_current_user_hybrid
 from routing.sse import DONE_FRAME, graph_message_text, sse_frame, sse_response, sse_stream
 
 from agent.agent_graph import agent_graph, STREAMABLE_NODES
-# （）：四条流式链的**可流节点白名单**从**图模块**取
+#：四条流式链的**可流节点白名单**从**图模块**取
 #    （端点不许自己抄一份字面量 ——  的教训：一个名字两个来源必然漂移，
 #     而漂移是**静默**的）。所以这里要的是**模块对象**，不是常量本身。
 import agent.agent_checkpointer as agent_checkpointer
@@ -42,7 +42,7 @@ from agent.memory_store import add_user_memory, search_user_memory
 #    （`⑥ 实施`把「外部检索与工具Agent编排」那一页接线时，下面这十几条**当场进了 `called` 集合**）
 #    那道门的 `PENDING`（豁免清单）**只装门立起来之前就存在的老端点** ⇒ 不能往里塞新的。
 from routing.schemas import (
-    CostRecordsResponse,   # ：PENDING 那三条欠账
+    CostRecordsResponse,   #：PENDING 那三条欠账
     TokenBudgetResponse,   # 同上
     AgentApprovalHistoryResponse,
     AgentApproveResponse,
@@ -91,7 +91,7 @@ from billing.breaker import circuit, global_key
 #    ⇒ 两个用户都用默认值 ⇒ 共用一个 checkpoint 桶，而消息 reducer 是
 #    `Annotated[List, operator.add]`（append）⇒ **模型看得到别人的对话**。
 from access.session_key import session_key
-# （）：**5 条 Agent 链的留痕**落到 Redis `chat_history`。
+#：**5 条 Agent 链的留痕**落到 Redis `chat_history`。
 #    为什么是这里而不是 checkpoint：`chat_history` 与 LangGraph checkpoint 是**两套互不相通的存储**，
 #       而  决策 3 把 `status` 的落点定在 `chat_history` ⇒ 改前 5 条链**一个字都不留**
 #       （判据：`grep -n "persist_turn\|append_chat_history" app/routing/api_v1_agent.py` ⇒ 改前零命中）。
@@ -108,7 +108,7 @@ from agent.agent_graph_advanced import mcp_agent, get_mcp_tools
 router = APIRouter(prefix="/api/v1")
 
 
-#: 预算拦截时给调用方看的那句话的**前缀**（批 7）。
+#: 预算拦截时给调用方看的那句话的**前缀**。
 #: **由端点层拼、不由图里拼** —— 图写进 `budget_intercept` 的是**原因**，
 #:    拼文案只有这一个地方。理由见 `agent_budget_intercept_message` 的 docstring。
 BUDGET_INTERCEPT_PREFIX = "预算拦截，本轮未继续执行："
@@ -124,7 +124,7 @@ def agent_budget_intercept_message(why: str) -> str:
 
     ## 文案是「**本轮**」口径，不是「本次工具调用未执行」
 
-    那句话是 （批 2）留下的，当时**只有**工具触发那一种拦截 ——
+    那句话是 留下的，当时**只有**工具触发那一种拦截 ——
     对它是准的。**批 7新增的 10 处软返回里，绝大多数根本没有工具调用**
     （四张图的**入口节点**在调 LLM **之前**就拦下了：`agent_decide` / `supervisor`）
     ⇒ 旧文案对它们**不准**（说了一个没发生的事）。
@@ -578,7 +578,7 @@ async def approve_agent_action(
 
     if approved:
         if edited_answer is not None:
-            # B6 修正（· 端到端验收）：人工改写**回填成 `ToolMessage`**，
+            # B6 修正（端到端验收）：人工改写**回填成 `ToolMessage`**，
             #    不再是 `AIMessage` —— 两个理由（结构合法 · 图还能往下走）见 `_tool_rulings`。
             target.update_state(config, values={"messages": _tool_rulings(
                 pending_calls,
@@ -609,7 +609,7 @@ async def approve_agent_action(
 
     final_message = result["messages"][-1]
 
-    # B5/B6 修正（· 端到端验收）：**只有"真的走完了"才许 `resolve`**。
+    # B5/B6 修正（端到端验收）：**只有"真的走完了"才许 `resolve`**。
     #    改前是**无条件**注销 ⇒ 放行后若模型**又**要求敏感工具，图**再次**停在审批点，
     #    而队列里已经没有它了 ⇒ **孤儿会话**：`/agent/pending` 查不到、
     #    再 `/agent/approve` 报「当前没有等待审批的任务」、同 thread 再问 ⇒ 400。
@@ -1678,7 +1678,7 @@ async def mcp_agent_chat_stream(
         #       而这正是软拦截在流式这条路上的形态（改前实测：`answer` = "预算拦截：…"）。
         why = values.get("budget_intercept")
         if why:
-            # **（批 7）文案改了**（同 `/agent/mcp_chat`，理由见那一处）：
+            # **文案改了**（同 `/agent/mcp_chat`，理由见那一处）：
             #    从「本次**工具调用**未执行」改成「**本轮**未继续执行」；
             #    且**改走共享纯函数**（不再就地拼）⇒ 帧与历史**同源**，不会对不上。
             msg = agent_budget_intercept_message(why)
@@ -1785,12 +1785,12 @@ async def agent_token_recent(
 ):
     """获取**你自己**最近的 Token 使用记录。
 
-    **：加了 `truncated`**（`frontend/README.md` §六 红线②「被截断必须说出来」）——
+    **加了 `truncated`**（`frontend/README.md` §六 红线②「被截断必须说出来」）——
        改前它**取了 N 条就走了**，调用方**分不清"就这么多"与"被截了"**。
     判法同 `/agent/approvals/history`：**多要一条** —— 多要的那条**只当探针，不返回**
        （不拿 `len == limit` 猜：那在"正好 N 条、后面没有了"时会误报截断）。
 
-    **：本端点此前【收了 `user_name` 却从没用它】** ——
+    **本端点此前【收了 `user_name` 却从没用它】** ——
        函数体写的是 `get_recent_usage(limit + 1)`，而那读的是 `_usage_records`
        （**进程内所有人共用的一张表**）⇒ **它返回的是所有人的记录，每条还带别人的 `user_name`**。
        端点的 docstring 一直写着"获取最近的 Token 使用记录"、**没有一个字说这是全站的**

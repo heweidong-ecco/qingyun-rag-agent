@@ -68,7 +68,7 @@ class BudgetExceededError(Exception):
 class StepResult:
     """一步执行的结果。
 
-    ## 为什么需要这个类型（）
+    ## 为什么需要这个类型
 
     **改前**：成败靠**中文子串**判 —— `if "执行失败（已重试" in step_result`（`:362`）
     与 `if "执行失败" in step_result`（`:557`）。那条判据与**格式化文案**耦合，两种坏法：
@@ -247,7 +247,7 @@ __TOOL_LIST__
 executor_llm = make_llm(
     "chat", "agent",
     temperature=0.1,
-    timeout=EXECUTOR_LLM_TIMEOUT,      # ：见上方共用说明
+    timeout=EXECUTOR_LLM_TIMEOUT,      #：见上方共用说明
     max_retries=LLM_MAX_RETRIES,
 )
 
@@ -445,7 +445,7 @@ quality_checker_llm = make_llm(
     # 没有本地部署 ⇒ 用配置里的 chat 模型（`LLM_MODEL_CHAT`，由 `make_llm` 的模型轴决定）
     "chat", "agent",
     temperature=0.0,   # 评估需要确定性（= 工厂默认值，这里写明是**故意的**）
-    timeout=QUALITY_LLM_TIMEOUT,      # ：见上方共用说明
+    timeout=QUALITY_LLM_TIMEOUT,      #：见上方共用说明
     max_retries=LLM_MAX_RETRIES,
 )
 

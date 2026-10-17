@@ -13,6 +13,12 @@ __pycache__/
 .coverage
 *.pyc
 
+# 🔴 `.mem0/` —— **本地 Qdrant 存储**（`agent/memory_store.py` 在**导入期**就开它）。
+#    ⚠️ 2026-10-17 **跑一遍 pytest 才照出来的**：一次测试就在 `app/` 下生成这个目录，
+#    而它**不在**这份 `.gitignore` 里 ⇒ 一不小心就把它提交上去（本地向量库，几百 KB 起、且是个人数据）。
+#    本仓（开发仓）的 `.gitignore` 里早就有它 —— 这份**生成版漏了**。
+.mem0/
+
 logs/
 *.log
 .DS_Store

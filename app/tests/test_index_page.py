@@ -70,7 +70,7 @@ def test_no_page_renders_a_credential_plaintext(client):
     assert not m, f"首页上印出了像凭据明文的东西：{m.group(0)[:20]}…"
 
 
-# ══════════════ ：首页重做之后补的那几条 ══════════════
+# ══════════════：首页重做之后补的那几条 ══════════════
 
 import os as _os
 

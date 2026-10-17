@@ -42,7 +42,7 @@ def _frontend_raw() -> set:
     它表示前端**要在后面拼东西**（`FULL_PATH + id`）。
     旧版在这里就 rstrip 掉了 ⇒ 拼接路径**塌缩成上一级**（`/api/v1/rag/documents/`
     ⇒ `/api/v1/rag/documents` = **列表端点**，而它**有** schema）⇒ **DELETE 那条整条空过**。
-    那正是 漏掉的原因（修）。
+    那正是 漏掉的原因。
     """
     found = set()
     roots = [os.path.join(static_dir, "js"), os.path.join(static_dir, "web")]

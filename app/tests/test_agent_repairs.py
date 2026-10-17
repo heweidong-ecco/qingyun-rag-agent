@@ -114,7 +114,7 @@ def test_call_mcp_tool_keeps_session_lifecycle_inside_one_task(monkeypatch):
       than it was entered in` —— 而且它会让**应用启动直接失败**
       （`Application startup failed. Exiting.`）。
 
-    ## ：**本用例比它自称的弱，已订正**
+    ##：**本用例比它自称的弱，已订正**
 
     它**原**写的是「`call_mcp_tool` **返回时**已关闭」，并声称是"不许改回池化"的反向保护。
     **实测：那句是虚的** —— 断言只检查 `asyncio.run` **结束之后**的事件序列，
@@ -162,7 +162,7 @@ def test_mcp_server_path_does_not_depend_on_cwd(monkeypatch, tmp_path):
     seen = {}
 
     class _Params:
-        # ⚠️ `env` 这个形参⛔ 别删 —— （）给真实构造加了这个关键字，
+        # ⚠️ `env` 这个形参⛔ 别删 —— 给真实构造加了这个关键字，
         #    替身不接就会 `TypeError: unexpected keyword argument 'env'`，
         #    而那会**伪装成"路径守卫红了"**（判据指错方向是本仓最恨的形态）。
         def __init__(self, command=None, args=None, env=None):

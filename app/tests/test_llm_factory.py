@@ -179,7 +179,7 @@ def test_importing_the_module_does_not_pull_langchain(monkeypatch):
     )
 
 
-# ==================== 缺 key 时要点名（批 6）====================
+# ==================== 缺 key 时要点名====================
 
 def test_missing_key_is_reported_by_name_not_by_openai():
     """缺 `LLM_API_KEY` 时 `make_llm` 必须**点名那个变量**，不是 OpenAI SDK 那句通用话。

@@ -46,7 +46,7 @@ def make_llm(model_role: str, token_role: str, *, temperature: float = 0.0,
         **裸 `ChatOpenAI`**。不许包成别的类型 —— 见模块 docstring 那张「返回值必须」的表。
 
     Raises:
-        EnvironmentError: `LLM_API_KEY` 没配（批 6）。**点名那个变量** ——
+        EnvironmentError: `LLM_API_KEY` 没配。**点名那个变量** ——
             改前是把 `None` 递给 `ChatOpenAI`，报的是 SDK 的通用话，而它提的
             `OPENAI_API_KEY` 本仓根本不用。
     """

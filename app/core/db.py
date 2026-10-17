@@ -16,7 +16,7 @@ PUBLIC_OWNER = "public"
 
 #    建索引（`create_table()`）与那道"验类型"的自愈段**都引用它** ——
 #    ⛔ 别在两处各写一个字面量（本仓立场：**两处写死 = 必漂**，`PUBLIC_OWNER` 那条同理）。
-#    为什么用 `hnsw` 而不是 `ivfflat` ⇒ 见 `create_table()` 里那一段注释 · 。
+#    为什么用 `hnsw` 而不是 `ivfflat` ⇒ 见 `create_table()` 里那一段注释。
 _VECTOR_INDEX_AM = "hnsw"
 
 
@@ -31,7 +31,7 @@ def enable_ann_iterative_scan(cur) -> None:
     而本仓那两句向量 SQL 一定带 `WHERE requested_by = %s OR requested_by = %s`
     （多用户隔离 +  公共语料）⇒ **正好在这个坑的射程里**。
 
-    **实测它能兜住**（· 本机活库 · 拿 `hnsw.ef_search=2` 人为饿死搜索）：
+    **实测它能兜住**（本机活库 · 拿 `hnsw.ef_search=2` 人为饿死搜索）：
 
     | 配置 | 回满 `LIMIT 3` |
     |---|---|
@@ -207,11 +207,14 @@ def create_table():
                         id SERIAL PRIMARY KEY,
                         content TEXT NOT NULL,
                         source TEXT,
-                        embedding vector(1024),
-                        requested_by TEXT NOT NULL DEFAULT 'anonymous'  -- 新增字段
+                        requested_by TEXT NOT NULL DEFAULT 'anonymous',
+                        embedding vector(1024)
                     );
                 """)
-                # API Key 表
+                # ⚠️ 上面那两行（`requested_by` / `embedding`）的**先后顺序**是 特意**照活库**调的
+                #    （活库里 `requested_by` 在前）。理由不是好看： 那条判据要拿**本函数建出来的库**
+                #    与 `app/schema.sql`（活库快照）**逐列比**，顺序不一致会**报出假差异**，
+                #    而"逐字节一致"是本仓能拿到的最干净的一种判据形态（同 `gen_schema_sql.sh --check`）。
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS api_keys (
                         id SERIAL PRIMARY KEY,
@@ -284,7 +287,7 @@ def create_table():
                         END IF;
                     END $$;
                 """)
-                # 同一款：`api_keys.role`（· B1）
+                # 同一款：`api_keys.role`（B1）
                 #    理由与上面 `is_active` 那段**逐字同款**：本机这条 PG 是**先建的**，
                 #    光把列写进建表语句 ⇒ **老库永远补不上**。
                 cur.execute("""

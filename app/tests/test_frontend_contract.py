@@ -30,13 +30,21 @@ class _PromptCapturingLLM:
         yield AIMessageChunk(content="", usage_metadata=self._usage)
 
 
-# `search_similar` 返回的是 **4 元组**（`id, content, source, similarity`）——
-#    见 `app/routing/api_v1_rag.py` 里 `r[0]..r[3]` 的映射。别写成 dict（那会让被测代码 KeyError）。
+# 🔴：`/rag/stream_search` 的检索**改走与 `/rag/search` 同一条链**了，
+#    桩点从 `search_similar`（返回 **4 元组**）换成 `_stream_retrieval`（返回**文档字典**，
+#    即 RRF 融合的产物）。⚠️ **形状变了，别照旧写元组** —— 那会让被测代码 KeyError。
 DOCS = [
-    (11, "第一篇的正文", "a.md", 0.9),
-    (22, "第二篇的正文", "b.md", 0.8),
-    (33, "第三篇的正文", "c.md", 0.7),
+    {"id": 11, "content": "第一篇的正文", "source": "a.md", "similarity": 0.9},
+    {"id": 22, "content": "第二篇的正文", "source": "b.md", "similarity": 0.8},
+    {"id": 33, "content": "第三篇的正文", "source": "c.md", "similarity": 0.7},
 ]
+
+
+def _fake_retrieval(docs):
+    """造一个 `_stream_retrieval` 的替身（它现在是 `async` 的）。"""
+    async def _go(*_a, **_k):
+        return list(docs)
+    return _go
 
 
 @pytest.fixture
@@ -54,7 +62,7 @@ def rag_env(monkeypatch):
     monkeypatch.setattr(rag_mod, "check_session_token_budget", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "circuit", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "get_embedding", lambda text, **k: [0.0] * 8)
-    monkeypatch.setattr(rag_mod, "search_similar", lambda *a, **k: list(DOCS))
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _fake_retrieval(DOCS))
 
     # 只拦"落库"这一步（见模块 docstring）。`record_from_response` 保持**真跑**。
     recorded = []
@@ -78,8 +86,10 @@ def drive(rag_env, llm, **kw):
 def payloads_of(frames):
     """把 SSE 文本帧解成 payload 列表；`[DONE]` 原样保留成字符串。
 
-    **必须 JSON 解码**：本端点 `ensure_ascii=True` ⇒ 中文是 `\\uXXXX`，
-       直接做子串匹配恒为假（`test_rag_billing_wiring.py` 第一版就栽在这 —— 假红）。
+    ⚠️ **必须 JSON 解码**（帧体是 JSON）：`test_rag_billing_wiring.py` 第一版直接做子串匹配 ⇒ 假红。
+    🔵 **之后**解码这一步**仍然要**（那是 JSON 的事），
+       但**理由变了**：本端点 `ensure_ascii` 已统一成 `False`（中文**原样**出），
+       ⛔ 不再是"中文被转义成 `\\uXXXX` 所以得解回来"。
     """
     out = []
     for f in frames:
@@ -116,8 +126,8 @@ def test_sources_index_is_the_same_i_as_the_prompt_numbering(monkeypatch, rag_en
 
 def test_sources_content_is_the_full_text_not_the_preview(monkeypatch, rag_env):
     """契约 A：`content` 是**全文**，`content_preview` 仍是 100 字——**两个都在**。"""
-    long_doc = (77, "甲" * 250, "long.md", 0.9)
-    monkeypatch.setattr(rag_env.rag, "search_similar", lambda *a, **k: [long_doc])
+    long_doc = {"id": 77, "content": "甲" * 250, "source": "long.md", "similarity": 0.9}
+    monkeypatch.setattr(rag_env.rag, "_stream_retrieval", _fake_retrieval([long_doc]))
     llm = _PromptCapturingLLM()
     monkeypatch.setattr(rag_env.rag, "get_llm_stream", lambda: llm)
 
@@ -181,7 +191,7 @@ def test_sources_carry_similarity_for_the_citation_card(monkeypatch, rag_env):
     payloads = payloads_of(drive(rag_env, llm, citations=True)[0])
     sources = next(p["sources"] for p in payloads if isinstance(p, dict) and "sources" in p)
 
-    assert [s["similarity"] for s in sources] == [doc[3] for doc in DOCS], \
+    assert [s["similarity"] for s in sources] == [doc["similarity"] for doc in DOCS], \
         "sources 帧里的 similarity 与检索结果对不上（卡片会显示一个编出来的分）"
 
 

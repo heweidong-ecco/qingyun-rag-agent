@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | **状态** | 🟢 **可用；它真记账了**（此前 `record_usage` **import 在、调用 0 次**） |
-| **对外提供** | `expand_query(original_query, num_variants=3, *, user_name, thread_id)` · `rewrite_query(original_query, conversation_history=None, *, user_name, thread_id)`<br>🔴 **：两个函数各多一个同样【必填】的 `thread_id`** —— 它落到两处 `record_usage` 的 `thread_id=` 上 |
+| **对外提供** | `expand_query(original_query, num_variants=3, *, user_name, thread_id)` · `rewrite_query(original_query, conversation_history=None, *, user_name, thread_id)`<br>🔴 **两个函数各多一个同样【必填】的 `thread_id`** —— 它落到两处 `record_usage` 的 `thread_id=` 上 |
 | **谁在用** | `rag_pipeline.py:99,105`（`/rag/search`）· `hybrid_search.py:128,131`（`/rag/rewrite_search`） |
 | **依赖** | **裸 `openai.OpenAI`**（不是一个 `ChatOpenAI`）· Redis（改写缓存，`CACHE_TTL = 3600`） |
 
@@ -12,7 +12,7 @@
 - `rewrite_query` —— 口语转书面语、**按对话历史消解指代**（"它"/"这个" ⇒ 明确对象）、省略句补全
 - `expand_query` —— 生成 `num_variants` 个语义相同、表述不同的变体，扩大召回
 - 两条都**带 Redis 缓存**（命中即早退，不再调 LLM）
-- 🔴 **：两条各记一笔 `record_usage`**
+- 🔴 **两条各记一笔 `record_usage`**
   （`expand_query` 在 `:75` · `rewrite_query` 在 `:175`），
   且签名加**必填** keyword `user_name`（`:43` / `:123`）
 

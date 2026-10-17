@@ -36,7 +36,7 @@ RUN mkdir -p /root/.pip && echo "[global]\nindex-url = https://pypi.tuna.tsinghu
 # 将依赖安装到 /install 目录，用于后续复制
 # --user 安装到用户目录，避免权限问题
 #
-# 🔴 2026-09-29：**构建期裁掉重排序依赖**（作者裁「甲」，）。
+# 🔴 2026-09-29：**构建期裁掉重排序依赖**（作者裁「甲」）。
 #
 #    **为什么**：`requirements.txt:59` 的 `sentence-transformers` 会**连带拉入 `torch`** ——
 #      实测 `torch-2.14.0-cp310-manylinux_2_28_x86_64.whl` = **554.6 MB**（另加 scipy 37.7 / gradio 31.4 …），
@@ -54,7 +54,7 @@ RUN mkdir -p /root/.pip && echo "[global]\nindex-url = https://pypi.tuna.tsinghu
 #    ⚠️ **代价（已知并接受）**：镜像里**跑不了 `mode=accurate` / `rerank_search`**。
 #       线上本来就标注「fast 模式；重排序未启用」（延续 README 的 🔻 调性）。
 #       若将来要恢复：把这行换回 `pip install ... -r requirements.txt` 即可。
-# 🔴 2026-09-29 扩到 **5 个包**（作者裁「乙」，）。
+# 🔴 2026-09-29 扩到 **5 个包**（作者裁「乙」）。
 #
 #    新增裁掉的 3 个，**都是【工具】，不是【功能】**（2026-09-29 实测三者的调用形态）：
 #

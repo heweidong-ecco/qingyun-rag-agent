@@ -73,14 +73,19 @@ def test_frame_default_keeps_chinese_readable():
     assert frame == 'data: {"content": "你好"}\n\n'
 
 
-def test_frame_ensure_ascii_true_preserves_legacy_rag_bytes():
-    """`ensure_ascii=True`：中文变 `\\uXXXX`（= `/rag/stream_search` 一直的字节）。
+def test_frame_ensure_ascii_true_still_escapes_chinese():
+    """`ensure_ascii=True` 这个**旋钮本身**还灵 —— ⚠️ **全仓已经没有调用点用它了**。
 
-    **这条用例守的是"不改线上字节"这件事** —— 抽公共层**不是**顺手统一编码的理由。
+    ⚠️ **本条不是"某个端点现在的字节"** —— 把两条口径
+      （`/agent/*` 的 `False` 与 `/rag/stream_search` 的 `True`）**统一成了 `False`**。
+      它现在守的是**骨架的 API 没坏**：留着这个参数是那次统一的**反悔路径**（见 `sse_frame` 的 docstring），
+      而"没有调用点传 `True`"由 **`app/tests/test_sse_encoding.py`** 扫着。
+    ⛔ **别因为"只有它一个人在测"就删掉它** —— 删了之后，那个旋钮**坏了也没人知道**，
+      而它正是"要改回去"时唯一会用到的东西。
     """
     frame = sse.sse_frame({"content": "你好"}, ensure_ascii=True)
     assert frame == 'data: {"content": "\\u4f60\\u597d"}\n\n'
-    # 两种编码 **JSON 解码后的值相同**（这正是"功能上无感"的判据）
+    # 两种编码 **JSON 解码后的值相同**（这正是"功能无感"、也是  敢统一的判据）
     assert json.loads(frame[6:-2]) == json.loads(sse.sse_frame({"content": "你好"})[6:-2])
 
 

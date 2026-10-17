@@ -425,7 +425,7 @@ def test_status_comes_from_final_state_not_from_streamed_chunks(monkeypatch):
     """**真服务上跑出来的缺陷**：状态必须取自**图的最终状态**，
     不是"把 `agent` 节点的流式块攒起来"。
 
-    **实测经过**（· Step 4）：问一句会触发搜索的话，模型因为
+    **实测经过**（Step 4）：问一句会触发搜索的话，模型因为
     `tool_execute` 不认 `duckduckgo_search` 这个名字而**重试了好几轮**。
     端点当时用的是「把每一轮的 `agent` 输出 `+` 起来」⇒ 攒出的消息**带着上一轮的
     `tool_calls`** ⇒ `summarize_agent_result` 判成 `pending_approval`

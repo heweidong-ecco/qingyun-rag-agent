@@ -1,4 +1,4 @@
-"""`rate_limiter` 的容错与过期（批 3 · + · ）
+"""`rate_limiter` 的容错与过期（批 3 · +）
 
 两条**早已裁过**的方向（作者 见 `app/access/specs/rate_limiter.md` 末表）：
 """

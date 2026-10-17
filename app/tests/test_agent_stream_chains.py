@@ -1,4 +1,4 @@
-"""· **剩余 4 条链**的真流式（``）。
+"""· **剩余 4 条链**的真流式。
 """
 
 import ast
@@ -607,7 +607,7 @@ def test_chain_a_whitelist_is_the_graph_module_s_own(monkeypatch):
     assert not defined_here, "端点在**自己**定义 STREAMABLE_NODES ⇒ 又变成两处口径了"
 
 
-# ==================== 白名单 × 图 对账（评审收口 · ）====================
+# ==================== 白名单 × 图 对账（评审收口）====================
 
 #: (模块名, builder 名) —— 用字符串走 `importlib`（`agent_graph` 未在本文件 import）
 _STREAMABLE_WHITELISTS = [

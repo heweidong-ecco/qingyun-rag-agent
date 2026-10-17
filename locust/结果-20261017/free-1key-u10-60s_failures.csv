@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/agent/tool_versions,HTTPError('429 Client Error: Too Many Requests for url: /agent/tool_versions'),101,2026-10-17T01:30:02Z,2026-10-17T01:30:56Z
+GET,/agent/available_tools,HTTPError('429 Client Error: Too Many Requests for url: /agent/available_tools'),103,2026-10-17T01:30:02Z,2026-10-17T01:30:57Z
+GET,/agent/budget/estimates,HTTPError('429 Client Error: Too Many Requests for url: /agent/budget/estimates'),75,2026-10-17T01:30:02Z,2026-10-17T01:30:57Z

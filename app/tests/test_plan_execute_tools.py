@@ -211,14 +211,14 @@ def test_downgraded_step_keeps_the_real_reason(monkeypatch):
 
     monkeypatch.setitem(P._TOOL_HANDLERS, "calculator", _explode)
     # 每步都判"彻底失败" ⇒ 把同一工具推到 3 连败
-    # （）起要返回 `StepResult` —— 成败判定换成看 `.ok` 字段了。
+    # 起要返回 `StepResult` —— 成败判定换成看 `.ok` 字段了。
     #    用 `*a, **k` 是为了**同时兼容**将来多传的位置参数（已经加过一处）。
     monkeypatch.setattr(
         P, "execute_step_with_quality_check",
         lambda *a, **k: P.StepResult(ok=False, text="执行失败（已重试1次）：假装失败",
                                      error="假装失败"))
     # 重规划不许真调 LLM：给一份**同样只用 calculator**的计划，把循环推到降级分支
-    # （）：签名原来只有 `ctx` 一个参数 —— 那时它**正好**兜住了
+    #：签名原来只有 `ctx` 一个参数 —— 那时它**正好**兜住了
     #    调用点漏传 `user_name`（少传一个 ⇒ 不报错）。修完之后调用点会传两个，
     #    所以这里必须**跟着收下** `user_name`。
     monkeypatch.setattr(P, "plan_task",
@@ -434,7 +434,7 @@ def test_dynamic_input_receives_the_real_user_name(monkeypatch):
         return "假输入"
 
     monkeypatch.setattr(P, "generate_dynamic_input", _fake_gen)
-    # （）起返回 `StepResult` —— 再返回裸字符串的话，
+    # 起返回 `StepResult` —— 再返回裸字符串的话，
     #    调用方读 `.ok` 会 `AttributeError`（那就是**假红**，不是这条用例想测的东西）。
     monkeypatch.setattr(P, "execute_step_with_retry",
                         lambda *a, **k: P.StepResult(ok=True, text="假结果"))
@@ -454,7 +454,7 @@ def test_dynamic_input_receives_the_real_user_name(monkeypatch):
 # ===========================================================================
 # ③ 遗留 #4 · 超时必须是【按实测校准】的 —— 既不能误杀，也不能吃光总预算
 # ===========================================================================
-# 实测基线（· 28 次真实调用 · 见 `plan_execute.py` 里那张表）
+# 实测基线（28 次真实调用 · 见 `plan_execute.py` 里那张表）
 _MEASURED_LLM_MAX_SEC = {"plan": 2.68, "dynamic_input": 1.77, "quality_check": 1.56}
 _MIN_HEADROOM = 5  # 至少 5 倍余量
 
@@ -495,7 +495,7 @@ def test_llm_timeouts_are_calibrated_to_measurement():
 # ===========================================================================
 # 把「FREE 用户对 plan_execute 的【真实】每日上限」钉住
 # ===========================================================================
-# 实测（）：一次 `plan_execute`（4 步目标）的真实 token 消耗。
+# 实测：一次 `plan_execute`（4 步目标）的真实 token 消耗。
 _MEASURED_PLAN_EXECUTE_TOKENS = 3346
 
 
@@ -522,7 +522,7 @@ def test_free_users_real_daily_limit_on_plan_execute_is_known(monkeypatch):
        提醒去**重新实测单次消耗**并更新记录。
        **这不是"防改动"，是"防不知情"。**
 
-    ## （两个额度池 ·）—— 它**真的红过一次**
+    ## （两个额度池）—— 它**真的红过一次**
 
     日额度拆成两个池（各按角色额度）⇒ **总上限翻倍**（作者当日确认）
     ⇒ FREE 用户的**总预算 10_000 → 20_000** ⇒ 按同一份实测单次消耗算：

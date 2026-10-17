@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **客户端已惰性构造**（· 批 6 ·）· 🔴 **模型名已从 env 读** |
+| **状态** | ✅ **客户端已惰性构造**· 🔴 **模型名已从 env 读** |
 | **对外提供** | `get_embedding(text, model=None, *, user_name="system", thread_id="system")` —— `None` 时解析成 `EMBEDDING_MODEL_MAIN`（先 env 后 `core.config`）· `assert_model_dimension(expected)`<br>🔴 **新增 `user_name`（关键字限定）**—— 见「看代码会误判」第 1 条；⛔ **别把默认值删掉**（三条路本来就没有用户） |
 | **谁在用** | 几乎所有检索/入库路径（经 `rag_pipeline` / `api_v1_rag` / `cache.warmup_cache` / `hybrid_search`） |
 
@@ -13,7 +13,7 @@
 - 内嵌 Redis 缓存查询（`cache.get_cached_embedding(text, model)`）· 调完记 `token_tracker.record_usage`
 - ✅ **客户端惰性构造**（`_client = None` + `_get_client()`）—— **`import` 期不再碰凭据**；
   缺 `DASHSCOPE_API_KEY` 时抛**点名那个变量**的 `EnvironmentError`（与 `config.validate_config` 同族）
-- 🔴 **：模型名收口到 `EMBEDDING_MODEL_MAIN`**（§二·2）——
+- 🔴 **模型名收口到 `EMBEDDING_MODEL_MAIN`**（§二·2）——
   ⛔ 别再写回形参默认值里的字面量；`model=` 形参**必须保留**（`app/tests/test_isolation.py` 4 处靠它打桩）。
   ⚠️ **同时缓存键变成 `emb:<模型名>:<md5(text)>`**（见 `app/core/specs/cache.md` §12）——
   **这条不做的话，换模型会命中旧模型的向量且不报错**。

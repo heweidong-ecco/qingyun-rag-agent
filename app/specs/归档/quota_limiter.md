@@ -13,7 +13,7 @@
 
 ---
 
-# `app/quota_limiter.py`（⚰️ 已删除 · ）
+# `app/quota_limiter.py`（⚰️ 已删除）
 
 | 项 | 内容 |
 |---|---|

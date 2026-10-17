@@ -4,7 +4,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 
 #    它把 `AIMessage` 剥成 `str`，`usage_metadata`（`record_from_response` 的唯一判据，
-#    ）随之丢光 ⇒ 记账静默收不到数。已删。
+#）随之丢光 ⇒ 记账静默收不到数。已删。
 from billing.token_tracker import record_from_response
 
 CITATION_PROMPT = ChatPromptTemplate.from_messages([

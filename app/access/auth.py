@@ -51,7 +51,7 @@ def create_user_api_key(user_name: str, expire_days: int = 30, role: str | None 
     为新用户生成API Key并存入数据库。
     返回明文Key（只在生成时显示一次，之后无法找回）。
 
-    ## `role`（· B1）
+    ## `role`（B1）
 
     **默认 `None` ⇒ 写进库的是 `NULL`** —— 而 `get_user_role` 把 `NULL` 当
     「**还没人裁决**」⇒ **走回退**（探针身份 + `admin` 特判 + 其余 FREE）。

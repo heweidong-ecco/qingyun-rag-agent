@@ -1,4 +1,4 @@
-"""`*_impl.py` 两个「纯 stdlib 内核」的单元测试（§三·D2 · ）
+"""`*_impl.py` 两个「纯 stdlib 内核」的单元测试（§三·D2）
 
 背景：`code_executor_impl.py` / `simple_tools_impl.py` 的 docstring 都声称
 「**可脱离 langchain 单测**」—— 而这个**能力是真的**（实测两个模块只 import 标准库：
@@ -60,7 +60,7 @@ def test_date_today_impl_returns_a_readable_date():
 
 
 # ===========================================================================
-# （）：date_calc / json_extract / stats 三个纯函数内核
+#：date_calc / json_extract / stats 三个纯函数内核
 # ===========================================================================
 def test_date_calc_impl_adds_and_subtracts_days():
     from tools.simple_tools_impl import date_calc_impl
@@ -270,7 +270,7 @@ def test_execute_python_impl_rejects_natural_language_requests():
 def test_sandbox_enforces_max_exec_time(monkeypatch):
     """**`MAX_EXEC_TIME` 真的生效** —— 死循环会被【硬杀】。
 
-    这条用例守的是一件「**以前是假的**」的事（· §十四 · ③-a）：
+    这条用例守的是一件「**以前是假的**」的事（§十四 · ③-a）：
        此前 `MAX_EXEC_TIME` **只被定义、从未被使用** —— 实测死循环
        （`while True: i += 1`）**永不返回**；而工具描述却对 LLM **承诺**「最长执行时间：5秒」。
        以前执行层是「LLM 模拟执行」所以不痛；**N15 让执行层真跑代码之后，这就是个洞。**

@@ -31,7 +31,7 @@ async def run_health_check():        # 启动时调一次
 | 缺口 | 说明 |
 |---|---|
 | 🔴 **`_tool_health` 是模块级进程内存** | **重启即清空** · 每个进程**各有一份** ⇒ 多进程部署下**不共享**。⚠️ 且没有落盘、没有 TTL —— `last_checked` 写了但**全仓没有一处读它** |
-| ⚠️ **探测表与注册表要【手动对齐】** | 🔴 ：`TEST_ARGS_MAP` 有 **7** 项（`calculator` / `date_today` / `date_calc` / `json_extract` / `stats` / `web_search` / `execute_python`），另两项**注释着**。⚠️ 与 `mcp_server.TOOLS` 的 7 项**逐名一致**。<br>🔴 **不在表里 ⇒ 该工具【永远不被探测】（静默）** —— 已由 `app/tests/test_tool_registration_completeness.py` 补成**会红的断言**（改前**零守卫**） |
+| ⚠️ **探测表与注册表要【手动对齐】** | 🔴：`TEST_ARGS_MAP` 有 **7** 项（`calculator` / `date_today` / `date_calc` / `json_extract` / `stats` / `web_search` / `execute_python`），另两项**注释着**。⚠️ 与 `mcp_server.TOOLS` 的 7 项**逐名一致**。<br>🔴 **不在表里 ⇒ 该工具【永远不被探测】（静默）** —— 已由 `app/tests/test_tool_registration_completeness.py` 补成**会红的断言**（改前**零守卫**） |
 | ⚠️ **没有任何"健康度随时间衰减"** | 探过就是探过了，`last_checked` 不再被用 ⇒ 一个工具坏掉后**只有等下次手动刷新**才知道 |
 | ⚠️ **零专属测试** | 探测失败 / 字符串误判 / 表外工具 —— 都没有用例 |
 

@@ -13,7 +13,7 @@ import pytest
 API = Path(__file__).resolve().parents[1]   # app/ —— tests/ 的上层
 
 #: 交给 LLM 的工具名（= `mcp_server.TOOLS` 里那些）。
-#: ：4 → **7**。
+#:：4 → **7**。
 #: **新增工具时必须同时改这里** —— 本集合是 `_tool_definitions` 的**过滤条件**，
 #:    名字不在里面 ⇒ 那条守卫对这个工具**是瞎的**（不是"少登记一条测试"，是"尺子量不到"）。
 TOOL_NAMES = {

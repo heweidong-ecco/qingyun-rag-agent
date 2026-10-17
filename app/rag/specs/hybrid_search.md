@@ -42,7 +42,7 @@ hybrid_search_with_rewrite(query, top_k=5, conversation_history=None, *, user_id
 :132  expand_query(optimized_query, user_name=user_id, thread_id=thread_id)
 ```
 
-> 🔴 ：上面那两行**各补了一个 `thread_id=`**（行号现取，别抄）——
+> 🔴：上面那两行**各补了一个 `thread_id=`**（行号现取，别抄）——
 > 同一件事的**会话**那一维。
 
 ⚠️ **只此一处改动**，且 ⛔ **不给默认值** —— 目的是让 `query_rewriter` 能把
@@ -50,7 +50,13 @@ hybrid_search_with_rewrite(query, top_k=5, conversation_history=None, *, user_id
 
 ## 🟡 做到哪 / 缺什么
 
-- 🔴 **同算法两份实现**（见下）
+- 🔴 **同算法两份实现**（见下）—— ⚠️ **两边的【产物键】已对齐**
+  （都带 `id` / `content` / `source` / `similarity` / `rrf_score` / `from`），
+  但**实现仍是两份** ⇒ 改一处**必须**改另一处
+- ⚠️ **`reciprocal_rank_fusion` 的产物多带 `id` 与 `similarity`** ——
+  此前它**抠出了 `id` 却没往外传**（`doc_info` 里有、`results` 里没有），
+  而调用方（引用帧那两个出口）是**照着有 `id` 写的** ⇒ 那一格恒为 `null`。
+  ⛔ 别把这两个键删回去"精简输出"：**融合只该改排序，不该丢字段**。
 - 🔴 **零测试覆盖**（`docs/说明/测试.md` §六 **#1**）
 - ⚠️ **它是  自己点名的"复审出过 bug 的地方"**：
   > 「**RRF 恰恰是 复审出 bug 的地方**」

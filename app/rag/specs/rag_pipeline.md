@@ -149,6 +149,15 @@ if self.enable_rerank and candidates:
 ⇒ **两篇正文完全相同的文档会被合成一篇**（有意的：同一段被多路重复召回了）。
 ⚠️ 但**代价**是"文档身份"在这个函数里**不存在** —— `doc_info[content]["id"]` 只是**碰巧留下的那一路的 id**。
 
+### 7·附. 🔴 **融合【只改排序，不丢字段】**
+
+`_rrf_fusion` 的产物字典带 **6 个键**：`id` · `content` · `source` · `from` · **`similarity`** · `rrf_score`。
+⚠️ **`similarity` 是本轮补的** —— 它此前在这一步被丢掉，于是**引用帧里那一格恒为 `null`**
+（`answer_with_citations` 早就诚实地写着"这里会取到 `None`"，那是一句**症状描述**，不是设计）。
+⇒ 现在：**两路都命中的以【向量那一路】为准**（它有相似度）；**BM25 独中的诚实地取 `None`**，⛔ 不许编一个分。
+🔴 **同一处还有第二份实现** ⇒ `app/rag/hybrid_search.py` 的 `reciprocal_rank_fusion`（`/rag/search` **不用**它）——
+**两边的键已对齐**；⛔ 改一处时**必须**改另一处（本仓「两处写死 = 必漂」）。
+
 ### 8. ⚠️ 查询规范化**就地构造** `DocumentPreprocessor`
 
 ```python

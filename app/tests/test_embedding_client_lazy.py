@@ -1,4 +1,4 @@
-"""`app/rag/embedding_client.py` —— **客户端惰性构造**（批 6）。
+"""`app/rag/embedding_client.py` —— **客户端惰性构造**。
 
 判据两条（改前都红）：
 1. 缺 `DASHSCOPE_API_KEY` 时 **`import embedding_client` 不许炸**

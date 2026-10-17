@@ -22,7 +22,7 @@ def client():
 def auth_headers(client):
     """登录并获取 JWT Token
 
-    口令从 `config` 读（= `.env` 的 `LOGIN_PASSWORD`），**不硬编码** —— 。
+    口令从 `config` 读（= `.env` 的 `LOGIN_PASSWORD`），**不硬编码** ——。
 
     这是**第二份**重复的 `auth_headers`（另一份在 `app/conftest.py:11`，行为一致）。
     本次只改口令来源；**是否 dedupe 另记**（已登记在 docs/CODE_INVENTORY.md 的重复项里）。

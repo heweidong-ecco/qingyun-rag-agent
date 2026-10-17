@@ -2,8 +2,8 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— ⚠️ **它不再是"三套口径"之一**（次数那套已删）<br>🟢 ** 已落地**：额度常量已收口到 `app/billing/token_config.py`（本文件**只剩同名别名**）· 本文件下方 **实施计划 ** 已执行完<br>🔵 ： ✅ / ✅（B7 接线）/ / / / （改写后只做构造收口，⛔ 自动兜底【推迟】—— 见该 Task 的修订块） / / <br>⚠️ ** 曾一度"有函数没接线"（当天）—— 那句话已作废**，接上了<br>🔴 **：新增 `record_from_response` —— 【取用量的唯一实现】** ——**。改前"从响应取 usage"这件小事**在每条链里各写一遍**，于是三条链里有的**写错了属性名**（`.usage` 恒假）⇒ **静默不记账**。现在**三张图 9 个调用点**统一调它，⛔ 不许再各写各的。<br>⚠️ **它只做「取+记」，⛔ 不做「拦」** —— 拦是 `check_token_budget` 的事，由**调用方在 `.stream` 之前**自己调 |
-| **对外提供** | `record_usage`（`:71`）· 🆕 **`record_from_response`（`:159`）** · `record_cost`（`:216`）· `check_multilevel_budget`（`:789`）· `check_token_budget_detail`（`:440`）· `get_token_budget_info`（`:477`）· **10 个汇总函数**（ +`get_user_overview`）· 🆕 常量 `BUDGET_EXCEEDED_MSG`（`:156`）<br>🔵 ：`get_token_budget_info` 还被 **`main.QuotaMiddleware`** 消费（全路径按用户日级 = `R1.3`）—— **它不再只是"记账/看板"用的** |
+| **状态** | 🟡 **可用** —— ⚠️ **它不再是"三套口径"之一**（次数那套已删）<br>🟢 ** 已落地**：额度常量已收口到 `app/billing/token_config.py`（本文件**只剩同名别名**）· 本文件下方 **实施计划 ** 已执行完<br>🔵： ✅ / ✅（B7 接线）/ / / / （改写后只做构造收口，⛔ 自动兜底【推迟】—— 见该 Task 的修订块） / / <br>⚠️ ** 曾一度"有函数没接线"（当天）—— 那句话已作废**，接上了<br>🔴 **新增 `record_from_response` —— 【取用量的唯一实现】** ——**。改前"从响应取 usage"这件小事**在每条链里各写一遍**，于是三条链里有的**写错了属性名**（`.usage` 恒假）⇒ **静默不记账**。现在**三张图 9 个调用点**统一调它，⛔ 不许再各写各的。<br>⚠️ **它只做「取+记」，⛔ 不做「拦」** —— 拦是 `check_token_budget` 的事，由**调用方在 `.stream` 之前**自己调 |
+| **对外提供** | `record_usage`（`:71`）· 🆕 **`record_from_response`（`:159`）** · `record_cost`（`:216`）· `check_multilevel_budget`（`:789`）· `check_token_budget_detail`（`:440`）· `get_token_budget_info`（`:477`）· **10 个汇总函数**（+`get_user_overview`）· 🆕 常量 `BUDGET_EXCEEDED_MSG`（`:156`）<br>🔵：`get_token_budget_info` 还被 **`main.QuotaMiddleware`** 消费（全路径按用户日级 = `R1.3`）—— **它不再只是"记账/看板"用的** |
 | **谁在用** | `permission`（取角色）· `agent_graph_advanced.py:239`（唯一调多级预算的地方）· `cost_dashboard.py` · 各 `api_v1_*.py`<br>🔴 **新增 3 个图模块**：`agent_graph.py` · `agent_checkpointer.py` · `agent_graph_advanced_learning.py`（都是 `check_token_budget` + `record_from_response` 成对）<br>✅ **又 +3**：`rag_pipeline.py` · `answer_with_citations.py` · `query_rewriter.py`（**`query_rewriter` 用 `record_usage`** —— 它是裸 `openai.OpenAI`，响应只有 `.usage`）<br>✅ **再 +1**：**`api_v1_rag.py`**（`/rag/stream_search` 的流式答案 —— `_StreamUsageTap` 在收尾出口调 `record_from_response`）<br>⚠️ **判据**：`grep -rn "record_from_response" app/*.py \| grep -v "^app/test_"` ⇒ **9 个文件**（⚠️ **含注释里的提及** —— `query_rewriter.py` 是**反面**那个：它**必须**用 `record_usage`，注释里写着"⛔ 不能用 `record_from_response`"，⛔ 别把它读成记账点） |
 | **规模** | **1027 行**（重取；此前 962） |
 
@@ -30,7 +30,7 @@
   ③ 每日预算（**token**，本文件**已不再持别名** —— 🔴 走 `quota_pools.total_daily_limit`，它由 `token_config` 的**两张池表**相加得来）
 - **10 个汇总函数**（⚠️ 行号 重取）：`get_daily_token_usage`(:257) · `get_user_summary`(:316) · `get_purpose_summary`(:323) · `get_thread_summary`(:328) · ⭐ **`get_user_overview`(:336) ← 新增** · `get_recent_usage`(:399) · `get_token_budget_info`(:477) · `generate_monthly_report`(:493) · `get_daily_usage_cost`(:722) · `get_intercept_count`(:772)
 - **拦截记录**：`record_intercept`(:746)
-- 🆕 **：`thread_cost_breakdown(user_name, thread_id, *, include_all=False)`** ——
+- 🆕 **`thread_cost_breakdown(user_name, thread_id, *, include_all=False)`** ——
   **逐笔**花费明细（成本轴的读侧出口，给 `/agent/trace/{thread_id}/cost` 用）。
   回 `{items, total, truncated}`；`items` 按 `created_at DESC`、上限 `_BREAKDOWN_LIMIT = 2000`。
   🔴 **`total` 由 SQL 对【整条线程】聚合，⛔ 不是对 `items` 求和** ——
@@ -45,7 +45,7 @@
   `estimate_tool_cost()` / `estimate_tool_tokens()`。
   ⚠️ **两套必须并存、⛔ 不可互相替代**（历史事故：判定逻辑误用「元」表去和 Token 预算相减
   ⇒ 三处闸门恒放行 —— 见文件下方「两套表」那段）。
-  🔴 **：各 6 → 9 条**（+`date_calc` / `json_extract` / `stats`，**全是 0**）。
+  🔴 **各 6 → 9 条**（+`date_calc` / `json_extract` / `stats`，**全是 0**）。
   🔴 **它是「加一个工具要登记在五处」的其中一处**，且**改前零守卫** ⇒ 已由
   `app/tests/test_tool_registration_completeness.py` 补成**会红的断言**（见下方 ⚠️ 表）。
 
@@ -75,7 +75,7 @@
 | 🔴 **「这道闸可以放进 `embedding_client.get_embedding()`」** | ⛔ **不行** —— 那个函数在**启动时的缓存预热**里也会被调（容器日志里那 10 条 `[Token] embedding … 用户: system`）⇒ 额度用完后**应用会起不来**。<br>⇒ 落在**中间件**（handler 之前 ⇒ 拒绝时一个 token 都还没花；且**预热不走 HTTP**）。<br>📌 判据 ⇒ `app/tests/test_global_embedding_gate.py`（6 条，含**正控**：⛔ 不许拦到 LLM 池） |
 | 🔴 **「`_iso_utc` 收到的一定是 `datetime`」** | ⛔ **不是** —— （的甲）实测：**SQLite 那条路上 `created_at` 回来是 `str`**（那列类型是 `TIMESTAMP`，而 SQLite 动态类型 ⇒ 存的就是文本）⇒ 对着它调 `dt.replace(tzinfo=…)` 当场 `TypeError: str.replace takes no keyword arguments`。<br>⇒ 该函数**先解串再补区**。⚠️ **⛔ 别图省事"原样返回那个串"** —— 它**不带时区**，前端会按**浏览器本地时间**解析 ⇒ 东八区用户看到的时刻**静默早 8 小时**（这个函数存在就是为了这件事）。<br>📌 判据：`app/tests/test_trace_cost_db.py`（两个后端都要过） |
 | 🔴 **「多级预算是硬拦截」** | ⛔ **不是** —— `agent_graph_advanced.py:239` 超预算时是往图里**塞一条 `ToolMessage` 文本提示**，**HTTP 仍是 200**。**前端看不出"被拒了"** |
-| 🔴 **「这个文件管所有配额」** | ⚠️ **：是的**（原先"不是"）。<br>**原先**另有 `permission.ROLE_QUOTA` + `quota_limiter.py` 那套「每日**请求次数**」，**与 token 互不知情**（实测**差 35 倍**）。<br>⇒ 把那套**整张删掉**，配额**只剩 token 一套**（金额那套是同一物不同单位，经 `PRICING` 换算）。<br>⚠️ **但它仍不是"所有路径"** —— 挂多级预算的只有 `/agent/mcp_chat` 一条；<br>**全路径那层在 `main.QuotaMiddleware`**（消费本文件的 `get_token_budget_info`）。 |
+| 🔴 **「这个文件管所有配额」** | ⚠️ **是的**（原先"不是"）。<br>**原先**另有 `permission.ROLE_QUOTA` + `quota_limiter.py` 那套「每日**请求次数**」，**与 token 互不知情**（实测**差 35 倍**）。<br>⇒ 把那套**整张删掉**，配额**只剩 token 一套**（金额那套是同一物不同单位，经 `PRICING` 换算）。<br>⚠️ **但它仍不是"所有路径"** —— 挂多级预算的只有 `/agent/mcp_chat` 一条；<br>**全路径那层在 `main.QuotaMiddleware`**（消费本文件的 `get_token_budget_info`）。 |
 | 🔴🔴 **「那三个 `get_*_summary` 是通用查询，哪儿都能用」** | ⛔ **不能当对外展示的数据源** —— `get_user_summary` / `get_purpose_summary` / `get_thread_summary`（`:252/:259/:264`）读的是**进程内存**（`_user_summary` 等三个 `defaultdict`，只在 `record_usage` 里累加、**从不回读 DB**）⇒ **重启归零**。<br>⚠️ 它们**不是坏的** —— 语义本来就是"**本进程**这段时间花了多少"，`:148` 的即时花费告警**正需要**这个。<br>🔴 **坏的是拿它们当展示口径**：`/agent/cost/overview` 原来就这么干，实测 admin 在库里有 **4216 tokens**、它答 **`0`** —— **不报错、界面照常出数**（`①b`  核出来）。<br>✅ 展示走 **`get_user_overview`**（读库）；⚠️ **另一个坑**：`get_purpose_summary()` 还**不收 `user_name`** ⇒ 它一直是**全站**口径。<br>📌 判据（可打印）：`app/tests/test_cost_visibility.py` |
 | ⚠️ **「两个单位混着 ⇒ 是 bug」** | 🟢 **不是** —— 第一二级（元）与第三级（token）**量纲本来就不同**，代码注释 `:665` 明说「**别统一掉**」 |
 | 🔴 **「工具估算表漏登记一个也没人会发现」** | ⚠️ **改前确实如此** —— `estimate_tool_tokens` 的兜底是 **`DEFAULT_ESTIMATED_TOKENS = 500`**，所以**漏登记不报错**，只会让一个**本地免费**工具被当**花 500 token** 算（可能误触预算门）。<br>🔴 **有守卫**：`app/tests/test_tool_registration_completeness.py` 逐个已注册工具查**两张**表（本仓立场：**「从不命中」与「没人违规」在机器痕迹上完全一样**）。 |
@@ -128,7 +128,7 @@
 ## 全局约束（**每个任务都适用**）
 
 - 🔴 **跑测试必须用 CI 的同一条命令**：`python -m pytest app/ -m "not integration and not needs_db" -q`
-  （⛔ 别拿"全量"顶替 —— 全量含 `needs_db` 用例，会掩盖"偷偷依赖库"，**栽过**，）
+  （⛔ 别拿"全量"顶替 —— 全量含 `needs_db` 用例，会掩盖"偷偷依赖库"，**栽过**）
 - 🔴 **新增/修改的测试不许碰 DB 或 Redis**，除非标了 marker。做法参照 `app/tests/test_rate_limit_identity.py` 的 `_no_db` fixture
 - 🔴 **提交信息里要答两问**：① 有无决策（有 ⇒ 建 DEC）② CHANGELOG 写没写（见 `docs/规范/开发规范.md` §2.2）
 - 🔴 **命令里写中文用「」『』，不用 ASCII 引号**（会被 shell 吃掉 —— 栽过）
@@ -158,12 +158,12 @@
 > 🔴 **更正**：本节表格里写的「② `ROLE_QUOTA` **降级为接口权重**（不删）」
 > 与「`get_role_request_weight()`」**都【从未存在过】** ——  裁定 **直接删**。
 > ⚠️ 也就是说  当时在这两点上**自相矛盾**（§② 说"不删"、§遗留 1 说"未定"），
-> 落地时才判清。⇒ **别照本节的 ② 读**。📄
+> 落地时才判清。⇒ **别照本节的 ② 读**。
 
 **Files:**
 - Create:
 
-**为什么它是 **：后面三个任务**都按它写**。没有它，实施的人不知道"次数那套是废掉还是降级"。
+**为什么它是 **后面三个任务**都按它写**。没有它，实施的人不知道"次数那套是废掉还是降级"。
 
 - [ ] **Step 1: 写 DEC**（模板）
 
@@ -468,14 +468,14 @@ SESSION_TOKEN_LIMIT = _int("SESSION_TOKEN_LIMIT", 50000)          # B8
 GLOBAL_DAILY_TOKEN_LIMIT = _int("GLOBAL_DAILY_TOKEN_LIMIT", 1_000_000)  # B10
 
 # ==================== 角色日预算（token） ====================
-# ⚠️ 档位体系【本轮不重塑】—— 作者 ：「还没有想好「分几档」，留第二轮」。
+# ⚠️ 档位体系【本轮不重塑】—— 作者：「还没有想好「分几档」，留第二轮」。
 #    本轮只把 admin 的 inf 换掉。
-# 🔴 **：这里原先抄的是 `ROLE_DAILY_TOKEN = {...}` 那张【单表】** ——
+# 🔴 **这里原先抄的是 `ROLE_DAILY_TOKEN = {...}` 那张【单表】** ——
 #    它已**按池拆成两张**（`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN`），旧名**已删**。
 #    ⚠️ 本 spec 是 `token_tracker` 的，⛔ **别再在这儿抄 token_config 的代码块** ——
 #       抄一遍就多一个会烂的副本（这次就是）。真值看 §「关联」指过去的那份。
 LLM_DAILY_TOKEN = {
-    "free": _int("DAILY_TOKEN_LLM_FREE", 50_000), # 🔴 ：10_000 → 50_000
+    "free": _int("DAILY_TOKEN_LLM_FREE", 50_000), # 🔴：10_000 → 50_000
     "premium": _int("DAILY_TOKEN_LLM_PREMIUM", 500_000),
     "admin": _int("DAILY_TOKEN_LLM_ADMIN", 500_000), # ✅ admin = premium（沿 口径）
 }
@@ -541,7 +541,7 @@ from token_config import (
 （`token_config.py:66` —— ⚠️ 原写 `token_tracker.py:283`，**B7 已搬到 `token_config.py`**）。
 🔴 **（丁）从 `100000` 降到 `10000`**：改前它 = `premium` = 最高档
 ⇒ `get_user_token_budget()` 的 `.get(role, DEFAULT_DAILY_TOKEN_BUDGET)`（`:374`）
-一旦被走到，用户**静默拿到最高额度**。现在锚在 `free` = 现存最低档。📄
+一旦被走到，用户**静默拿到最高额度**。现在锚在 `free` = 现存最低档。
 
 - [ ] **Step 7: 跑全量，确认行为没变**
 
@@ -584,7 +584,7 @@ git commit -m "feat(额度): B7 —— 建 token_config.py 把散在 4 文件的
 
 ## （原  · 已移出 —— 保留在此只作查阅，**执行请去 ①b**）
 
-> ### 🔴 **：本节【已作废】，⛔ 别照它执行**
+> ### 🔴 **本节【已作废】，⛔ 别照它执行**
 >
 > 它通篇假设「`ROLE_QUOTA` **降级成字符串哨兵**（`"deprecated-见-"`）」，** 推翻了这个做法** ——
 > 实际是**直接删**（连 `get_user_quota` 一起），判定改为**原位置换成 token 口径**。
@@ -644,14 +644,14 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
-# 🔴 ：本表**不再是配额**（决策一）。
+# 🔴：本表**不再是配额**（决策一）。
 #
 # 原先它是一套【独立的每日请求次数配额】（FREE 100 / PREMIUM 10000 / ADMIN 无限），
 # 与 `token_tracker.ROLE_TOKEN_BUDGET`（token）**互不知情** ——
 #  实测两者**口径差 35 倍**（`plan_execute` 一次 ~3346 token ⇒ 按次数能跑 100 次、
 # 按 token 只能跑 ~3 次）。
 #
-# ⇒ 决策一（作者 ）裁：**统一到 token 一套**。
+# ⇒ 决策一（作者）裁：**统一到 token 一套**。
 #    本常量**降级为「接口权重」** —— 用来表达"哪些端点更贵"，⛔ **不再当日限额用**。
 #    ⚠️ 具体怎么用（或者干脆删掉）**还没定** —— 见  的遗留一节。
 ROLE_QUOTA = "deprecated-见-"
@@ -733,7 +733,7 @@ git commit -m "refactor(配额): 决策一落地 —— 次数配额降级，统
 
 ---
 
-# ✅ 实施计划 ①b · **限额与熔断**（立 · **收尾** —— ✅ / ✅ / ✅ / ✅ / ✅ / /）
+# ✅ 实施计划 ①b · **限额与熔断**（立 · **收尾** —— ✅ / ✅ / ✅ / ✅ / ✅ /）
 
 > **来源**：`后端补齐清单-待裁-20260929.md` 的 **B8 · B10 · B11 · B13 · 决策一（实现）**；
 > 以及 `LLM模型路由与额度策略-待裁-20260930.md` 的 （十几个 model 顺带）。
@@ -745,7 +745,7 @@ git commit -m "refactor(配额): 决策一落地 —— 次数配额降级，统
 （⚠️ **原文写「降级」，实际是「删掉 + 原位换 token」** —— 见  修订块）。
 
 **架构**：**新增一层「查询 + 判定」**，全部**查库**（`token_usage_logs`），⛔ **不复用 `_thread_summary`**（理由）。
-熔断做成**按 key 的通用断路器**（Redis 标记 + **TTL 分两种**：额度耗尽=永久 / 临时故障=数小时，）—— 这一套同时覆盖
+熔断做成**按 key 的通用断路器**（Redis 标记 + **TTL 分两种**：额度耗尽=永久 / 临时故障=数小时）—— 这一套同时覆盖
 **全局额度触顶**（动作=拒绝）与 **L2 的「某个模型免费额度耗尽」**（动作=换模型）。
 
 ---
@@ -763,7 +763,7 @@ git commit -m "refactor(配额): 决策一落地 —— 次数配额降级，统
 > 📌 与 `①a` 那条 CI 红**同型**：**我拿一个自己觉得顺的类比，当成了事实**。
 
 > ⚠️ **注意 L4 / L5 的对象不是"额度触顶"** —— 触顶已裁「**直接拒绝、不降级**」（要素②）。
-> 它们的对象是 **：某个模型的免费额度耗尽 ⇒ 换下一个模型**。
+> 它们的对象是 **某个模型的免费额度耗尽 ⇒ 换下一个模型**。
 
 - [x] **Step 1**：把这三条的裁定**写进 §一·附**的 L 表 —— ✅ **做完**。
 
@@ -892,7 +892,7 @@ python -m pytest app/ -m "not integration and not needs_db" -q   # → 15 failed
 > * **接线后**：`15 failed / 127 passed / 3 skipped` ⇒ **+3 正好是新测试 3 条**
 > * **两份 `FAILED` 清单 `diff` 逐条相同** ⇒ 无回归
 
-- [x] **Step 5: 提交** —— ⏸ **待作者发话**（作者 ：「不要频繁提交 commit」）
+- [x] **Step 5: 提交** —— ⏸ **待作者发话**（作者：「不要频繁提交 commit」）
   ⚠️ 且**门这一层就过不去**：（**作者正在用的 worktree，⛔ 别动**）
   让**文档链接门变红** ⇒ `commit` 被  拦下。
   📌 **不是本 Task 的改动有问题** —— 红线全落在那个 worktree 的副本里。详见  ①b 段的「一处副作用」。
@@ -907,7 +907,7 @@ git commit -m "feat(额度): B7 接线 —— 15 个 ChatOpenAI 构造点带上�
 ## · 会话级 token 上限 · ✅ **做完**
 
 > 🔴 **落地时更正计划里三处**（**口径**，全部由作者 裁定：
-> **窗口** / **key** / **范围**）—— ：
+> **窗口** / **key** / **范围**）——：
 >
 > 1. **窗口 = 会话 × 今日**（带 `CURRENT_DATE`）。计划原样是对的，**但那是"没写理由的选择"**；
 >    定它的真正理由是：与仓里**其余所有 token 预算**（用户日预算）同口径，
@@ -1203,7 +1203,7 @@ PG 方言/时区下的**边界**行为、生产数据量下的表现，**都没�
   ✅ 替代的实测：`test_yesterdays_usage_does_not_count`（塞一条**昨天**的记录，断言它不进今日合计）。
   ⚠️ **它顺带要求核掉的 `quota_limiter` 那条** —— **已补核**，见 `app/specs/归档/quota_limiter.md`
   （那条是**另一套机制**：`quota_limiter.py` 确实用 Redis + `EXPIRE 86400`）。
-  🔴 ：那个模块**已随 删除** ⇒ 上句是**历史结论**，⛔ 别再当现状读。
+  🔴：那个模块**已随 删除** ⇒ 上句是**历史结论**，⛔ 别再当现状读。
 
 - ✅ **Step 6：跑了 + 建了 spec + 已提交**（`app/billing/specs/breaker.md`
   落主干的那条 commit 是 **`0f9a67a`**，PR **#65**）
@@ -1218,7 +1218,7 @@ PG 方言/时区下的**边界**行为、生产数据量下的表现，**都没�
 > 原计划要的是「**额度耗尽 ⇒ 自动换下一个模型**」。**落地的不是这个**：
 > 落地的是 **`甲` = 只做构造收口，⛔ 不做自动兜底**。**两张的差别见下。**
 
-### 📌 修订块（· 落地版）
+### 📌 修订块（落地版）
 
 > 📄 **设计裁定（含备选与反悔成本）⇒ **
 
@@ -1280,7 +1280,7 @@ PG 方言/时区下的**边界**行为、生产数据量下的表现，**都没�
 > **没有一层是「按用户每天」** ⇒ 直接撤次数会开一个「**单用户跨会话无限花**」的洞。
 > 📌 这正是 `①a` **自己那个「顺序陷阱」的同类病**，只是换了个方向。
 
-### 📌 修订块（· 落地版）
+### 📌 修订块（落地版）
 
 > 📄 **决策全文（含三处裁定 / 备选 / 反悔成本）⇒ **
 
@@ -1330,18 +1330,18 @@ venv/bin/python -m pytest app/ -m "not integration and not needs_db" -q
 
 ---
 
-## · 实跑核一遍成本可见 · ✅ **已落地（· —— `①b` 收尾）**
+## · 实跑核一遍成本可见 · ✅ **已落地（—— `①b` 收尾）**
 
 > ### 🔴 **四个面都打得开 —— 但核出两处【不报错】的错**
 >
 > 📌 **本 Task 的价值全在"实跑"两个字上**： 原话就是「**不写代码先核**」。
 > 若是照着代码读一遍，这两处**一处也发现不了** —— 它们**不抛异常、测试全绿、界面照常出数**。
 
-### 📌 修订块（· 落地版）
+### 📌 修订块（落地版）
 
 > 📄 **决策全文（四处裁定 / 备选 / 反悔成本 / 遗留）⇒ **
 
-**实跑结果（· 起服务后逐面看）**：
+**实跑结果（起服务后逐面看）**：
 
 | 面 | 结果 | 判据 |
 |---|---|---|
@@ -1393,7 +1393,7 @@ venv/bin/python -m pytest app/ -m "not integration and not needs_db" -q
  §遗留（看板第 2 格仍是内存 · `tool_visualizer.py` / `cost_dashboard.py` 无 spec
 `get_intercept_count()` 口径未核）。
 
-## 🆕 今日按用途拆 **LLM / Embedding / 其它**（· 前端整体调整 批 4）
+## 🆕 今日按用途拆 **LLM / Embedding / 其它**（前端整体调整 批 4）
 
 - `get_daily_tokens_by_purpose(user)` —— 今日**按 `purpose` 分组**的 token（读库）。
   ⚠️ 与 `get_daily_token_usage` **同一张表、同一个窗口**（`created_at >= CURRENT_DATE`）

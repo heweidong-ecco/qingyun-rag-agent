@@ -24,7 +24,7 @@ from billing.token_tracker import check_session_token_budget, record_from_respon
 #    「导入期不拉重依赖」的既有做法（同上面 `token_tracker` 那条注释的道理）。
 from billing.breaker import circuit, global_key
 from routing.schemas import (
-    ChatHistoryResponse,   # ：PENDING 那三条欠账之一
+    ChatHistoryResponse,   #：PENDING 那三条欠账之一
     QuestionRequest,
     DocumentInsert,
     BatchDocumentInsert,
@@ -46,9 +46,12 @@ from routing.deps import get_current_user_hybrid
 from routing.deps import require_ws_user
 from core.db import get_db, insert_document, PUBLIC_OWNER, enable_ann_iterative_scan  # PUBLIC_OWNER：列表/取全文的作用域（N35）· enable_ann_iterative_scan：
 from core.config import MAX_INGEST_CHUNKS, MAX_UPLOAD_BYTES  # （①b）：字节上限 + 块数上限
-from core.db import search_similar  # 乙段：stream_search 改走共享层
+# 🔴：本文件**不再**直接用 `search_similar` ——
+#    `/rag/stream_search` 已改走与 `/rag/search` 同一条链（`create_accurate_norerank_pipeline`），
+#    隔离过滤在那条链里由 `search_similar_async` 承担（决策 5 的"共享层承重"没变，只是换了入口）。
+#    ⛔ 别把 `from core.db import search_similar` 加回来：那会是一条**没人用**的导入（ruff F401 基线棘轮会拦）。
 from rag.embedding_client import get_embedding
-# （·  §六·1）：检索链也要建轨迹 —— 见 `stream_search` 里那两处调用。
+# （§六·1）：检索链也要建轨迹 —— 见 `stream_search` 里那两处调用。
 from tools.tool_visualizer import start_trace, finish_trace
 
 from access.permission import get_user_role, UserRole  # 删 `get_user_quota`（本文件从未使用；该函数已随 一起删）
@@ -165,7 +168,7 @@ async def insert_single_doc(
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """插入单条文档，自动生成Embedding并入库"""
-    # 🔴 （）：**入库不是对话链** —— 它没有"会话"这个概念
+    # 🔴：**入库不是对话链** —— 它没有"会话"这个概念
     #    ⇒ 给一个**显式**的非会话标记，让账本自己说清「这笔记的不是某个会话」。
     #    ⛔ **别让它静默落 `"system"`** —— 那个值的语义是「**连用户都没有**」（启动预热那种），
     #    而这里**用户是真的**（`user_name` 就是）。
@@ -403,7 +406,7 @@ async def upload_document(
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
-# 🔴 （）：**本条一直缺 `response_model`，而前端真在用它的返回。**
+# 🔴：**本条一直缺 `response_model`，而前端真在用它的返回。**
 #    漏的两半：① 这里没声明；② 那条门**认不出它** —— 删除的 URL 是前端**运行时拼的**
 #    （`kb.js` 的 `FULL_PATH + id` · `kb.html` 的 `'/api/v1/rag/documents/' + id`），
 #    字面量只到引号为止 ⇒ 被当成**列表端点**那条路径（而它**有** schema）⇒ 空过。
@@ -436,7 +439,7 @@ async def delete_document(
     invalidate_bm25_cache()
     return {"status": "deleted", "id": doc_id, "requested_by": user_name}
 
-# ==================== 列出文档 + 取整篇（）====================
+# ==================== 列出文档 + 取整篇====================
 # 补的是：**全仓此前没有任何"列出文档"的端点** ⇒ `/kb` 只能做成
 #    「传一条 ⇒ 回你 id ⇒ 拿 id 删」的闭环，而**访客看不见自己库里有什么**。
 CATEGORY_NAMES = {
@@ -644,7 +647,7 @@ async def pg_search(
 @router.post("/rag/hybrid_search")
 async def hybrid_search_api(
     req: QuestionRequest,
-    thread_id: str = Query("default", min_length=1),   # 🔴 ：本条原先【连形参都没有】
+    thread_id: str = Query("default", min_length=1),   # 🔴：本条原先【连形参都没有】
     user_name: str = Depends(get_current_user_hybrid),
 ):
     """混合检索：向量 + BM25 关键词（**只在该用户自己的文档内**）"""
@@ -762,7 +765,7 @@ async def unified_search(
         strict_mode=req.strict_mode,
         citations=req.citations,
         user_id=user_name,   # 加—— 检索只在该用户自己的文档内
-        # 🔴 （）：**这一行是本条缺陷的根源所在** ——
+        # 🔴：**这一行是本条缺陷的根源所在** ——
         #    上面 774 行那句 `check_session_token_budget(user_name, thread_id)` 用的是
         #    **调用者传的这个** `thread_id`，而在此之前它**从没往下传过**（管线连形参都没有）
         #    ⇒ 链上三处记账各自落 `"default"`/`"system"`/`"unknown"`
@@ -872,6 +875,30 @@ class _StreamUsageTap:
 REFUSAL_SENTENCE = "根据现有资料，无法回答"
 
 
+async def _stream_retrieval(
+    question: str, *, top_k: int, conversation_history, citations: bool,
+    user_id: str, thread_id: str,
+) -> list[dict]:
+    """`/rag/stream_search` 的**检索入口** —— 与 `/rag/search` 的**默认模式同一条链**。
+
+    🔴 **为什么单列一个函数**：让"两条路同源"这件事有一个**能被打桩的点**。
+       ⛔ **它不是给你在这里写第二份检索逻辑的地方** —— 里面那句就是全部：
+          借 `accurate_norerank` 管线（改写 + 向量 + BM25 + RRF，**不重排**）的**检索**那一半。
+    ⚠️ 重排**不在这里**，而且**不该**在这里：它要 torch，本仓镜像没装。
+    """
+    pipeline = create_accurate_norerank_pipeline()
+    result = await pipeline.search_async(
+        question,
+        top_k=top_k,
+        conversation_history=conversation_history,
+        generate_answer=False,      # 只借检索；生成走调用方自己那条流式骨架
+        citations=citations,
+        user_id=user_id,
+        thread_id=thread_id,
+    )
+    return result.get("docs") or []
+
+
 @router.post("/rag/stream_search")
 async def stream_search(
     req: QuestionRequest,
@@ -886,7 +913,7 @@ async def stream_search(
     修：这段 docstring 原先**躺在两句代码之后**（函数体第三句），
        是**空操作** —— 函数本身**没有 docstring**。已上移到签名正下方。
     """
-    # （·  §六·1）：**检索链也要建轨迹**。
+    # （§六·1）：**检索链也要建轨迹**。
     #    改前全仓只有 2 处 `start_trace`、**都在 Agent 链** ⇒ 演示路径（`/chat` 走的就是本端点）
     #    **从不建轨迹** ⇒ 打开 `/trace`，上半页**是空的**（不是坏，是**从没建过**）。
     start_trace(user_name, thread_id, req.question)
@@ -911,23 +938,30 @@ async def stream_search(
         raise AppException(ErrorCode.QUOTA_EXCEEDED, why, scope="global")
     # 1. 检索（与普通接口相同）
     # 1. 向量检索（这部分不是流式的，一次性查完）
-    # 构建当前输入的这条的历史对话，真停止按钮的调用（使它支持历史补偿）
-    query_embedding = get_embedding(req.question, user_name=user_name, thread_id=thread_id)
-    #    原先这段 SQL **零 `WHERE`** ⇒ 查全库。实测（`app/tests/test_isolation.py`）：
-    #    isolation_b 的检索上下文里**逐字**出现了 isolation_a 的文档。
-    #    `search_similar` 已带 `WHERE requested_by = %s`，且**返回同样的 4 列**
-    #    （id, content, source, similarity）⇒ 下面 `r[0..3]` 的映射不用改。
-    results = search_similar(query_embedding, req.top_k, user_id=user_name)
+    # 🔴：**检索改走与 `/rag/search` 默认模式【同一条链】**。
+    #    改前这里走的是**裸向量**（`search_similar`）—— 没有改写、没有 BM25、没有 RRF
+    _docs = await _stream_retrieval(
+        req.question,
+        top_k=req.top_k,
+        conversation_history=req.conversation_history,
+        citations=req.citations,
+        user_id=user_name,      #  决策 5：身份往共享层传，过滤在那儿做
+        thread_id=thread_id,    # 🔴：会话也要往下传，否则记账落 `"system"` 桶
+    )
 
     # 2. 构建上下文列表（用于可能的引用模式）
-    contexts = []
-    for r in results:
-        contexts.append({
-            "id": r[0],
-            "content": r[1],
-            "source": r[2],
-            "similarity": r[3]
-        })
+    #    ⚠️ 下面是**形状转换**，⛔ **不是**"再检索一次"：`_docs` 就是上面那条链的产物。
+    #    ⚠️ `similarity` **可能为 `None`**（BM25 独中的文档）——
+    #       那是**诚实的空**，⛔ 别为了好看编一个分出来（契约 A 同一口径）。
+    contexts = [
+        {
+            "id": d.get("id"),
+            "content": d["content"],
+            "source": d.get("source"),
+            "similarity": d.get("similarity"),
+        }
+        for d in _docs
+    ]
 
     if req.citations:
         # 引用模式：构建带编号的上下文和引用规则 Prompt
@@ -998,7 +1032,7 @@ async def stream_search(
         #    可钱**已经花了**。`persist_turn` 仍留在原位（那是  定的，本轮不动它）。
         #  契约 B：`record` 现在**返回载荷**（`None` = 没记成）。
         payload = tap.record(get_llm_stream(), user_name=user_name, thread_id=thread_id)
-        # （·  §六·1）：**收尾**这条轨迹。
+        # （§六·1）：**收尾**这条轨迹。
         #    与上面 `tap.record` **同一个位置理由**：排在**任何 `yield` 之前** ——
         #       `yield` 是 await 点，被"二次投递的取消"打断 ⇒ 排在它后面的收尾**一件都不跑**。
         #    `total_tokens` / `total_cost` **不传** —— 与另两个调用点保持一致。
@@ -1009,7 +1043,7 @@ async def stream_search(
         #    **机器可读的字段**，不是让前端去读正文猜。判据与 prompt 那句**共用同一个常量**
         #    （`REFUSAL_SENTENCE`，理由见它的注释）。
         if "".join(collected).lstrip().startswith(REFUSAL_SENTENCE):
-            yield sse_frame({"no_answer": True}, ensure_ascii=True)
+            yield sse_frame({"no_answer": True}, ensure_ascii=False)
         # ---- 在这里记录对话历史 ----
         # 生成完成后，将本轮问答自动存入 Redis
         #：三条出口（`done` / `cancelled` / `error`）**共用 `persist_turn`**
@@ -1017,12 +1051,12 @@ async def stream_search(
         persist_turn(user_name, req.question, "".join(collected), thread_id=thread_id, status="done")
         # 如果有引用，在结束后发送来源列表
         if req.citations and sources_list:
-            yield sse_frame({"sources": sources_list}, ensure_ascii=True)
+            yield sse_frame({"sources": sources_list}, ensure_ascii=False)
         #  契约 B：本轮的 token / 费用 —— **纯追加的最后一帧**。
         #    不许挪到 `[DONE]` 之前（那是线上契约，前端按"见 [DONE] 后才收 sources/usage"适配）。
         #    取消 / 出错时**没有**这一帧 —— 前端按"缺这一帧"处理，别补一个 0。
         if payload is not None:
-            yield sse_frame({"usage": payload}, ensure_ascii=True)
+            yield sse_frame({"usage": payload}, ensure_ascii=False)
 
     async def _on_error(exc, collected):
         """**错误路径的旧行为：只有 error 帧、没有 `[DONE]`** —— 显式覆盖骨架的默认尾巴。
@@ -1033,7 +1067,7 @@ async def stream_search(
         """
         # 兜底：其他未知错误
         print(f"流式生成出错: {exc}")
-        yield sse_frame({"error": str(exc)}, ensure_ascii=True)
+        yield sse_frame({"error": str(exc)}, ensure_ascii=False)
 
     return sse_response(sse_stream(
         # 上游必须是**异步**的：
@@ -1055,11 +1089,10 @@ async def stream_search(
             user_name, req.question, "".join(collected), thread_id=thread_id, status=status,
         ),
         on_error=_on_error,
-        # **`ensure_ascii=True` 不是可有可无的**：本端点三帧一直用**默认的 `True`**
-        #    （中文变 `\uXXXX`），而骨架的默认是 `False`（中文原样）⇒ 不显式传，**线上字节就变了**。
-        #    两种编码 **JSON 解码后值相同**（前端走 `JSON.parse`，功能无感）——
-        #    但它会让"逐帧等价"从"字面为真"变成"差不多"⇒ 本轮保持原字节，统一与否另案裁。
-        ensure_ascii=True,
+        # 🔴：**统一成 `False`（中文原样）** —— 与 `/agent/*` 四条链一致。
+        #    ⚠️ **改前本端点一直用 `True`**（中文 `\uXXXX`），那是"抽公共层时为了**不改线上字节**"
+        #       留下的历史（见 `app/routing/specs/sse.md`）—— 作者 裁：**统一**。
+        ensure_ascii=False,
         # 旧实现在每次 `yield` 后有 `await asyncio.sleep(0.01)` **限速** —— 本轮**不改节奏**，
         #    照旧传下去。别因为"抽公共"就悄悄删掉它。
         chunk_delay=0.01,

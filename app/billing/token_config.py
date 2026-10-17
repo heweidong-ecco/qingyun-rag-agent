@@ -25,7 +25,7 @@ SESSION_TOKEN_LIMIT = _int("SESSION_TOKEN_LIMIT", 50000)          # B8（①b）
 GLOBAL_DAILY_TOKEN_LIMIT = _int("GLOBAL_DAILY_TOKEN_LIMIT", 15_000_000)  # B10（①b）
 
 # ============================================================================
-# 🔴 全站【embedding】的两个滚动窗口（·  §二·8 · 作者裁「甲」）
+# 🔴 全站【embedding】的两个滚动窗口（§二·8 · 作者裁「甲」）
 # ============================================================================
 GLOBAL_EMBEDDING_HOURLY_LIMIT = _int("GLOBAL_EMBEDDING_HOURLY_LIMIT", 100_000)
 GLOBAL_EMBEDDING_DAILY_LIMIT = _int("GLOBAL_EMBEDDING_DAILY_LIMIT", 1_000_000)

@@ -61,7 +61,7 @@ class RAGPipeline:
         citations: bool = False,          # 新增
         *,
         user_id: str,                     # 加（决策 4/5）
-        thread_id: str,                   # 🔴 ：会话标识，往下贯穿到**每一处记账**
+        thread_id: str,                   # 🔴：会话标识，往下贯穿到**每一处记账**
     ) -> dict:
         """执行完整检索流程，返回结果和管线元信息。
 
@@ -179,7 +179,7 @@ class RAGPipeline:
                 from rag.answer_with_citations import generate_answer_with_citations
                 answer, sources = generate_answer_with_citations(
                     candidates[:top_k], query, self.answer_llm,
-                    user_name=user_id,   # ：身份必须到得了记账点
+                    user_name=user_id,   #：身份必须到得了记账点
                     thread_id=thread_id,  # 🔴：**会话也要** —— 否则账落 `"default"`、闸查调用者那个桶
                 )
                 result["answer"] = answer
@@ -205,7 +205,7 @@ class RAGPipeline:
                 record_from_response(
                     self.answer_llm, response, "answer_generation",
                     user_name=user_id,
-                    # 🔴 （）：**这里原先写死 `thread_id="default"`** ——
+                    # 🔴：**这里原先写死 `thread_id="default"`** ——
                     #    于是每一个调用者的账都挤进那**一个**桶，而会话闸查的是**调用者传的那个**
                     #    ⇒ 闸恒看到 0 ⇒ **那条路上的会话上限永远不会触发**（实测复现过）。
                     thread_id=thread_id,
@@ -219,20 +219,30 @@ class RAGPipeline:
         return result
 
     def _rrf_fusion(self, vector_docs, bm25_docs, top_k):
-        """内部 RRF 融合函数"""
+        """内部 RRF 融合函数。
+
+        ⚠️ **`similarity` 是 加的**：融合**只该改排序，不该丢字段** ——
+        它此前把向量那一路的 `similarity` 丢在这里，于是引用帧里那一格**恒为 `null`**
+        （`answer_with_citations` 早就诚实地写着"这里会取到 `None`"）。
+        ⚠️ **只向量那一路有相似度** ⇒ BM25 独中的文档**诚实地取 `None`**，⛔ 不许编一个分出来。
+        """
         rrf_scores = defaultdict(float)
         doc_info = {}
 
         for rank, (doc_id,content, source, similarity) in enumerate(vector_docs, start=1):
             rrf_scores[content] += 1.0 / (self.rrf_k + rank)
-            doc_info[content] = {"id": doc_id,"content": content, "source": source, "from": "vector"}
+            doc_info[content] = {"id": doc_id, "content": content, "source": source,
+                                 "from": "vector", "similarity": similarity}
 
         for rank, (doc_id, content, source, bm25_score) in enumerate(bm25_docs, start=1):
             rrf_scores[content] += 1.0 / (self.rrf_k + rank)
             if content in doc_info:
+                # ⛔ 别在这里重写 `id` / `similarity` —— 两路都中的文档以**向量那一路**为准
+                #    （它有相似度；且 `id` 是同一个文档的同一个 id）
                 doc_info[content]["from"] = "both"
             else:
-                doc_info[content] = {"id": doc_id,"content": content, "source": source, "from": "bm25"}
+                doc_info[content] = {"id": doc_id, "content": content, "source": source,
+                                     "from": "bm25", "similarity": None}
 
         sorted_contents = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
         results = []

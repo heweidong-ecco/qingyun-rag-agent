@@ -166,7 +166,7 @@ def pool_for_path(path: str) -> str:
 def pool_daily_limit(pool: str, role: str) -> int:
     """**某一个池**的日额度（token）。
 
-    **：两池【不再同源】**（作者裁）——
+    **两池【不再同源】**（作者裁）——
     各读**自己那张**表（`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN`）。
     **这正是  当初把它们分开写的目的**：那次两池的数是**一样**的
     （都 10 000），但**结构上已经允许它们不一样**；现在是**真的不一样**了。

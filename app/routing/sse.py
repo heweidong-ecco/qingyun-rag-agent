@@ -10,7 +10,7 @@ import asyncio
 import json
 from typing import AsyncIterator, Callable, Collection, Optional
 
-#  （· 真服务实测）：关上游的流要用它护住（约束②）。
+#  （真服务实测）：关上游的流要用它护住（约束②）。
 import anyio
 
 from fastapi.responses import StreamingResponse
@@ -45,14 +45,19 @@ SSE_HEADERS = {
 def sse_frame(payload: dict, *, ensure_ascii: bool = False) -> str:
     """把 dict 编成一帧 SSE。
 
-    **`ensure_ascii` 是个"为了不改线上字节"而存在的参数**，不是给人调的旋钮：
+    **`ensure_ascii` 现在是一个"全仓都传同一个值"的参数**：
 
-    * `False`（**默认**）= 中文原样出（UTF-8）。`/agent/*` 四条链一直是这样。
-    * `True` = 中文变 `\\uXXXX`。**`/rag/stream_search` 一直是这样**（它那三帧都没传这个参数）。
+    * `False`（**默认**）= 中文原样出（UTF-8）。**全仓 6 条流式端点一律它**。
+    * `True` = 中文变 `\\uXXXX`。⚠️ **现在没有任何调用点用它**。
 
-    ⇒ **抽公共层不是顺手改行为的理由**：RAG 传 `True`，把旧字节**逐字留住**。
-      两种编码 **JSON 解码后的值完全相同**（前端都走 `JSON.parse`）⇒ 统一与否**不影响功能**，
-      但**会让"逐帧等价"这句话从"字面为真"变成"差不多"** ⇒ 本轮**不统一**，已登记待裁。
+    🔴 **保留这个参数是【有意】的** —— 它是  那次统一的**反悔路径**（一个参数就能改回去）。
+       ⛔ 但**别再加一个传 `True` 的调用点**：那会把"全仓一个口径"重新拆成两种
+       （`app/tests/test_sse_encoding.py` 会当场红）。
+
+    📄 **沿革**：抽公共层时RAG 传的是 `True`，为了**不改线上字节**；
+       作者裁定**统一成 `False`**（理由：流式输出**人会直接读**，
+       `\\uXXXX` 对人不可读；而两种编码 **JSON 解码后值相同** ⇒ 功能无感）。
+       ⚠️ **代价**：那条"逐帧等价"从「**字面**为真」降成「**解码后值相同**」（`sse.md` 已同步改口径）。
     """
     return f"data: {json.dumps(payload, ensure_ascii=ensure_ascii)}\n\n"
 

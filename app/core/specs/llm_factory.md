@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟢 **新建（· ``）** —— LLM 客户端的**唯一构造落点**<br>✅ 15 个调用点**已全部改走它**（`app/tests/test_max_tokens_wiring.py` 钉着）<br>⬜ **自动兜底没做**（评估后**故意推迟**，见下）—— ⛔ 别以为它能"兜底" |
+| **状态** | 🟢 **新建** —— LLM 客户端的**唯一构造落点**<br>✅ 15 个调用点**已全部改走它**（`app/tests/test_max_tokens_wiring.py` 钉着）<br>⬜ **自动兜底没做**（评估后**故意推迟**，见下）—— ⛔ 别以为它能"兜底" |
 | **对外提供** | `make_llm(model_role, token_role, *, temperature=0.0, streaming=False, **extra) -> ChatOpenAI` |
 | **谁在用** | `api_v1_rag.py`（2）· `rag_pipeline.py`（1）· `evaluate_with_ragas.py`（1）· `agent_checkpointer.py`（1）· `agent_graph.py`（1）· `agent_graph_advanced.py`（1）· `agent_graph_advanced_learning.py`（5）· `plan_execute.py`（3）—— **合计 15 处** |
 
@@ -80,7 +80,7 @@ make_llm("chat", "agent")          # 两个轴，见下
 | **这里能"兜底"** | ⛔ **不能** —— 返回值没有任何降级/重试逻辑（见上「缺什么」） |
 | **有「主/备 provider」的概念** | 🟡 **没有** —— 只认 `LLM_MODEL_*` + `LLM_API_KEY` + `LLM_BASE_URL` 三个值 |
 | **换了 model 不用重启** | 🔴 **要重启** —— 15 个调用点**仍在 import 时**构造。本次只收口了"在哪写"，**没**改成运行时可切。<br>⚠️ **再次问过这件事**：真惰性要连 **3 张图的模块级 `llm` + `bind_tools`** 一起下沉（`agent_graph` · `agent_checkpointer` · `agent_graph_advanced_learning`）⇒ **与"运行时可切"是同一件事**，⛔ **不单独立项** |
-| 🔴 **缺 `LLM_API_KEY` 时报的是 SDK 那句通用话** | ⛔ **不是了**（· 批 6）—— 现在抛 `EnvironmentError`，消息里**点名 `LLM_API_KEY`**。<br>⚠️ **但时机【没变】**：仍**在 import 期构造** ⇒ **`import` 仍会中断**，只是报的话能看懂了。<br>⛔ **别把这条读成"LLM 侧也惰性化了"** —— 「import 不许崩」那半**没做**（理由见上一行）。<br>📌 守卫：`app/tests/test_llm_factory.py::test_missing_key_is_reported_by_name_not_by_openai` |
+| 🔴 **缺 `LLM_API_KEY` 时报的是 SDK 那句通用话** | ⛔ **不是了**—— 现在抛 `EnvironmentError`，消息里**点名 `LLM_API_KEY`**。<br>⚠️ **但时机【没变】**：仍**在 import 期构造** ⇒ **`import` 仍会中断**，只是报的话能看懂了。<br>⛔ **别把这条读成"LLM 侧也惰性化了"** —— 「import 不许崩」那半**没做**（理由见上一行）。<br>📌 守卫：`app/tests/test_llm_factory.py::test_missing_key_is_reported_by_name_not_by_openai` |
 | **`import llm_factory` 会拉 langchain** | ⛔ **不会** —— `langchain_openai` 是在 `make_llm()` **函数内**才 import 的。<br>⚠️ 这条是**故意的**（`api_v1_rag.py` 有"导入期不拉 langchain"的既有约束）；<br>`app/tests/test_llm_factory.py::test_importing_the_module_does_not_pull_langchain` 用**子进程**钉着 |
 | **打错角色名会静默跑** | ⛔ **不会** —— 两个轴都在**工厂里**校验，未知取值直接 `ValueError`（`test_unknown_roles_raise`） |
 | ⚠️ **门禁只钉"走没走工厂"** | **不止** —— 还钉**两个轴的角色**：全传 `("chat","agent")` 会被红。<br>⇒ 顺手改角色 = **改行为 + 改账单**，那**不属于** （收口）的范围 |

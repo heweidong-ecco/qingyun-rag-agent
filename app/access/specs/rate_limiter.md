@@ -2,8 +2,8 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 基于 Redis 的令牌桶，**全局 + 用户两层**<br>🔴 它曾有 **3 个"看代码看不出来"的性质** ⇒ **（批 3 ·）起 已修、 早于 已修**（`B9-b`）<br>⚠️ **但 ⚠️ 节还在** —— 仍然是"看代码会误判"的（其中 是**已知未修**），⛔ 别因为"修了"就当整节过时了 |
-| **对外提供** | `TokenBucketLimiter`（`is_allowed` / `get_remaining` / `get_limit_info`，**三处都 fail-open**）· 两个模块级实例 `global_limiter` · `user_limiter` · `_TOKEN_BUCKET_LUA`（**提成模块级常量** —— 提出来才测得到，） |
+| **状态** | 🟡 **可用** —— 基于 Redis 的令牌桶，**全局 + 用户两层**<br>🔴 它曾有 **3 个"看代码看不出来"的性质** ⇒ **起 已修、 早于 已修**（`B9-b`）<br>⚠️ **但 ⚠️ 节还在** —— 仍然是"看代码会误判"的（其中 是**已知未修**），⛔ 别因为"修了"就当整节过时了 |
+| **对外提供** | `TokenBucketLimiter`（`is_allowed` / `get_remaining` / `get_limit_info`，**三处都 fail-open**）· 两个模块级实例 `global_limiter` · `user_limiter` · `_TOKEN_BUCKET_LUA`（**提成模块级常量** —— 提出来才测得到） |
 | **谁在用** | `main.py` 的 `RateLimitMiddleware`（**唯一的生产消费者**）· `api_v1.py` 的 `/debug/*` 查询端点 |
 | **规模** | 🔴 **别写死行数** —— 跑 `wc -l app/access/rate_limiter.py`（时为 **210**） |
 
@@ -42,7 +42,7 @@
 | ✅ **③ 「Redis 挂了只是限流失效，请求照过」—— 【真的是这样了】** | 改前：⛔ **反了 —— 是非公开路径【全站 500】**（**实测**：`app/tests/test_rag_search.py` 早就写着这条）。<br>**现已改成 fail-open**：`is_allowed` / `get_remaining` / `get_limit_info` 三处各包 `except redis.RedisError` ⇒ **放行 + `logger.error`**。<br>⚠️ **`logger.error` 不是装饰** —— 没有它就成了「**限流悄悄失效**」，比报到错更危险。<br>⛔ **与 `token_tracker` 的取舍【仍故意相反】**：那边查**库**失败也是 fail-open，但**安全边界（`deps.py` 鉴权）依然 fail-closed** —— 三者都**有意识**（口径）。 |
 | ⚠️ **④ `get_limit_info` 给的是"此刻的剩余"** | ⛔ **不是** —— 它算的是**消费【前】**的值：`RateLimitMiddleware.dispatch` 里**先**调 `user_limiter.get_limit_info(user_name)`、**再**调 `is_allowed`；而放行分支**用的就是那个 `info`**，**没有重算**。<br>⇒ **响应头 = 上一个状态的剩余**，⛔ 不是本次请求之后的。<br>⚠️ **本次没修**（只加容错与过期）—— 见末表。<br>📌 **原先这里写的是 `main.py:175`/`:179`/`:203-208` 三个行号** —— 换成**函数名**：行号一改就全烂（本次编辑就让它全错），而名字不会。 |
 
-> ### ✅ ④ 的实测（· **服务真跑着时验的**）
+> ### ✅ ④ 的实测（**服务真跑着时验的**）
 >
 > ```bash
 > # 快发 8 次（快过 3/秒 的回填），每次记下响应头
@@ -83,7 +83,7 @@
 >  那个 bug 是**验出来的**，⛔ 不是从代码推出来的。
 > 📄 **决策（含  的取向与四个落点的分工）**
 
-> **方向早就裁过了**（见上「三条"要不要做"」表，作者 ）：**① 要加 `EXPIRE`**
+> **方向早就裁过了**（见上「三条"要不要做"」表，作者）：**① 要加 `EXPIRE`**
 > **② fail-open + 必须响的日志**。本节只把它落成可执行的步骤 + 定下**唯一那个没定的值**（TTL 取多少）。
 > ⛔ **不再重新论证方向。**
 
@@ -152,7 +152,7 @@ TTL 只要 **≫ 回满耗时**，语义就完全不变 —— 因为 **`EXPIRE`
 | 文档 | 说明 |
 |---|---|
 | `app/specs/main.md` | **唯一的生产消费者**（`RateLimitMiddleware`）· `resolve_rate_limit_identity()` 的「分桶 ≠ 鉴权」 |
-| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | **配额**那一层（⚠️ 与限流**不是一回事**：**限流管频率，配额管总量**）。<br>🔴 ：配额那层**已在 `main.QuotaMiddleware` 原位改成 token 口径**（见 `main.md`）；`quota_limiter.py` **已删**，其 spec 移入 `归档/` |
+| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | **配额**那一层（⚠️ 与限流**不是一回事**：**限流管频率，配额管总量**）。<br>🔴：配额那层**已在 `main.QuotaMiddleware` 原位改成 token 口径**（见 `main.md`）；`quota_limiter.py` **已删**，其 spec 移入 `归档/` |
 | `后端补齐清单`  | 匿名按 IP 分桶 · 配额对匿名生效（⏸ **已挂起，挂了钩子**） |
 | `后端补齐清单` **B9-b** | ✅ **已实施** —— `X-API-Key` 分桶加验签（本文件 ⚠️① 的修复） |
 | `docs/说明/测试.md` §六 | 覆盖缺口：「**前者间接**、后者零覆盖」 |

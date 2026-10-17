@@ -96,7 +96,12 @@ def test_the_same_endpoint_still_accepts_a_normal_thread_id(client, auth_headers
     import routing.api_v1_rag as rag_mod
 
     monkeypatch.setattr(rag_mod, "get_embedding", lambda text, **k: [0.0] * 8)
-    monkeypatch.setattr(rag_mod, "search_similar", lambda *a, **k: [])
+
+    # 🔴：检索改走与 `/rag/search` 同一条链 ⇒ 桩点上移到
+    #    `api_v1_rag._stream_retrieval`。本用例测的是 `thread_id` 的必填与透传，⛔ 不是检索结果。
+    async def _no_retrieval(*_a, **_k):
+        return []
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _no_retrieval)
     monkeypatch.setattr(rag_mod, "get_chat_history", lambda *a, **k: [])
 
     resp = client.post(

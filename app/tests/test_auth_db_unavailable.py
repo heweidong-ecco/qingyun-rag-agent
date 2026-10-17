@@ -1,4 +1,4 @@
-"""：库不可用时，认证链答什么（批 3 · ）
+"""：库不可用时，认证链答什么
 """
 import asyncio
 from datetime import datetime, timedelta

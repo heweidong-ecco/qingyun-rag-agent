@@ -317,7 +317,7 @@ def get_daily_token_usage(user_name: str) -> float:
         with _lock:
             return _user_summary.get(user_name, {}).get("total_tokens", 0)
 
-# ==================== 今日 · 按用途拆（· 前端整体调整 批 4） ====================
+# ==================== 今日 · 按用途拆（前端整体调整 批 4） ====================
 
 #: 算作 **LLM**（生成 / 决策 / 改写那一路）的用途。
 LLM_PURPOSES = (
@@ -500,7 +500,7 @@ def get_user_overview(user_name: str) -> dict:
 def get_recent_usage(limit: int = 20, user_name: str = None):
     """最近若干条使用记录。
 
-    **：加【可选】`user_name` —— 给了就只看这个人。**
+    **加【可选】`user_name` —— 给了就只看这个人。**
 
     **改前是什么样**：端点 `GET /agent/token/recent` 的签名**收了 `user_name`**
        （`Depends(get_current_user_hybrid)`），而函数体写的是 `get_recent_usage(limit + 1)`
@@ -813,7 +813,7 @@ def estimate_purpose_cost(purpose: str) -> float:
     """预估单次 LLM 调用的花费（**元** —— 仅供展示，预算判定请用 estimate_purpose_tokens）"""
     return PURPOSE_ESTIMATED_COST.get(purpose, 0.01)
 
-# 两套预估表**必须并存、不可互相替代**（）：
+# 两套预估表**必须并存、不可互相替代**：
 #    · *_COST   → 单位「元」，供 `/agent/budget/estimates` 等**对外展示**用（api_v1_agent.py 暴露了它）
 #    · *_TOKENS → 单位「Token」，供**预算判定**用
 #    预算的权威单位是 **Token**（ROLE_TOKEN_BUDGET / get_daily_token_usage 都是 Token）。
@@ -863,7 +863,7 @@ def check_budget_before_call(
     在调用前检查预算是否充足。
     返回: (是否允许, 原因说明)
 
-    参数单位是 **Token**（自 ；旧名 `estimated_cost` 单位是「元」）。
+    参数单位是 **Token**（自；旧名 `estimated_cost` 单位是「元」）。
     那个旧参数正是本函数此前**恒放行**的原因之一 —— 它把「元」和 **Token 预算**相减。
     """
     # 1. 计算预估 Token（不再是「元」）
@@ -1294,7 +1294,7 @@ def check_global_daily_budget(estimated_tokens: int = 0) -> tuple[bool, str]:
 
 
 # ============================================================================
-# 🔴 全站【embedding】的滚动窗口（·  §二·8 · 作者裁「甲」）
+# 🔴 全站【embedding】的滚动窗口（§二·8 · 作者裁「甲」）
 # ============================================================================
 def get_global_embedding_usage(hours: int = 0) -> float:
     """全站（**不带任何 `user_name` 过滤**）最近 N 小时的 **embedding** token 合计。

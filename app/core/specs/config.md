@@ -71,7 +71,7 @@ if not IS_DOCKER:
 旧版是 `LLM_API_KEY = os.getenv("LLM_API_KEY") or DASHSCOPE_API_KEY`。
 **问题**：那会把 **embedding 的 key** 拿去请求 **DeepSeek 端点** —— **静默错配**（能跑，但用的是别人的 key）。
 
-⇒ ：**必须显式给 `LLM_API_KEY`**。
+：**必须显式给 `LLM_API_KEY`**。
 ⇒ ⛔ **别顺手把 `or DASHSCOPE_API_KEY` 加回来"做容错"** —— 那正是被撤掉的写法。
 
 ⚠️ **embedding 仍固定走 `DASHSCOPE_API_KEY`**（**端点**不变），本文件那段只管**生成/对话**模型。

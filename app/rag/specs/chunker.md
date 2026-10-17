@@ -5,7 +5,7 @@
 | **状态** | 🟢 **可用** —— **六档**（新增 `faq`）· 有测试了<br>⚠️ **但"能选"≠"被选了"**：默认路径仍只走两档，后四档**只有显式传 `doc_type` 才用得上** |
 | **对外提供** | `get_text_splitter(doc_type)` · `split_text(text, doc_type)` · `split_text_with_filter(text, doc_type, min_length=20)` · `CHUNK_CONFIGS` · `DEFAULT_SEPARATORS` |
 | **谁在用** | 🔴 **生产调用点只有 1 处**：`app/routing/api_v1_rag.py` 的 `upload_document`（文档上传时切块）。⛔ 别处没有 |
-| **测试** | ✅ ：`app/tests/test_rag_upload_doc_type.py`（**10 条** —— 在本模块与上传端点之间钉「分档」契约：不传/传了/空白/未知 四种情形 + 档位表本身）<br>⚠️ **它测的是"档位选对了没有"，⛔ 不是"切出来的块好不好"** —— 后者**没有自动尺子** |
+| **测试** | ✅：`app/tests/test_rag_upload_doc_type.py`（**10 条** —— 在本模块与上传端点之间钉「分档」契约：不传/传了/空白/未知 四种情形 + 档位表本身）<br>⚠️ **它测的是"档位选对了没有"，⛔ 不是"切出来的块好不好"** —— 后者**没有自动尺子** |
 
 ## ✅ 做了什么
 

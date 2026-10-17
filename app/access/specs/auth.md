@@ -27,7 +27,7 @@
 
 > ⭐ 这一节是整份 spec 的价值所在 —— 前面两节读代码也能推出来，这一节**推不出来**。
 
-### 0. 🔴 **`_is_expired` 的入参可能是 `str`**（· 的甲）
+### 0. 🔴 **`_is_expired` 的入参可能是 `str`**（的甲）
 
 **SQLite 那条路上 `expires_at` 回来是 `str`，不是 `datetime`** —— 那一列类型是 `TIMESTAMP`，
 而 SQLite 是**动态类型**，存进去的就是**一串文本**。
@@ -102,7 +102,7 @@
 ### 6. 🔴 `authenticate_user` 比的是**环境变量里的明文口令**，⛔ 与 `verify_api_key` 无关
 
 ```python
-return _get_users_db().get(user_name) == password      # 明文 =，⛔ 没有哈希
+return _get_users_db().get(user_name) == password      # 明文 ，⛔ 没有哈希
 ```
 
 ⚠️ **这是两条完全独立的认证路线**，⛔ 别混：

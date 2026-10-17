@@ -237,6 +237,19 @@ class _FakeCursor:
         return False
 
 
+#: 🔴：`/rag/stream_search` 的检索改走与 `/rag/search` **同一条链**，
+#:    于是它的产物形态从「`search_similar` 的 **4 元组**」变成「**文档字典**（RRF 融合的产物）」。
+#:    ⚠️ **别照旧写元组** —— 那会让被测代码 `TypeError`。
+RAG_DOCS = [{"id": 1, "content": "上下文正文", "source": "doc.md", "similarity": 0.91}]
+
+
+def _fake_retrieval(docs):
+    """造一个 `_stream_retrieval` 的替身（它是 `async` 的）。"""
+    async def _go(*_a, **_k):
+        return list(docs)
+    return _go
+
+
 def _call_rag_stream(monkeypatch, llm, history=None, get_history=None, **kw):
     """直接调端点函数，把**所有**外部依赖短路 —— 本文件测的是取消，不是检索/预算/认证。
 
@@ -264,6 +277,11 @@ def _call_rag_stream(monkeypatch, llm, history=None, get_history=None, **kw):
     # 连接点**换了模块**：原先 `get_db()` 解析到 `api_v1_rag` 的模块全局（上一行能挡），
     # 现在解析到 **`db.py` 的模块全局** —— 上面那行 monkeypatch **够不着它**。
     monkeypatch.setattr(db_mod, "get_db", lambda: _FakeConn())
+    # 🔴：**上面那两处 `get_db` 假连接再也挡不住检索了** ——
+    #    检索改走 `api_v1_rag._stream_retrieval`（管线：改写 + 向量 + BM25 + RRF），
+    #    它会经 `rag_pipeline` 调 `search_similar_async`，而那一头**不认**这两个 patch，
+    #    且 BM25 那一路还要 jieba + 真表。
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _fake_retrieval(RAG_DOCS))
     kw.setdefault("thread_id", THREAD)
     kw.setdefault("user_name", "tester")
     # `citations` 默认 `False` = **旧行为**（不是本次新增的行为）。
@@ -623,10 +641,7 @@ def test_rag_emits_sources_frame_after_done(monkeypatch):
     llm = _SpyRagLLM(cap=3)
     # 必须让检索**有结果**：`sources` 帧的发出条件是 `req.citations and sources_list`
     #    ⇒ 空结果这一帧根本不发，用例会**因为错误的理由**通过（`src_at is not None` 会先拦住它）。
-    monkeypatch.setattr(
-        rag_mod, "search_similar",
-        lambda *a, **k: [(1, "上下文正文", "doc.md", 0.91)],
-    )
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _fake_retrieval(RAG_DOCS))
     resp = _call_rag_stream(monkeypatch, llm, citations=True)
     sent = _drive_asgi_until_disconnect(resp, after_chunks=99)
 
@@ -692,7 +707,7 @@ def test_agent_records_cancel_event_when_aclose_interrupted(monkeypatch):
     assert any("断开" in line for line in lines), f"日志里没有取消事件：{lines}"
 
 
-# -------- （）：Agent 端两条"没走完"的出口也要留痕 --------
+# --------：Agent 端两条"没走完"的出口也要留痕 --------
 # **判据（可打印）**：`grep -n "on_incomplete" app/routing/api_v1_agent.py` ⇒ 改前**零命中**
 #    （5 条 Agent 链只传 `on_complete`）⇒ 取消/异常时**一个字都不留**。
 

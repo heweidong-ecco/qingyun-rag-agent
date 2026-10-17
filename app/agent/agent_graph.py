@@ -41,7 +41,7 @@ tools = [t["func"] for t in _MCP_TOOLS]
 
 #  —— 分派必须查这张表，不许再在 `tool_execute` 里抄一遍名字。
 #    病根就是"名字写在两处"：抄的那份一旦对不上，落的是 `else` 分支（**如实报错、不崩溃**）
-#    ⇒ 那个工具**从来没被执行过**，而接口一切正常（本仓 实测，）。
+#    ⇒ 那个工具**从来没被执行过**，而接口一切正常（本仓 实测）。
 # 守卫 ⇒ `app/tests/test_tool_dispatch.py`
 TOOLS_BY_NAME = {t.name: t for t in tools}
 
@@ -158,7 +158,7 @@ def agent_decide(state: AgentState, config: RunnableConfig):
         return {"messages": [AIMessage(content=BUDGET_EXCEEDED_MSG)],
                 "budget_intercept": BUDGET_EXCEEDED_MSG}
 
-    # ════════════════ 长期记忆注入（）════════════════
+    # ════════════════ 长期记忆注入════════════════
     # **本图原先一分记忆都不注入** ⇒ `/agent/langgraph_chat` 这条链压根没有"记忆"这一说，
     #    而「外部检索与工具Agent编排」那一页**要拿它当主链**、页面上写着"记忆"。
     messages = state["messages"]
@@ -276,8 +276,8 @@ def human_approval(state: AgentState):
     print("流程已暂停，等待人工审批...")
     return {}
 
-# ==================== 流式白名单（B1 · ）====================
-# **：可流节点名单放在【图模块里】，端点不许自己抄一份字面量。**
+# ==================== 流式白名单（B1）====================
+# **可流节点名单放在【图模块里】，端点不许自己抄一份字面量。**
 #    写在这里（不是 `build_agent_graph()` 函数体里）是因为**端点要按 `agent_graph.STREAMABLE_NODES` 取**
 #    —— 函数体里的是局部名，外面拿不到。
 STREAMABLE_NODES = frozenset({

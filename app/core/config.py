@@ -75,7 +75,7 @@ MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", 48 * 1024))
 MAX_INGEST_CHUNKS = int(os.getenv("MAX_INGEST_CHUNKS", 200))
 
 
-#: ：**改过名的额度键 → 现在该用的新键**。
+#:：**改过名的额度键 → 现在该用的新键**。
 #:
 #: 日额度按【池】分开之后（`LLM_DAILY_TOKEN` / `EMBEDDING_DAILY_TOKEN`），
 #: 旧的 `DAILY_TOKEN_FREE` / `_PREMIUM` / `_ADMIN` **不再被任何地方读**。

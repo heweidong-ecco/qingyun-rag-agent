@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 连接池 + 建表 + 向量检索；**它同时是「多用户隔离」的两个承重层之一**（决策 5）。<br>🔴 **：只剩 PG 一条路** —— 原先那条 SQLite 通道整个删了 |
+| **状态** | 🟡 **可用** —— 连接池 + 建表 + 向量检索；**它同时是「多用户隔离」的两个承重层之一**（决策 5）。<br>🔴 **只剩 PG 一条路** —— 原先那条 SQLite 通道整个删了 |
 | **对外提供** | 连接池：`init_pool()` · `close_pool()` · `get_db()`<br>建表：`create_table()`<br>写入：`insert_document()` · `insert_batch_documents()`<br>检索：`search_similar()` · `bm25_search()` · `search_similar_async()` · `bm25_search_async()` · `invalidate_bm25_cache()` |
 | **谁在用** | ⚠️ **几乎是全仓** —— `auth.py` · `deps.py` · `cost_dashboard.py` · `main.py` · `api_v1*.py` … 都 `from db import get_db` |
 
@@ -20,7 +20,12 @@
     看的是**那条判据**，不是那份清单。
   📄 全文
 - **`ThreadedConnectionPool` 连接池**（上下限走 `config.py` 的 `DB_MIN_CONN` / `DB_MAX_CONN`）
-- **`create_table()`** —— 建 5 张表 + 索引 + `pgvector` 扩展；含**兼容旧表**的 `DO $$ … ADD COLUMN` 块
+- **`create_table()`** —— **空库首次初始化**：建 **6 张**表（`documents` · `api_keys` · `login_users`
+  · `token_usage_logs` · `cost_records` · `cost_records_archive`）+ 索引 + `pgvector` 扩展；
+  含**兼容旧表**的 `DO $$ … ADD COLUMN` 块。
+  🔴 **它⛔ 不是"改表的地方"** —— 改表走 Alembic（唯一入口）。它的建表语句**冻结在 baseline 那一刻**。
+  ⚠️ 另两张（`approval_events` · `budget_intercepts`）**不在这里**，是**首次写入时惰性建**的，
+  由迁移链补上 ⇒ 两条路最终收敛到同一套结构。📄 `docs/契约/数据模型.md` §五
 - **向量检索 `search_similar()`** —— `pgvector` 余弦距离
 - **BM25 检索的转发层** —— 惰性导入 `bm25_index`，见下方「兼容转发层」
 
@@ -72,6 +77,7 @@
 
 | 看代码会以为 | 实际 |
 |---|---|
+| 🔴🔴 **「要加个表 / 加一列，改 `create_table` 里那段 SQL 就行」** | ⛔ **不行，那是本仓明文裁掉的那条路**。<br>**改表一律在 `app/alembic/versions/` 新加一份迁移**；`create_table` 只负责**空库首次初始化**、**冻结在 baseline 那一刻**。<br>⚠️ **为什么不能顺手改这里**：`CREATE TABLE IF NOT EXISTS` 对**已存在的表什么都不做** ⇒ 改了它，**新库有这列、老库永远没有**，而**两边都不报错**（本仓为这个栽过：那批复现里，`api_keys.is_active` 就是这么"写进去了却没生效"的）。<br>📌 判据 ⇒ `app/tests/test_alembic_baseline.py`（**6 条**，其中两条是 `needs_db` = 判据本身）· 规矩 ⇒ `docs/契约/数据模型.md` §五 |
 | 🔴🔴 **「`insert_batch_documents()` 和 `insert_document()` 是一对，只是批量版」** | ⛔ **两处都错**：<br>① **全仓零调用**（只有 def + 两处死 import）—— 真正在跑的批量插入是 `api_v1_rag.py:259` **自己的 SQL**；<br>② 它的 SQL **没有 `requested_by` 列**（`:191`）⇒ 就算调用，落的是表默认值 `'anonymous'` ⇒ **成为"谁的都不是"的文档**。<br>📌 判据：`grep -rn "insert_batch_documents(" app/` ⇒ **1 行（就是 def）** |
 | 🔴 **「文档一定属于某个人」** | ⛔ **不是** —— `requested_by` 有 `DEFAULT 'anonymous'`（`:70`）。<br>⇒ **漏写的插入不报错**，静默落进无主桶；**而隔离过滤会让它谁都搜不到**。<br>⚠️ 真库现状：84 篇**全是 `admin`** ⇒ **还没踩到**，但这是**结构上留着的坑** |
 | 🔴 **「`db.bm25_search` 是 BM25 的实现」** | ⛔ **只是【惰性转发】** 到 `bm25_index.bm25_search`（`:242`）—— 过滤/打分**都在那边**。<br>⚠️ **为什么必须惰性**：`bm25_index` **反向** `from db import get_db`，模块层互相 import 会**成环**，且**只在"先 import bm25_index"时炸** ⇒ 最难查的一类 |

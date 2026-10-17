@@ -66,6 +66,11 @@ def test_rate_limited_response_is_not_internal_server_error():
     from main import _rate_limited_payload      # 见 Step 7 抽出的纯函数
     body = _rate_limited_payload()
     assert body["code"] == "RATE_LIMITED"
+    # 🔴：**全局限流**那条出口必须自报家门 —— 「全站过载」与「你自己太快」
+    #    的处置**相反**，而它们原来共用同一个 `code` ⇒ 调用方分不出。
+    assert body["layer"] == "global", (
+        f"这个纯函数只服务【全局限流】那一条出口 ⇒ `layer` 必须是 `global`：{body!r}"
+    )
     assert "Internal server error" not in body["error"], (
         f"限流却写着内部错误 —— 正是 R3.3 要防的：{body['error']!r}"
     )

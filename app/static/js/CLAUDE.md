@@ -20,7 +20,7 @@
 >    **必须住同一个文件**（分居两处 = 赌"改了这头记得改那头"）。⚠️ 所以 6 个内容页也引它。
 > 📌 **现跑**：`ls app/static/js/*.js | grep -v test | wc -l`（⛔ 别抄数）。
 
-> ## 🔴 ：**旧那 12 份 js 全部删掉**（前端重做 ⑥）
+> ## 🔴：**旧那 12 份 js 全部删掉**（前端重做 ⑥）
 >
 > `sse.js` · `cost.js` · `lab.js` · `tools.js` · `system.js` · `ops.js` · `trace.js`
 > `approvals.js` · `kb.js` · `panel.js` · `pagenav.js` · `topnav.js`（+ 各自的 `.test.js`）

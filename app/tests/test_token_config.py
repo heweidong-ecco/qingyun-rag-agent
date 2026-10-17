@@ -29,7 +29,7 @@ def test_single_call_cap_does_not_depend_on_role():
     assert not hasattr(token_config, "ROLE_MAX_TOKENS")
 
 
-# ==================== 兜底额度必须是【最低档】，不是最高档（丁 · ） ====================
+# ==================== 兜底额度必须是【最低档】，不是最高档（丁） ====================
 
 def test_every_role_has_a_registered_budget():
     """推导型守卫：`permission.UserRole` 里**每一个**角色都必须登记在 `ROLE_DAILY_TOKEN`。
@@ -294,7 +294,7 @@ def _mod_name(api_dir, path):
     return path.relative_to(api_dir).with_suffix("").as_posix().replace("/", ".")
 
 
-# ==================== 额度键改名（） ====================
+# ==================== 额度键改名 ====================
 # 日额度按【池】分开 ⇒ 旧的 `DAILY_TOKEN_FREE` / `_PREMIUM` / `_ADMIN` **不再被读**。
 # 留在 `.env` 里**不会报错**，只是额度悄悄变成别的数 —— 所以必须**点名拒绝启动**。
 

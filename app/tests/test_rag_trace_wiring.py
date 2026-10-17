@@ -53,7 +53,12 @@ def _stub_deps(monkeypatch, llm):
     monkeypatch.setattr(rag_mod, "check_session_token_budget", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "circuit", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "get_embedding", lambda text, **k: [0.0] * 8)
-    monkeypatch.setattr(rag_mod, "search_similar", lambda *a, **k: [])
+
+    # 🔴：检索改走与 `/rag/search` 同一条链 ⇒ 桩点上移到
+    #    `api_v1_rag._stream_retrieval`（端点自己的检索入口）。本文件测的是轨迹的开关，⛔ 不是检索。
+    async def _no_retrieval(*_a, **_k):
+        return []
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _no_retrieval)
     monkeypatch.setattr(rag_mod, "get_llm_stream", lambda: llm)
     monkeypatch.setattr(rag_mod, "record_from_response", lambda *a, **k: True)
     # 第二个 `get_db`：`search_similar` 走的是 **`db.py`** 的模块全局

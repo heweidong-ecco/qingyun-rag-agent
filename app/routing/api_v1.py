@@ -270,7 +270,7 @@ async def benchmark_embedding(req: QuestionRequest, _admin: str = Depends(requir
         raise AppException(ErrorCode.QUOTA_EXCEEDED, why)
 
     start = time.time()
-    # 🔴 （）：**本条没有会话**（上面 317 行早就写着"接不上 B8"）
+    # 🔴：**本条没有会话**（上面 317 行早就写着"接不上 B8"）
     #    ⇒ 给一个**显式**标记，⛔ 别让它静默落 `"system"` —— 那个值的语义是「连用户都没有」，
     #    而这里 `_admin` 是真的。`user_name` 那块与 `thread_id` 这块是两根轴，别合并。
     vec1 = get_embedding(req.question, user_name=_admin, thread_id="benchmark")

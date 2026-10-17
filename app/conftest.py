@@ -1,7 +1,7 @@
 # conftest.py
 import os
 
-# 必须在 `import main` **之前**设置（· M6 期间实测发现）
+# 必须在 `import main` **之前**设置（M6 期间实测发现）
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
 import pytest

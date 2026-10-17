@@ -151,7 +151,7 @@ def test_edit_note_is_written_into_state(monkeypatch):
 def test_edited_answer_is_a_tool_message_not_a_human_one(monkeypatch):
     """写进去的必须是 **`ToolMessage`**（带 `tool_call_id`），不是 `HumanMessage`、也不是 `AIMessage`。
 
-    **口径变更（· 端到端验收）** —— 本条原名
+    **口径变更（端到端验收）** —— 本条原名
        `test_edited_answer_is_an_ai_message_not_a_human_one`，钉的是「必须是 `AIMessage`」。
        真机跑下来**那个形状是错的**（`api_v1_agent._tool_rulings` 的 docstring 记了两种错）：
          · 卡住的那条 `AIMessage(tool_calls=[…])` **永远等不到配对的 `ToolMessage`**

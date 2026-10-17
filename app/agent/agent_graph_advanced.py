@@ -161,7 +161,7 @@ async def mcp_session():
             yield session
 
 
-# ==================== 长驻会话 · actor 模式（· -B）====================
+# ==================== 长驻会话 · actor 模式（-B）====================
 # **为什么是 actor，不是会话池**（栽过的那次记在上面那段 docstring 里）：
 #    `stdio_client` 基于 anyio，其 cancel scope 要求「**进入与退出在同一个 task**」。
 #    · 池化 = 「启动 task 建 · 请求 task 用 · 归还 task 关」⇒ **横跨 3 个 task** ⇒ 炸
@@ -345,7 +345,7 @@ async def get_mcp_tools():
 async def call_mcp_tool(tool_name: str, arguments: dict) -> str:
     """通过 MCP Client 调用工具。
 
-    **：改走【长驻会话】** —— 改前每次调用自开自关，
+    **改走【长驻会话】** —— 改前每次调用自开自关，
     实测 **~2 秒/次**（2.42 / 2.09 / 1.93），成本几乎全在**起子进程 + 重新 import langchain**。
     现在由 `_McpSessionActor` 的 **holder task 独占**那个 `async with`，本函数只投请求、等结果
     ⇒ 实测 **4–7 毫秒**（首次 ~22ms，含握手）。`docs/说明/mcp长驻会话-调研-20261008.md`
@@ -457,8 +457,8 @@ async def get_llm_with_mcp_tools():
         })
     return llm.bind_tools(langchain_tools)
 
-# ==================== 流式白名单（B1 · ）====================
-# **：可流节点名单放在【图模块里】，端点不许自己抄一份字面量**（理由见
+# ==================== 流式白名单（B1）====================
+# **可流节点名单放在【图模块里】，端点不许自己抄一份字面量**（理由见
 #    `app/agent/agent_graph.py` 同名常量处 —— 一个名字两个来源必然漂移，而漂移是**静默**的）。
 # 必须放在**模块级**（不能放进 `build_mcp_agent`）：端点是按
 STREAMABLE_NODES = frozenset({
@@ -543,7 +543,7 @@ def build_mcp_agent():
         cleared = {"budget_intercept": None}
 
         # 预算检查必须在 invoke **之前** —— 放在之后钱已经花了，只能丢弃结果、拦不住
-        #    （上移；）
+        #    （上移）
         # 预估本次调用消耗（经验值：决策通常消耗200-500 tokens）
         user_name = state.get("user_name", "unknown")
         if not check_token_budget(user_name, estimated_tokens=500):

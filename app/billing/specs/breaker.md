@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**（· ``）；`model:` 那类**还没做**（留给） |
+| **状态** | 🟡 **部分** —— `global:` 这一条 key **已生效**；`model:` 那类**还没做**（留给） |
 | **对外提供** | `circuit(key, estimated_tokens=0) -> (bool, str)` · `global_key() -> str` |
 | **谁在用** | 9 处（8 个端点函数）：`api_v1_agent.py` 5 处（`:109 :186 :224 :280 :527`）· `api_v1_rag.py` 2 处（`:609 :832`，后者在 WS 里）· `api_v1.py` 1 处（`:244`） |
 | **测试** | `test_breaker.py`（9 条 · 函数本身）· `test_breaker_wiring.py`（9 条 · **接线**）· `test_global_daily_budget.py::test_yesterdays_usage_does_not_count`（**跨天恢复**） |
@@ -95,7 +95,7 @@
 |---|---|
 | `app/billing/specs/token_tracker.md` | `check_global_daily_budget()` / `get_global_daily_token_usage()` 的出处 |
 | `app/billing/specs/token_config.md` | `GLOBAL_DAILY_TOKEN_LIMIT` 的值与改法 |
-| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴 ：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
+| `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
 | `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` §B11 | 四要素原文 + 我方建议 |
 
 

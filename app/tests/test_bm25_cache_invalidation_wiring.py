@@ -114,7 +114,7 @@ def test_每个直接写_documents_的函数都让缓存作废():
         "以下函数**直接写 `documents` 表**却没调 `invalidate_bm25_cache()`：\n  - "
         + "\n  - ".join(missing)
         + "\n⇒ 写完之后本进程内的 BM25 召回看不到变化（要么重启，要么等别的写路径顺手清掉）。"
-        "\n   。"
+        "\n。"
     )
 
 

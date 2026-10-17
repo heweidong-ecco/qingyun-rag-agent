@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🆕 **新建（·）** —— 待接管队列（硬门 D 的"数据"那一半）<br>🔴 **丙段改键**：登记键由**裸 `thread_id`** 改成 **`session_key(user_name, thread_id)`**，并新增 `raw_thread_id` / `graph` 两个字段<br>🔴 **加轮次上限**：新增 `rounds` 字段 + `approval_round_cap`，让"放行后又停"**有界** |
+| **状态** | 🆕 **新建** —— 待接管队列（硬门 D 的"数据"那一半）<br>🔴 **丙段改键**：登记键由**裸 `thread_id`** 改成 **`session_key(user_name, thread_id)`**，并新增 `raw_thread_id` / `graph` 两个字段<br>🔴 **加轮次上限**：新增 `rounds` 字段 + `approval_round_cap`，让"放行后又停"**有界** |
 | **对外提供** | 函数 `register` / `resolve` / `list_pending` / **`find_by_raw_thread_id`** / **`approval_round_cap`** / `clear` / `warn_if_backend_mismatch`；<br>经路由 **`GET /agent/pending`** 露出 |
 | **谁在用** | `api_v1_agent.py` —— `langgraph_chat`（登记/注销）· `langgraph_chat_stream`（登记/注销）· **`memory_chat`（登记/注销）** · `approve_agent_action`（**反查属主** + 注销）· `list_pending_approvals` 端点 |
 
@@ -60,7 +60,7 @@
 | ⚠️ **「一个原 `thread_id` 只会有一条登记」** | ⚠️ **不保证** —— 两个人用同一个 `thread_id="default"` 就**有两条**。`find_by_raw_thread_id()` 因此返回 **list**；`/agent/approve` 遇到多条会**如实拒绝**（⛔ 不"挑第一条" —— 那是随机批一个人的会话） |
 | 🔴 **「`rounds` 只是个展示字段」** | ⛔ **不是** —— 它是**封顶的依据**：`/agent/approve` 放行后若模型**又**停在审批点，会拿 `candidates[0]["rounds"]` 与上限比，**到了就不再入队**。⚠️ **不传 `rounds` 的调用点会退回默认 1**（`register` 的形参默认值）⇒ 那个调用点**永远在第 1 轮**。老调用点（`langgraph_chat` 首登记）**本就该是 1**，故无碍；⚠️ **但将来若新增"非首次"的登记点，必须显式传 `rounds`** |
 | ⚠️ **「上限到了就报错」** | ⛔ **不是** —— 先**努力收尾**：注入一条"已达上限、请直接作答"的 `ToolMessage` 并**续跑**，收尾成功就**正常返回答案**（`forced_finish=True`）。只有"连收尾提示都拦不住"才 `status="error"`。**报错是最后一档，不是第一档** |
-| 🔴 **「`list_pending` 返回的就是调用方能看的那批」** | ⛔ **不是**（缺口③，）—— 本函数**返回全部**，**可见性收窄在端点**（`api_v1_agent.py` 的 `list_pending_approvals`，本人默认 · admin 全量）。<br>⚠️ **为什么不在这一层收**：本模块是**纯数据层**、**拿不到调用方身份**（它的入参只有"找哪条"）⇒ 在这里过滤就得**把身份传进来**，那是把授权搬进存储。<br>📌 判据 ⇒ `app/tests/test_pending_visibility.py`（**改的是端点，⛔ 不是本模块**）。 |
+| 🔴 **「`list_pending` 返回的就是调用方能看的那批」** | ⛔ **不是**（缺口③）—— 本函数**返回全部**，**可见性收窄在端点**（`api_v1_agent.py` 的 `list_pending_approvals`，本人默认 · admin 全量）。<br>⚠️ **为什么不在这一层收**：本模块是**纯数据层**、**拿不到调用方身份**（它的入参只有"找哪条"）⇒ 在这里过滤就得**把身份传进来**，那是把授权搬进存储。<br>📌 判据 ⇒ `app/tests/test_pending_visibility.py`（**改的是端点，⛔ 不是本模块**）。 |
 
 ## 关联
 
@@ -68,7 +68,7 @@
 · `app/access/specs/session_key.md`（**键怎么拼** —— 本模块的键就是它生成的）
 ·  **决策 2 / 丙段**（按属主拼 + 「本人或 admin」· 按登记的图路由）
 · **§六·2**（轮次上限 · 作者 裁「上限 3 轮」）
-· 🔴 **§二·发现③**（**可见性收窄发生在【端点】，⛔ 本模块一行没改** —— ）
+· 🔴 **§二·发现③**（**可见性收窄发生在【端点】，⛔ 本模块一行没改** ——）
 
 
 ---

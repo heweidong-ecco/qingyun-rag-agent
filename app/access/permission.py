@@ -21,7 +21,7 @@ _PREMIUM_PROBE_USERS = {"test_user", "isolation_c"}
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# B1 · 角色接 DB（）
+# B1 · 角色接 DB
 # ═══════════════════════════════════════════════════════════════════════
 
 #: 进程内缓存活多久。**别改成 `@lru_cache`**（那是永不过期）——
@@ -93,7 +93,7 @@ def invalidate_role_cache(user_name: str | None = None) -> None:
 
 
 def get_user_role(user_name: str) -> UserRole:
-    """根据用户名获取角色。**权威 = `api_keys.role`**（· B1）。
+    """根据用户名获取角色。**权威 = `api_keys.role`**（B1）。
 
     ## 三层
 

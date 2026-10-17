@@ -296,6 +296,10 @@ def _rate_limited_payload(retry_after: int = 60) -> dict:
         "error": f"请求过于频繁，请在 {retry_after} 秒后重试",
         "code": ErrorCode.RATE_LIMITED.value,
         "status_code": 429,
+        # 🔴：**这两层 429 原来共用同一个 `code`** ⇒ 调用方**分不出**
+        #    是"全站过载"还是"你自己太快"。而两者的处置相反（等全站 / 自己慢下来）。
+        #    ⇒ 各带一个 `layer`。⚠️ **纯新增字段**（老调用方读不到它就当没有）。
+        "layer": "global",
         "retry_after": retry_after,
     }
 
@@ -364,6 +368,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "error": "请求过于频繁",
                     "code": ErrorCode.RATE_LIMITED.value,
                     "status_code": 429,
+                    # 🔴：见 `_rate_limited_payload` 那段 —— 两层必须**分得开**。
+                    "layer": "user",
                 },
                 headers={
                     "X-RateLimit-Limit": str(info["limit"]),
@@ -411,7 +417,7 @@ def quota_reject_payload(info: dict) -> dict | None:
     中间件本体要连 DB（`token_tracker` 查 `token_usage_logs` 表），抽出来才能**不连库单测**
     （见 `app/tests/test_quota_middleware.py`）。
 
-    **（两个额度池 ·）**：`info` 现在可以是**某一个池**的数
+    **（两个额度池）**：`info` 现在可以是**某一个池**的数
     （由中间件按**路径**选出来），也可以是**总计**。
     键名 `daily_budget` / `used_today` / `remaining` **保持原样** ——
     它们对"池"和"总计"**意思是一样的**（就是那一个的日额度 / 今日已用 / 剩余）。
@@ -530,7 +536,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
             )
             response = JSONResponse(status_code=429, content=body)
             # `retry_after` 与 `X-Quota-Reset` 同源：次日 0 点（见 `_next_day_reset_ts`）
-            # ⚠️ ：它挪到了上面（全站 embedding 那条也要用）—— **同源，⛔ 别各算一份**
+            # ⚠️：它挪到了上面（全站 embedding 那条也要用）—— **同源，⛔ 别各算一份**
             response.headers["Retry-After"] = str(retry_after)
         else:
             # 未满（或这条路径不参与判定），放行
@@ -657,7 +663,7 @@ async def overview_page():
     return RedirectResponse(url="/static/web/index.html", status_code=302)
 
 # ══════════════════════════════════════════════════════════════════════════
-# 7 个页面入口（· 前端重做 ⑥ 落地）
+# 7 个页面入口（前端重做 ⑥ 落地）
 
 @app.get("/rag", include_in_schema=False)
 async def rag_page():
@@ -702,7 +708,7 @@ async def login_page(request: Request):
     ⚠️ **它不进那 7 格导航**（与 `/stream` 同一种"格外的页"）：
        它是**所有页面的前置**，⛔ 不是第 8 个内容页。
 
-    🔴 **：它必须把【查询串】带到落点上** —— `RedirectResponse` 默认**会丢掉它**。
+    🔴 **它必须把【查询串】带到落点上** —— `RedirectResponse` 默认**会丢掉它**。
         这个坑是**在真浏览器里撞出来的**（`test_page_routes.py` 那三条**全都照样绿** ——
         它们只看 302 与 location 的**路径**）：
         在 `/login?next=%2Fops` 上走一遍登录，**跳回去的是 `/` 而不是 `/ops`** ——
@@ -962,7 +968,7 @@ class _VersionedStaticFiles(StaticFiles):
 
     | 后缀 | 头 | 为什么 |
     |---|---|---|
-    | `.js` / `.css` | `max-age=31536000, immutable` | 页面引它们时**带着内容哈希**（`?v=…`，）⇒ **内容一变 URL 就变** ⇒ 可以放心长缓存 |
+    | `.js` / `.css` | `max-age=31536000, immutable` | 页面引它们时**带着内容哈希**（`?v=…`）⇒ **内容一变 URL 就变** ⇒ 可以放心长缓存 |
     | **其余**（`.html` · `.md` · …） | `no-cache` | 它们的 URL **不带哈希**，⛔ 不能长缓存 |
 
     🔴 **`.html` 为什么必须每次都问**：**它里面写着 JS/CSS 的版本号** ——

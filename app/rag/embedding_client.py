@@ -49,7 +49,7 @@ def get_embedding(
         **别把默认值改回字面量** —— 换模型要改代码，而那正是本次要消掉的。
     **形参 `model` 必须保留**：`test_isolation.py` 有 4 处按 `lambda text, model=None:` 打桩。
 
-    **：新增 `user_name`（关键字限定）—— 修一个真缺陷**。
+    **新增 `user_name`（关键字限定）—— 修一个真缺陷**。
 
     **改前**：这里**写死** `user_name="system"`（原注释还自认「可后续改为动态获取当前用户」）
     ⇒ **全仓每一次 embedding 都记在一个叫 `system` 的假用户名下**
@@ -113,7 +113,7 @@ def get_embedding(
 class EmbeddingDimensionMismatch(EnvironmentError):
     """**维度对不上**（配置漂移）—— ⛔ 与「网络/模型不可用」**是两回事**。
 
-    🔴 **为什么要单开一个类**（· B 段接线时撞到的）：
+    🔴 **为什么要单开一个类**（B 段接线时撞到的）：
        py3 里 **`EnvironmentError` 就是 `OSError`** ⇒ 启动那段若写 `except EnvironmentError: raise`，
        **会把 HTTP 连接失败一起当成"维度对不上"** ⇒ **一次网络抖动就把应用挡在门外**。
        ⇒ 单开一个子类：调用方**只对它**响亮地断，别的（网络类）只记 warning。

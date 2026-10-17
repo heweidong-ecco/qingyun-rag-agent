@@ -67,7 +67,7 @@ def test_rewrite_query_records_real_usage_and_identity(monkeypatch, no_cache):
     assert len(recorded) == 1, "调了一次 LLM 就该记且只记一笔"
     kw = recorded[0]
     assert kw["user_name"] == "alice", "🔴 ⛔ 不许记成 'unknown'（那是假记账）"
-    # 🔴 （）：**会话也要到得了记账点** —— 不到就会落 `"unknown"`，
+    # 🔴：**会话也要到得了记账点** —— 不到就会落 `"unknown"`，
     #    而会话闸查的是调用者传的那个桶 ⇒ **闸恒看到 0**（那条路上的上限永远不触发）。
     assert kw["thread_id"] == "t-alice", "🔴 ⛔ 不许落 `unknown` —— 那是  的原形态"
     assert kw["purpose"] == "query_rewrite"
@@ -273,7 +273,7 @@ def test_plain_answer_branch_records_with_identity(monkeypatch):
     purpose, kw, resp = recorded[0]
     assert purpose == "answer_generation"
     assert kw["user_name"] == "alice", "🔴 ⛔ 不许是 'unknown'"
-    # 🔴 （）：**这一句钉的就是那条缺陷** ——
+    # 🔴：**这一句钉的就是那条缺陷** ——
     #    改前这里写死 `thread_id="default"`，于是每个调用者的账都挤进那**一个**桶。
     assert kw["thread_id"] == "t-alice", "🔴 ⛔ 不许是 'default' —— 那是  的原形态"
     assert getattr(resp, "usage_metadata", None), "同上：必须是消息本体，不是 str"
@@ -451,7 +451,12 @@ def rag_stream_env(monkeypatch):
     monkeypatch.setattr(rag_mod, "check_session_token_budget", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "circuit", lambda *a, **k: (True, ""))
     monkeypatch.setattr(rag_mod, "get_embedding", lambda text, **k: [0.0] * 8)
-    monkeypatch.setattr(rag_mod, "search_similar", lambda *a, **k: [])   # 检索结果不参与本判据
+
+    # 🔴：检索改走与 `/rag/search` 同一条链 ⇒ 桩点上移到
+    #    `api_v1_rag._stream_retrieval`（端点自己的检索入口）。
+    async def _no_retrieval(*_a, **_k):
+        return []          # 检索结果不参与本判据
+    monkeypatch.setattr(rag_mod, "_stream_retrieval", _no_retrieval)
     monkeypatch.setattr(db_mod, "get_db", lambda: None)                  # 落库失败要能 fail-open
     return SimpleNamespace(rag=rag_mod)
 
@@ -459,8 +464,9 @@ def rag_stream_env(monkeypatch):
 def _content_frames(frames):
     """把 SSE 帧解出 `content` 列表（`[DONE]` 与非 content 帧跳过）。
 
-    **必须 JSON 解码**：本端点 `ensure_ascii=True` ⇒ 帧里中文是 `\\uXXXX` 转义，
-       直接 `"你" in frame` 恒为假（本用例第一版就栽在这 —— 假红）。
+    ⚠️ **必须 JSON 解码**（帧体是 JSON）：本用例第一版直接 `"你" in frame` ⇒ 假红。
+    🔵 **之后**解码这一步**仍然要**，但**理由变了**：
+       本端点 `ensure_ascii` 已统一成 `False`（中文**原样**），⛔ 不再是"中文被转义"那条。
     """
     import json as _json
 
@@ -514,7 +520,7 @@ def test_stream_search_records_answer_generation_with_identity(monkeypatch, rag_
         user_name="alice", thread_id="t-bill",
     )
 
-    # 本端点 `ensure_ascii=True` ⇒ 帧里的中文是 `\uXXXX` 转义 ⇒ 要 JSON 解码后再比
+    # ⚠️ 帧体是 JSON ⇒ 要解码后再比（之后中文是**原样**的，但 JSON 该解还是要解）
     assert _content_frames(frames) == ["你", "好"], "正文帧没变（本用例不为改帧序）"
     assert len(recorded) == 1, "调了一次 LLM 就该记且只记一笔"
     _llm_obj, resp, purpose, kw = recorded[0]

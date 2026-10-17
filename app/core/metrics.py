@@ -21,7 +21,7 @@ REQUEST_IN_PROGRESS = Gauge(
     "Number of requests currently in progress"
 )
 
-# 流式响应被客户端中途断开的次数（· 硬门 C）。
+# 流式响应被客户端中途断开的次数（硬门 C）。
 # **为什么需要它**：上面前三个指标数的是**请求**（HTTP 层），
 #    而"上游到底停没停"是**另一件事**；本仓的 token 记账走 `token_tracker` → PG，
 #    而那条链**在流式生成阶段一行都不写** ⇒ 没有这个计数器，取消**没有任何可观测对象**

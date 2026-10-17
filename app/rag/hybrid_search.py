@@ -38,7 +38,8 @@ def reciprocal_rank_fusion(
             "id": doc_id,
             "content": content,
             "source": source,
-            "from": "vector"
+            "from": "vector",
+            "similarity": similarity,
         }
     
     # 2. 处理 BM25 检索结果
@@ -46,24 +47,35 @@ def reciprocal_rank_fusion(
         rrf_scores[content] += 1.0 / (k + rank)
         # 如果同一个文档被两路都检索到，标记为 both
         if content in doc_info:
+            # ⛔ 别在这里重写 `id` / `similarity` —— 两路都中的文档以**向量那一路**为准
+            #    （它有相似度；且 `id` 是同一个文档的同一个 id）。
+            #    见下方「4. 构建返回结果」那段说明。
             doc_info[content]["from"] = "both"
         else:
             doc_info[content] = {
+                "id": doc_id,
                 "content": content,
                 "source": source,
-                "from": "bm25"
+                "from": "bm25",
+                # BM25 那一路**没有**相似度 ⇒ 诚实取 `None`，⛔ 不许为了"好看"编一个分出来
+                "similarity": None,
             }
     
     # 3. 按 RRF 分数降序排序
     sorted_contents = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
     
     # 4. 构建返回结果
+    # ⚠️ **`id` / `similarity` 是 补的**：融合**只该改排序，不该丢字段**。
+    #    此前这里只透出 4 个键中的 3 个（`id` 抠出来了却没往外传）⇒ 引用帧里那一格**恒为 `null`**，
+    #    而调用方（`answer_with_citations` 与 `api_v1_rag.py` 的引用出口）是**照着有 `id` 写的**。
     results = []
     for content, rrf_score in sorted_contents[:top_k]:
         info = doc_info[content]
         results.append({
+            "id": info.get("id"),
             "content": info["content"],
             "source": info["source"],
+            "similarity": info.get("similarity"),
             "rrf_score": round(rrf_score, 4),
             "from": info["from"]
         })

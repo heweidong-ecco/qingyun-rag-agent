@@ -2,9 +2,9 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🆕 **新建（· 丙段）** —— 会话键：**把身份拼进 checkpoint / 会话 id** |
+| **状态** | 🆕 **新建（丙段）** —— 会话键：**把身份拼进 checkpoint / 会话 id** |
 | **对外提供** | 一个函数：`session_key(user_name, thread_id) -> str`（**两个形参都必填、都无默认值**） |
-| **谁在用** | `api_v1_agent.py` —— 4 张图的 **7 处** `{"configurable": {"thread_id": …}}`：<br>`langgraph_chat` **:150** · `langgraph_chat_stream` **:234 / :294** · `advanced_agent_chat` **:480** · `memory_chat` **:577** · `mcp_agent_chat` **:868** · `approve_agent_action`（续跑）**:372**<br>+ 待接管队列的登记/注销（见 `app/agent/specs/pending_approvals.md`） |
+| **谁在用** | `api_v1_agent.py` —— 4 张图的 **7 处** `{"configurable": {"thread_id": …}}`：<br>`langgraph_chat` **150** · `langgraph_chat_stream` **234 / :294** · `advanced_agent_chat` **480** · `memory_chat` **577** · `mcp_agent_chat` **868** · `approve_agent_action`（续跑）**:372**<br>+ 待接管队列的登记/注销（见 `app/agent/specs/pending_approvals.md`） |
 
 ## ✅ 做了什么
 

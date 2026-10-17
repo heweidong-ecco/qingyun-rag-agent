@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/agent/tool_versions,CatchResponseError('HTTP 429 code=RATE_LIMITED error=请求过于频繁 layer=user RateLimit-Limit=20 RateLimit-Remaining=0 Quota-Pool=total'),1,2026-10-17T03:09:42Z,2026-10-17T03:09:42Z

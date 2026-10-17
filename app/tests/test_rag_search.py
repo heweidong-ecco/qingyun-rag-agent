@@ -197,7 +197,7 @@ def offline_retrieval(monkeypatch):
     #    `(*, user_name: str)`（必填 keyword）。别把真签名改回去来迁就桩。
     # 🔴 **替身只负责"接得住任何调用"** —— ⛔ 别跟着真签名逐个改
     #    （本仓  的原话：真签名每加一个参数，这批 CI 筛不到的用例就再烂一次）。
-    #    （）给这两个真函数加了 `thread_id=` ⇒ 这里加的是 `**kw`，⛔ 不是再补一个形参。
+    #    给这两个真函数加了 `thread_id=` ⇒ 这里加的是 `**kw`，⛔ 不是再补一个形参。
     monkeypatch.setattr(rag_pipeline, "rewrite_query", lambda q, h=None, *, user_name, **kw: q)
     monkeypatch.setattr(rag_pipeline, "expand_query", lambda q, num_variants=3, *, user_name, **kw: [q])
     monkeypatch.setattr(rag_pipeline, "rerank_async", fake_rerank)
@@ -270,7 +270,7 @@ def test_top_k_is_passed_through(client, offline_retrieval):
 
 
 def test_unknown_mode_is_rejected(client):
-    """未知 `mode` 必须 **422**，不许静默兜底（修）。
+    """未知 `mode` 必须 **422**，不许静默兜底。
 
     修前：mode 分派是**裸 `else`** —— `mode=garbage` → **200**，静默落进
     `accurate_norerank`（多跑一次查询改写 = 多花钱、多延迟，**且不报错**）。

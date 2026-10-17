@@ -132,7 +132,7 @@ def _site_files():
 @pytest.mark.parametrize("label,path", _site_files(), ids=[p for p, _ in _site_files()])
 def test_no_eval_call_remains(label, path):
     """用 AST 而**不是 grep**：注释里也写着 `eval(expression)` 这几个字，
-    正则会把说明文字的命中当成违规（本仓栽过：）。
+    正则会把说明文字的命中当成违规（本仓栽过）。
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     offenders = eval_name_offenders(tree)
@@ -171,7 +171,7 @@ def test_no_other_module_defines_an_eval_based_calculator():
     扫的是**整个 `app/`**（不只是上面那 5 个文件）—— 上面那 5 个是"已知的"，
        这条管的是"**将来又冒出来的**"。本仓的拷贝文化是真的：这一份就被复制了 5 次。
 
-    **：这条闸原先【有形盲区】** —— 判据是 `ast.Call` 且 `func` 是裸名
+    **这条闸原先【有形盲区】** —— 判据是 `ast.Call` 且 `func` 是裸名
        `eval` ⇒ `asyncio.to_thread(eval, expression)`（`api_v1_rag.py:801`）**它抓不到**，
        而那一处**真的在执行任意代码**（匿名 WS `/ws/agent` 可达）。⇒ 改用 `eval_name_offenders`。
     """
