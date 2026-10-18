@@ -2,14 +2,14 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ⚰️ **遗留 / 未经裁决** —— **6 套 Agent 实现之一**<br>✅：`llm`（`:21`）接上 `MAX_TOKENS_AGENT`<br>✅ ：该 `llm`（现于 `:25`）**改走 `llm_factory.make_llm("fast", "agent")`**。⚠️ **模型轴是 `fast`**（不是 chat）—— 这是改动前的实际取值，收口时**原样保留**<br>✅：审批触发条件**从「任意 tool_calls」改成「工具白名单」**<br>✅ **`calculator` 的 `eval(expression)` 换成 `safe_math.calculate`** —— 本文件 （多出的行是解释为什么不许改回去的注释）<br>🔵 **`agent_decide` 改成【流式可透传】的** —— 声明 `config: RunnableConfig` + 改用 `llm_with_tools.stream(…, config=config)` 逐块聚合。**。📄 <br>🔴 **两条既有 bug 结掉 + 搜索工具换掉** —— `tool_execute` 改成**查 `TOOLS_BY_NAME` 表**分派；`SENSITIVE_TOOLS` 默认值改成真工具名 `web_search`，且 `validate_approval_config` **加第二段硬拦**（名字不存在 ⇒ 拒绝启动）；搜索工具 `DuckDuckGoSearchRun` → `search_tools.web_search`。**（多出的行是"病根是名字有两个来源"的解释 + 新硬拦）。📄 <br>🔵 **（剩余 4 条链） —— 新增模块级 `STREAMABLE_NODES` 及其说明注释（见下条）<br>⚠️ **行数口径**：本仓一律用 的数（= **真实行数**）。`wc -l` 对本文件**少算 1**（它末行没有换行符）⇒ 两边会差 1，⛔ **不是笔误**<br>⚠️ **行号口径**：非历史条目的行号是 **之后**的 `grep -n` 实测值；**带日期条目里括注的行号是【当时】的值**（带「**现于**」的除外），两者对不上**不是笔误**<br>⚠️ ** /3⛔ 没动过本文件** —— 队列与续跑都落在 `api_v1_agent.py`（见下）<br>🔵 **（剩余 4 条链）：新增模块级 `STREAMABLE_NODES`**（现于 `:264`，现为 `frozenset({"agent"})`）—— **白名单住在图模块里**，端点只准按 `agent_graph.STREAMABLE_NODES` 取，⛔ 不许自己抄一份字面量（的教训：**一个名字两个来源必然漂移，而漂移是静默的**）。<br>⚠️ **为什么必须放模块级**：放进 `build_agent_graph` 函数体就是**局部名** ⇒ 端点 `agent_graph.STREAMABLE_NODES` 直接 `AttributeError`（**真的踩过一次**才改过来）。📌 守卫 `app/tests/test_agent_stream_chains.py::test_chain_a_whitelist_is_the_graph_module_s_own` |<br>⚠️ **`agent_decide` 的节点实现一字未动**（早就改好）—— 改的是**另外三张图**<br>🔴 **`agent_decide` 接上【预算拦 + 记账】** ——**。改前本图的 LLM 调用点**既不查预算、也不记账**（`record_usage` / `check_token_budget` 在本文件 **0 命中**）⇒ 走 `/agent/langgraph_chat` 的用户**一分钱不花**，而端点上的 B8 会话上限 / B11 全站熔断对本图**等于不存在**（守卫读的计数器它从不写）。|
+| **状态** | ⚰️ **遗留 / 未经裁决** —— **6 套 Agent 实现之一**<br>✅：`llm`（`:21`）接上 `MAX_TOKENS_AGENT`<br>✅ ：该 `llm`（现于 `:25`）**改走 `llm_factory.make_llm("fast", "agent")`**。⚠️ **模型轴是 `fast`**（不是 chat）—— 这是改动前的实际取值，收口时**原样保留**<br>✅：审批触发条件**从「任意 tool_calls」改成「工具白名单」**<br>✅ **`calculator` 的 `eval(expression)` 换成 `safe_math.calculate`** —— 本文件 （多出的行是解释为什么不许改回去的注释）<br>🔵 **`agent_decide` 改成【流式可透传】的** —— 声明 `config: RunnableConfig` + 改用 `llm_with_tools.stream(…, config=config)` 逐块聚合。**。📄 <br>🔴 **两条既有 bug 结掉 + 搜索工具换掉** —— `tool_execute` 改成**查 `TOOLS_BY_NAME` 表**分派；`SENSITIVE_TOOLS` 默认值改成真工具名 `web_search`，且 `validate_approval_config` **加第二段硬拦**（名字不存在 ⇒ 拒绝启动）；搜索工具 `DuckDuckGoSearchRun` → `search_tools.web_search`。**（多出的行是"病根是名字有两个来源"的解释 + 新硬拦）。📄 <br>🔵 **（剩余 4 条链） —— 新增模块级 `STREAMABLE_NODES` 及其说明注释（见下条）<br>⚠️ **行数口径**：本仓一律用 的数（= **真实行数**）。`wc -l` 对本文件**少算 1**（它末行没有换行符）⇒ 两边会差 1，⛔ **不是笔误**<br>⚠️ **行号口径**：非历史条目的行号是 **之后**的 `grep -n` 实测值；**带日期条目里括注的行号是【当时】的值**（带「**现于**」的除外），两者对不上**不是笔误**<br>⚠️ ** /3⛔ 没动过本文件** —— 队列与续跑都落在 `api_v1_agent.py`（见下）<br>🔵 **（剩余 4 条链）：新增模块级 `STREAMABLE_NODES`**（现于 `:264`，现为 `frozenset({"agent"})`）—— **白名单住在图模块里**，端点只准按 `agent_graph.STREAMABLE_NODES` 取，⛔ 不许自己抄一份字面量（的教训：**一个名字两个来源必然漂移，而漂移是静默的**）。<br>⚠️ **为什么必须放模块级**：放进 `build_agent_graph` 函数体就是**局部名** ⇒ 端点 `agent_graph.STREAMABLE_NODES` 直接 `AttributeError`（**真的踩过一次**才改过来）。📌 守卫 `app/tests/test_agent_stream_chains.py::test_chain_a_whitelist_is_the_graph_module_s_own` |<br>⚠️ **`agent_decide` 的节点实现一字未动**（早就改好）—— 改的是**另外三张图**<br>🔴 **`agent_decide` 接上【预算拦 + 记账】** ——**。改前本图的 LLM 调用点**既不查预算、也不记账**（`record_usage` / `check_token_budget` 在本文件 **0 命中**）⇒ 走 `/agent/langgraph_chat` 的用户**一分钱不花**，而端点上的会话级上限 / 全站熔断对本图**等于不存在**（守卫读的计数器它从不写）。|
 | **对外提供** | 路由 `/agent/langgraph_chat` · `/agent/approve` |
 | **谁在用** | `api_v1_agent.py:18`（`from agent_graph import agent_graph, STREAMABLE_NODES`） |
 
 ## ✅ 做了什么
 
 - 基础 LangGraph Agent：`agent` 决策节点 → `tools` 执行循环
-- 工具：🔴 **全部【从 `mcp_server.TOOLS` 派生】**——
+- 工具：🔴 **全部【从 `mcp_server.TOOLS` 派生】** ——
   本地那份 `web_search` / 计算器 / 日期**三个定义全删了**。
   ✅ **原先的 `execute_python` 排除【已放开】**（作者同意「甲」· 附录）——
   本图工具表现在**与 `mcp_server.TOOLS` 逐名一致**（4 个）。
@@ -27,7 +27,7 @@
   并用 `.stream(…, config=config)` 逐块聚合 ⇒ `/agent/langgraph_chat/stream` 的
   `astream(stream_mode="messages")` 才拿得到 **token 级**的块。📄 裁定；
   ⚠️ **判据**（可打印）⇒ `app/tests/test_agent_sse.py`（12 例，纯离线，进 CI）
-- 🔵 **审批白名单**（B4）：`SENSITIVE_TOOLS`（`:71`，读 env，默认 **`web_search`**）· `needs_approval()`（`:215`）· `validate_approval_config()`（`:76`，启动自检**两段**：空名单 ⇒ `raise`；**名字不存在 ⇒ 也 `raise`**）
+- 🔵 **审批白名单**：`SENSITIVE_TOOLS`（`:71`，读 env，默认 **`web_search`**）· `needs_approval()`（`:215`）· `validate_approval_config()`（`:76`，启动自检**两段**：空名单 ⇒ `raise`；**名字不存在 ⇒ 也 `raise`**）
 - 🔴 **预算拦 + 记账**：`agent_decide`（`:120`）里 **`.stream` 之前** 查
   `check_token_budget(user_name, estimated_tokens=500)`，**之后** 用
   `record_from_response(llm_with_tools, response, "agent_decision", …)` 记一笔。
@@ -48,7 +48,7 @@
 ## 🟡 做到哪 / 缺什么
 
 - ⚠️ **哪套 Agent 是"产品版本"——【未裁】**（属 **M5 的代际收敛**，见下）
-- ✅ ~~**触发条件口径是错的**~~ ⇒ **【已修】**（B4）：`should_continue`（`:225`）现在是**三条路**（`approval` / `tools` / `END`），只有命中白名单才停
+- ✅ ~~**触发条件口径是错的**~~ ⇒ **【已修】**：`should_continue`（`:225`）现在是**三条路**（`approval` / `tools` / `END`），只有命中白名单才停
 - ✅ ~~**`calculator` 是任意代码执行**~~ ⇒ **【已修】**：改走 `app/tools/safe_math.py`（AST 白名单求值 + 三道闸）。📄 见 **`app/tools/specs/safe_math.md`**
 - ✅ ~~**零测试覆盖**~~ ⇒ **有 `app/tests/test_approval_trigger.py`**（**8 例**，纯离线）+ **`app/tests/test_tool_dispatch.py`**（**9 例**，含 2 条子进程起服自检）。⚠️ **覆盖范围只有审批触发条件与工具分派** —— **图的其余部分（节点行为 / 状态流转）仍无测试**
 - ✅ ~~** 未做**~~ ⇒ **【已做】**：待接管队列在 **`app/agent/pending_approvals.py`**，出口是 **`GET /agent/pending`**（`api_v1_agent.py`）。📄 见 **`app/agent/specs/pending_approvals.md`**<br>⚠️ **但队列【不在这个模块里】** —— `agent_graph.py` 只负责"停下来"；"谁停下来了、从哪儿看"是 `api_v1_agent.py` 记账。⛔ 别在本模块找队列
@@ -84,7 +84,7 @@
 | 看代码会以为 | 实际 |
 |---|---|
 | 「这是个产品功能」 | 🟡 **它是 6 套并存实现之一** —— 另 5 套：`agent_checkpointer` · `agent_graph_advanced` · `agent_graph_advanced_learning` · `/ws/agent` 的内联 Executor · `plan_execute`。<br>🔴 **哪套留下【未裁】**（`docs/CODE_INVENTORY.md` §7 明说「2 代与 3 代的先后顺序**从代码判不出**」） |
-| 「有 `tool_calls` ⇒ 停在审批」 | 🔴 **（B4）起【不再】** —— 只有命中 `SENSITIVE_TOOLS` 才停（`should_continue`，`:225`）；**非敏感工具直接跑完**，无人值守。⚠️ **`app/tests/test_agent_repairs.py:533` 与 `api_v1_agent.py:66` 的旧注释就在说这条**，已同步更正 |
+| 「有 `tool_calls` ⇒ 停在审批」 | 🔴 **现在【不再】** —— 只有命中 `SENSITIVE_TOOLS` 才停（`should_continue`，`:225`）；**非敏感工具直接跑完**，无人值守。⚠️ **`app/tests/test_agent_repairs.py:533` 与 `api_v1_agent.py:66` 的旧注释就在说这条**，已同步更正 |
 | 「白名单 = 危险工具清单」 | ⚠️ **不是** —— 第一版只有 **`web_search`**（**外发数据**）。<br>✅ **已结**：`calculator` 原先那句 `eval(expression)`（**任意代码执行**）**已换成 `safe_math.calculate`**（AST 白名单求值）。⚠️ **但它仍然【不在】白名单里** —— 换成安全求值之后，"不出网"这条判据重新成立。<br>🔴 **改前实测（不是推演）**：喂 `__import__('os').system('touch /tmp/x')` ⇒ **命令真的跑了，且返回 `'0'`**（模型收到的是一条正常的"答案是 0"）。📄 见 `app/tools/specs/safe_math.md` |
 | 「`.env` 里设了 `SENSITIVE_TOOLS`」 | ⚠️ **设不设都能跑** —— 不设走**默认值 `web_search`**（`:71`）。⇒ 想加/减**必须显式改 `.env`**。<br>🔴 **两种都会被启动自检拦住**（`validate_approval_config`，`:76`，**是两段**）：① **改成空** ② **写了不存在的工具名**。<br>⚠️ 第三档（**部分**名字不认识）**没有单独拦** —— 那时**整个启动被拒**，⛔ 不是"放过认识的那些"。 |
 | 「审批是"全都接管"」 | 🔴 **不是** —— 硬门 D 要的是「**该被接管时被接管**」。改前"问个日期也停"那条路**验收过不去** |
@@ -92,8 +92,8 @@
 | 🔴 **「`SENSITIVE_TOOLS` 只是个开关，写个大概就行」** | ⛔ **它是【工具名】清单，⛔ 不是变量名** —— 写错一个字母的后果是**静默失效**（那个工具永不审批），**接口一切正常**。本仓**真的栽过**：默认值写成变量名 `search_tool`，**活了三天**。<br>✅ 现在写错**会在启动时炸**，并**列出可用工具名**。 |
 | 🔴 **「`agent_decide` 加个 `config` 参数只是顺手接一下」** | ⛔ **它是真流式的【唯一条件】** —— 不声明、或不转发进模型的**流式**调用，`astream(stream_mode="messages")` **只会吐 1 块**（整段，`on_llm_end` 发的）。<br>⚠️ 而**接口看上去完全正常**：照样 `text/event-stream`、照样有 `data:` 帧 —— **前端逐字显示是前端自己切的**。<br>📌 判据（可打印）：`app/tests/test_agent_sse.py::test_graph_streams_one_chunk_per_token`（数**块数**，⛔ 不看 header） |
 | 🔴 **「节点这么重，该改成 `async def` 吧」** | ⛔ **别改** —— 实测（探针⑧）会让**同步的** `graph.invoke` 直接抛 `TypeError: No synchronous function provided to "agent"`，<br>而非流式路径（`/agent/langgraph_chat`）**在用它**。<br>✅ **同步节点 + 同步 `.stream(config)` 就能真流式**，⛔ 不需要 async。守卫 ⇒ `test_non_streaming_invoke_still_works`<br>🔴 **勘误**：本行原写「（`/agent/langgraph_chat` · `api_v1.py` · `api_v1_rag.py`）**都在用它**」—— **后两个不成立**：<br>它们各只有一句 `from agent_graph import agent_graph`（`api_v1.py:54` · `api_v1_rag.py:66`），**全文再 0 处引用**（`grep -c "agent_graph\." ` 两处都是 **0**）⇒ 是**死导入**，⛔ 不是消费者。<br>📌 判据（可打印）：`grep -rn "agent_graph" app/routing/api_v1.py app/routing/api_v1_rag.py` ⇒ 各 **1 行**（且都是 `import`）。<br>⚠️ **本图真正的非流式消费者只有** `/agent/langgraph_chat`（`api_v1_agent.py:235`）+ `/agent/approve` 的续跑。<br>⛔ **那两个死导入【没删】**（删除是"收拾仓库"，要单独裁）—— 只把话说对。 |
-| ⚠️ **「聚合流式块，用 `content += ` 拼起来就行」** | ⛔ **会丢掉 `tool_calls`** —— 它是**碎片化**到达的（name 一块、args 几块）。<br>丢了 ⇒ `should_continue` 判不出 `"approval"` ⇒ **B4 审批静默失效**，而接口返回 `{"status":"answered"}` 一切正常。<br>✅ 必须用 LangChain 自带的 `AIMessageChunk.__add__`（`+`）。守卫 ⇒ `test_agent_decide_preserves_tool_calls` |
-| 🔴 **「图里记账是 `token_tracker` 的事，节点不管」** | ⛔ **反了** —— `token_tracker` 只提供 `record_usage` / `record_from_response`，**"哪个节点调了 LLM"只有图自己知道**。<br>改前本图 **`record_usage` / `check_token_budget` 0 命中** ⇒ 走 `/agent/langgraph_chat` **一分钱不记**，端点上的 B8 会话上限 / B11 全站熔断**对本图等于不存在**（守卫读的计数器它从不写）。<br>✅ **每个调 LLM 的节点，必须同时有 `check_token_budget`（前置）与 `record_from_response`（后置）** —— `app/tests/test_billing_wiring.py` 会按**最内层函数**逐个数，漏一个就红。 |
+| ⚠️ **「聚合流式块，用 `content += ` 拼起来就行」** | ⛔ **会丢掉 `tool_calls`** —— 它是**碎片化**到达的（name 一块、args 几块）。<br>丢了 ⇒ `should_continue` 判不出 `"approval"` ⇒ **审批会静默失效**，而接口返回 `{"status":"answered"}` 一切正常。<br>✅ 必须用 LangChain 自带的 `AIMessageChunk.__add__`（`+`）。守卫 ⇒ `test_agent_decide_preserves_tool_calls` |
+| 🔴 **「图里记账是 `token_tracker` 的事，节点不管」** | ⛔ **反了** —— `token_tracker` 只提供 `record_usage` / `record_from_response`，**"哪个节点调了 LLM"只有图自己知道**。<br>改前本图 **`record_usage` / `check_token_budget` 0 命中** ⇒ 走 `/agent/langgraph_chat` **一分钱不记**，端点上的会话级上限 / 全站熔断**对本图等于不存在**（守卫读的计数器它从不写）。<br>✅ **每个调 LLM 的节点，必须同时有 `check_token_budget`（前置）与 `record_from_response`（后置）** —— `app/tests/test_billing_wiring.py` 会按**最内层函数**逐个数，漏一个就红。 |
 | 🔴 **「`user_name` / `thread_id` 是可选装饰，缺了会 KeyError」** | ⛔ **缺了不报错，静默记成 `"unknown"`** —— 一律 `.get(…, "unknown")` 读。**历史上有过不传这两个键的调用方**（本图原先的调用点已随 补齐），用下标会把那种路径当场打挂。<br>⚠️ **两种错各有代价**：用下标 ⇒ **500**（太响）；不记 ⇒ **额度漏算**（太静）。本图选后者。<br>🔴 **勘误**：本行原写「旧调用方（`api_v1.py` / `api_v1_rag.py`）不传这两个键」—— **那两处根本不调本图**（死导入，见上一行）⇒ 举错了例子。论点不变，例子已撤。 |
 | 🔴 **「记账要的是 `session_key(user_name, thread_id)`」** | ⛔ **要的是 `thread_id` 原值** —— `session_key()` 是 **checkpoint 键**，与账目无关。端点上写 `sess` 是**错的**（修的就是这处）。<br>📌 判据：真库 `token_usage_logs.thread_id` 必须等于**请求里传的那个**（端到端实测过）。 |
 | 🔴 **「被预算拦下来那次也该记一笔（记 0 tokens）」** | ⛔ **不记** —— **拦在 LLM 调用【之前】⇒ 没花钱 ⇒ 没有账**。记一笔 0 会污染 `token_usage_logs` 的计数（它是额度权威源）。 |
@@ -119,5 +119,5 @@
 ## 关联
 
  的 /（🔴 **唯一清单**在那儿）· `docs/原理/架构.md` §1.3
-`后端补齐清单` （硬门 D 触发条件）· **`app/agent/specs/pending_approvals.md`**（队列 —— ⚠️ **队列不本模块里**）·
+设计记录 （硬门 D 触发条件）· **`app/agent/specs/pending_approvals.md`**（队列 —— ⚠️ **队列不本模块里**）·
 `app/routing/specs/api_v1_agent.md` 的「实施计划 ②」

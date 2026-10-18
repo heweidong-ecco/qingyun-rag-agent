@@ -96,14 +96,14 @@
 | `app/billing/specs/token_tracker.md` | `check_global_daily_budget()` / `get_global_daily_token_usage()` 的出处 |
 | `app/billing/specs/token_config.md` | `GLOBAL_DAILY_TOKEN_LIMIT` 的值与改法 |
 | `app/specs/main.md` · `app/specs/归档/quota_limiter.md` | ⚠️ **另一层**（配额 —— 且**对匿名绕过**）—— 别与这里混。<br>🔴：配额那层**已原位改成 token 口径**（现役 spec = `main.md`）；`quota_limiter.md` 是**已删模块的归档** |
-| `qingyun-rag-agent-TODO待办/后端补齐清单-待裁-20260929.md` §B11 | 四要素原文 + 我方建议 |
+| **熔断四要素的设计依据** | 原文 + 建议 |
 
 
 ---
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/billing/breaker.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/billing/breaker.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 ## 它是什么 / 不是什么
 
@@ -132,5 +132,5 @@
 
 ## 本文件【自己】没有调用点也是白搭
 
-接线在 `①b`：**与  同一批调用点**
+接线在 第二批：**与  同一批调用点**
 （`api_v1_agent.py` 5 处 + `api_v1_rag.py` 3 处 + 匿名烧钱的 `/api/v1/rag/benchmark-embedding`）。

@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | **状态** | ✅ **客户端已惰性构造**· 🔴 **模型名已从 env 读** |
-| **对外提供** | `get_embedding(text, model=None, *, user_name="system", thread_id="system")` —— `None` 时解析成 `EMBEDDING_MODEL_MAIN`（先 env 后 `core.config`）· `assert_model_dimension(expected)`<br>🔴 **新增 `user_name`（关键字限定）**—— 见「看代码会误判」第 1 条；⛔ **别把默认值删掉**（三条路本来就没有用户） |
+| **对外提供** | `get_embedding(text, model=None, *, user_name="system", thread_id="system")` —— `None` 时解析成 `EMBEDDING_MODEL_MAIN`（先 env 后 `core.config`）· `assert_model_dimension(expected)`<br>🔴 **新增 `user_name`（关键字限定）** —— 见「看代码会误判」第 1 条；⛔ **别把默认值删掉**（三条路本来就没有用户） |
 | **谁在用** | 几乎所有检索/入库路径（经 `rag_pipeline` / `api_v1_rag` / `cache.warmup_cache` / `hybrid_search`） |
 
 ## ✅ 做了什么
@@ -30,7 +30,7 @@
 
 | 看代码会以为 | 实际 |
 |---|---|
-| 「配置齐全就能跑」 | ✅ **现在成立了**。改前 🔴 **模块级 `OpenAI(api_key=DASHSCOPE_API_KEY, ...)`** —— `config.py:39` 的 `os.getenv` **无默认值** ⇒ 缺这一行时是 `None` ⇒ **构造期就抛 `OpenAIError`** ⇒ **整条 import 链崩**（任何 import 它的模块都起不来）。**批 6 已修** |
+| 「配置齐全就能跑」 | ✅ **现在成立了**。改前 🔴 **模块级 `OpenAI(api_key=DASHSCOPE_API_KEY, ...)`** —— `config.py:39` 的 `os.getenv` **无默认值** ⇒ 缺这一行时是 `None` ⇒ **构造期就抛 `OpenAIError`** ⇒ **整条 import 链崩**（任何 import 它的模块都起不来）。**已修** |
 | 「key 为空 = 会炸」 | 🟡 **要分清**：**变量缺失**（`None`）改前**构造期就炸**；**空字符串**（`DASHSCOPE_API_KEY=`）改前**构造得出来**、要到**请求时**才 401。改后两种都**在取客户端时**被同一句点名的错误拦住 |
 | 「启动时 `validate_config()` 会先拦住缺 key」 | 🟡 **正常启动路径上确实会**（`DASHSCOPE_API_KEY` 是**必填**，`config.py:61`）；<br>⚠️ **但**：**测试 / 独立脚本 / 任何没走 `validate_config` 的入口** —— 改前报的是一句**难懂的 `OpenAIError`**（它提的 `OPENAI_API_KEY` 本仓根本不用），改后**点名 `DASHSCOPE_API_KEY`** |
 | 「缓存命中时不需要客户端」 | 🔴 **不是了** ——  把取客户端放在**查缓存之前**（否则「同一句有时报错、有时不报」取决于缓存状态）。**这是一处有意为之的行为变更** |

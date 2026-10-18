@@ -80,7 +80,7 @@ make_llm("chat", "agent")          # 两个轴，见下
 | **这里能"兜底"** | ⛔ **不能** —— 返回值没有任何降级/重试逻辑（见上「缺什么」） |
 | **有「主/备 provider」的概念** | 🟡 **没有** —— 只认 `LLM_MODEL_*` + `LLM_API_KEY` + `LLM_BASE_URL` 三个值 |
 | **换了 model 不用重启** | 🔴 **要重启** —— 15 个调用点**仍在 import 时**构造。本次只收口了"在哪写"，**没**改成运行时可切。<br>⚠️ **再次问过这件事**：真惰性要连 **3 张图的模块级 `llm` + `bind_tools`** 一起下沉（`agent_graph` · `agent_checkpointer` · `agent_graph_advanced_learning`）⇒ **与"运行时可切"是同一件事**，⛔ **不单独立项** |
-| 🔴 **缺 `LLM_API_KEY` 时报的是 SDK 那句通用话** | ⛔ **不是了**—— 现在抛 `EnvironmentError`，消息里**点名 `LLM_API_KEY`**。<br>⚠️ **但时机【没变】**：仍**在 import 期构造** ⇒ **`import` 仍会中断**，只是报的话能看懂了。<br>⛔ **别把这条读成"LLM 侧也惰性化了"** —— 「import 不许崩」那半**没做**（理由见上一行）。<br>📌 守卫：`app/tests/test_llm_factory.py::test_missing_key_is_reported_by_name_not_by_openai` |
+| 🔴 **缺 `LLM_API_KEY` 时报的是 SDK 那句通用话** | ⛔ **不是了** —— 现在抛 `EnvironmentError`，消息里**点名 `LLM_API_KEY`**。<br>⚠️ **但时机【没变】**：仍**在 import 期构造** ⇒ **`import` 仍会中断**，只是报的话能看懂了。<br>⛔ **别把这条读成"LLM 侧也惰性化了"** —— 「import 不许崩」那半**没做**（理由见上一行）。<br>📌 守卫：`app/tests/test_llm_factory.py::test_missing_key_is_reported_by_name_not_by_openai` |
 | **`import llm_factory` 会拉 langchain** | ⛔ **不会** —— `langchain_openai` 是在 `make_llm()` **函数内**才 import 的。<br>⚠️ 这条是**故意的**（`api_v1_rag.py` 有"导入期不拉 langchain"的既有约束）；<br>`app/tests/test_llm_factory.py::test_importing_the_module_does_not_pull_langchain` 用**子进程**钉着 |
 | **打错角色名会静默跑** | ⛔ **不会** —— 两个轴都在**工厂里**校验，未知取值直接 `ValueError`（`test_unknown_roles_raise`） |
 | ⚠️ **门禁只钉"走没走工厂"** | **不止** —— 还钉**两个轴的角色**：全传 `("chat","agent")` 会被红。<br>⇒ 顺手改角色 = **改行为 + 改账单**，那**不属于** （收口）的范围 |
@@ -94,7 +94,7 @@ make_llm("chat", "agent")          # 两个轴，见下
 |---|---|
 | ⭐  | **本模块的形状**：为什么只收口、⛔ 为什么不做自动兜底（含 `with_fallbacks` 的实测） |
 | `app/billing/specs/token_config.md` | 两个上限常量（`MAX_TOKENS_*`）的**唯一落点** |
-| `app/billing/specs/token_tracker.md` | `①b`  的原始计划与【修订后的形态】（形态 = 甲） |
+| `app/billing/specs/token_tracker.md` | 第二批 的原始计划与【修订后的形态】（形态 = 甲） |
 | `app/tests/test_llm_factory.py` | 钉返回值形状（**记账不失真**）+ 两个轴 + 参数校验 + 不拉 langchain |
 | `app/tests/test_max_tokens_wiring.py` | 钉**全仓**：工厂以外零 `ChatOpenAI(` · 每个调用点的角色与裁定表一致 |
 | `docs/契约/环境变量.md` | `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL_*` 的口径 |
@@ -104,7 +104,7 @@ make_llm("chat", "agent")          # 两个轴，见下
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/core/llm_factory.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/core/llm_factory.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 ## 为什么要有这个模块
 

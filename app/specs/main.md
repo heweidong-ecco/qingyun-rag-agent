@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 应用装配 + **3 条中间件** + 全局异常处理 + 看板挂载 + **3 条页面路由**<br>✅ **限流分桶会验签了**（修 `B9-b`）· ✅ **4 处错误文案已修 + 加了 `retry_after`**<br>🔴 **`QuotaMiddleware` 的额度口径从「每日请求【次数】」换成「按用户按天 **token**」**（= `R1.3`）。<br>🔴 **两条中间件在【依赖不可用】时都改为 fail-open** —— 限流侧身份 `None` ⇒ 跳过用户级限流；额度侧身份 `None` ⇒ 跳过额度检查。<br>🆕 **新增第二条页面路由 `GET /approvals`** —— 与 `/chat` **逐条同构**（302 · `include_in_schema=False` · 显式进无鉴权基线 · 各 3 条页面用例）。<br>🔵 **（第三条）：异常处理器多写一个【可选】`scope`**（与 `retry_after` 同套路，见「做到哪」）。<br>🆕 **新增第三条页面路由 `GET /trace`** → 302 `/static/web/trace.html` —— 同样与 `/chat` 同构，但**它的页面用例是 6 条不是 3 条**（多出 3 条页面坏法的守卫，见「做到哪」）。<br>🔧 **页面路由【代码本身没动】** —— 本份记的是 `approvals.html` 的 4 条 URL 前缀与 `ci.yml` 的 `node --test`，**两条都不在这个模块里**；⚠️ 唯一相关的是「页面守卫从"盯一个页面"改成"盯全站"」⇒ 见「看代码会误判」。 |
+| **状态** | 🟡 **可用** —— 应用装配 + **3 条中间件** + 全局异常处理 + 看板挂载 + **3 条页面路由**<br>✅ **限流分桶会验签了**（修 ）· ✅ **4 处错误文案已修 + 加了 `retry_after`**<br>🔴 **`QuotaMiddleware` 的额度口径从「每日请求【次数】」换成「按用户按天 **token**」**（= `R1.3`）。<br>🔴 **两条中间件在【依赖不可用】时都改为 fail-open** —— 限流侧身份 `None` ⇒ 跳过用户级限流；额度侧身份 `None` ⇒ 跳过额度检查。<br>🆕 **新增第二条页面路由 `GET /approvals`** —— 与 `/chat` **逐条同构**（302 · `include_in_schema=False` · 显式进无鉴权基线 · 各 3 条页面用例）。<br>🔵 **（第三条）：异常处理器多写一个【可选】`scope`**（与 `retry_after` 同套路，见「做到哪」）。<br>🆕 **新增第三条页面路由 `GET /trace`** → 302 `/static/web/trace.html` —— 同样与 `/chat` 同构，但**它的页面用例是 6 条不是 3 条**（多出 3 条页面坏法的守卫，见「做到哪」）。<br>🔧 **页面路由【代码本身没动】** —— 本份记的是 `approvals.html` 的 4 条 URL 前缀与 `ci.yml` 的 `node --test`，**两条都不在这个模块里**；⚠️ 唯一相关的是「页面守卫从"盯一个页面"改成"盯全站"」⇒ 见「看代码会误判」。 |
 | **对外提供** | `app`（FastAPI 实例）· `MIDDLEWARE_EXEMPT_PATHS`（**:118** · 🔴 **由 `PUBLIC_PATHS` 改名**，见下）· `resolve_rate_limit_identity`（**:126**）· 🆕 **`MIDDLEWARE_EXEMPT_PREFIXES`（`:144`）+ `is_middleware_exempt`（`:151`）**（销，见下）<br>🆕 **`resolve_client_ip` + `anonymous_rate_limit_bucket` + `ANONYMOUS_BUCKET`**（按 IP 限流，见下；⚠️ 行号**现取** `grep -n "def resolve_client_ip" app/main.py`）<br>🔵 新增三个**配额判定件**：`_next_day_reset_ts`（**:322**）· `quota_reject_payload(info)`（**:329**）· `quota_headers(info)`（**:357**）—— **纯函数，不连 DB/Redis 就能单测**<br>🔵 **新增** `resolve_quota_identity`（**:180**）—— 同上理由抽出来的纯函数（`QuotaMiddleware` 那段的身份解析，原先**内联在 `dispatch` 里、没法单测**）<br>🆕 **新增三条页面路由**：`GET /chat`（**:538**）→ 302 `/static/web/chat.html` · **`GET /approvals`（`:547`）→ 302 `/static/web/approvals.html`**（接管页）· **`GET /trace`（`:559`）→ 302 `/static/web/trace.html`**（Trace 页）—— 三条都是 `include_in_schema=False` |
 | **谁在用** | 服务入口（uvicorn `main:app`）· ⚠️ **几乎每个测试**都经 `app/conftest.py` 的 `from main import app` |
 | **规模** | 🔴 **别写死行数** —— 跑 `wc -l app/main.py`（加 `/trace` 后为 **771**；此前 752 / 733 = 651 = 更早）<br>⚠️ **本节行号同理，改完必须重取** —— 那次编辑把旧行号**全部**打歪过一次；**加 `/approvals` 后重取了一遍**（实测漂了的：`on_event` 那处 `:656`/`:673` ⇒ 实为 **`:675`/`:692`**）。<br>🆕 **加 `/trace` 后重取**：本文里 **`:538`（`/chat`）· `:547`（`/approvals`）· `:559`（`/trace`）· `:476`/`:495`（异常处理器）** 均为**当次实测的【装饰器行】**。<br>🔴 **顺带纠正一处**：本节此前写的 `/chat` `:531` · `/approvals` `:540` **是旧值**（加异常处理器的 `scope` 之后整体下移了 7 行）—— 而 **`app/static/specs/static_frontend.md` 里写的 `:538`/`:547` 才是对的**（两份文档**互相矛盾**，已统一）。⚠️ 这类"两份文档各记一个行号"是本仓的老形态 ⇒ **判据一律现取**：`grep -n '@app.get("/' app/main.py`。 |
@@ -25,7 +25,7 @@
   🔴 **`trust_proxy` 是安全边界**：默认 **False** ⇒ **无视** `X-Forwarded-For`
   （本机/自建部署没有代理 ⇒ 那个头谁都能伪造）；只有 `TRUST_PROXY_HEADERS=true` 才读，
   且取**第一跳**（平台会覆盖客户端塞的那一跳，实测）。
-- 🆕 **（销）：豁免判定**多了**一份【前缀】名单 + 一个纯函数**——
+- 🆕 **（销）：豁免判定**多了**一份【前缀】名单 + 一个纯函数** ——
   `MIDDLEWARE_EXEMPT_PREFIXES`（`:144`，现有 **1 条**：`/static/`）与
   `is_middleware_exempt(path)`（`:151`）。**两个中间件都改调这个函数**（原先各写一句内联匹配）。
   🔴 **为什么要另立一份而不是往下面那个集合里塞一条**：那份是 **`frozenset` + `in` 精确匹配**，
@@ -70,7 +70,7 @@
 
 ## 🟡 做到哪 / 缺什么
 
-- ✅ ~~🔴 **4 处错误文案不准确**~~ ⇒ **已修**（**①a **）：限流 429 那处原写
+- ✅ ~~🔴 **4 处错误文案不准确**~~ ⇒ **已修**（**第一批 **）：限流 429 那处原写
   「Internal server error」（**说反了**）⇒ 改成说清"是限流"；`/health` 与 `/ready` ×2 的 **503** 改成
   「服务尚未就绪」；⛔ **全局 500 处理器不动**（它真的是内部错误）。
   另新增 `AppException.retry_after`（**可选**，不挂就不写字段）+ 响应头 `Retry-After`。
@@ -82,9 +82,9 @@
   「全站级 / 会话级」两种额度，而两者 `ErrorCode` **都是 `QUOTA_EXCEEDED`**、分不出来。
   ⚠️ **只有对话页那条链**（`api_v1_rag.stream_search`）的 429 带了它 —— 其余 **33 处**
   `raise` **有意没接**（bounded）。
-- 🔴 **X-API-Key 现在每个请求查库 2 次**（两条中间件各一次）—— 修 `B9-b` 后新增的一次。
+- 🔴 **X-API-Key 现在每个请求查库 2 次**（两条中间件各一次）—— 修  后新增的一次。
   ⬜ 可选优化：`request.state` 缓存后复用。**未做**（YAGNI）
-- ⚠️ **配额那一层每个请求多一次 DB 查询**—— 原先次数那套是 Redis `INCR`，
+- ⚠️ **配额那一层每个请求多一次 DB 查询** —— 原先次数那套是 Redis `INCR`，
   现在走 `get_daily_token_usage`（`SELECT SUM(...) ... WHERE created_at >= CURRENT_DATE`）。
   **口径不同 ⇒ 无法用同一个计数器表达**；增量与  熔断（也已每请求一次 `SUM`）**同量级**。
 - ⬜ **`TextNormalizationMiddleware`（`:423`）未核** —— 本 spec 只核了另两条
@@ -103,12 +103,12 @@
 | 🔴 **「`resolve_rate_limit_identity` 是在鉴权」** | ⛔ **不是**。它**只算【限流桶名】** —— 验签失败**不拦请求**，只是**让它落匿名桶**。<br>**真正的鉴权在 `app/routing/deps.py`**（那里才会抛 `AUTH_EXPIRED`）。<br>⚠️ **两者混起来看会得出"验了签就安全了"的错误结论。**<br>🔴 **它多了一种返回值 `None`** —— 含义是「**判不了**」（认证服务不可用），⛔ **不是 `"anonymous"`**（「判了，就是匿名」）。中间件见 `None` 会**跳过用户级限流**。 |
 | 🔴 **「`resolve_quota_identity()` 和限流那个应该长得一样」** | ⛔ **故意不一样** —— 两者在"库挂了"时的**出口不同**：<br>· 限流那个返回 `None` ⇒ 中间件**跳过用户级限流**（不落匿名桶）；<br>· 额度那个返回 `None` ⇒ 走 `QuotaMiddleware` **本来就有**的"未识别身份 ⇒ 原样放行"。<br>⚠️ **两边都是 fail-open**，但**落点不同**；⛔ 别为"看着统一"把它们的返回类型合并。<br>📄 四层分工（含 `deps.py` 的 fail-closed）⇒  |
 | 🔴 **「`MIDDLEWARE_EXEMPT_PATHS` 里的路径 = 不需要登录」** | ⛔ **不是**。它只表示**跳过两条中间件**（限流 + 配额）。<br>**该端点要不要鉴权，由它自己的依赖（`Depends(get_current_user)`）决定** —— **两回事**。<br>📌 **它叫 `PUBLIC_PATHS`** —— 那个名字**正是在犯这个错**。<br>📌 判据：（跑它，⛔ 别读名单）。 |
-| 🔴 **「两条中间件拦得住匿名」** | ⛔ **拦不住，也不该由它们拦**。<br>① 中间件拿到 key 也**得查库**才知道有没有效 ⇒ 让它们"拒绝匿名" = **把鉴权抄第二份**（那一族）；<br>② 且**匿名口子是开着的**—— 在这里拒会把匿名入口一起关掉，那是另一个决定。<br>⇒ **鉴权与错误码在路由依赖那一层**：`AUTH_MISSING`（`deps.py:65`）· `AUTH_EXPIRED`（`deps.py:38/:50`）。<br>⚠️ 实测（`httpx.ASGITransport`，不带凭据打 4 条非豁免端点）⇒ **一律 `401 AUTH_MISSING`**，干净。 |
+| 🔴 **「两条中间件拦得住匿名」** | ⛔ **拦不住，也不该由它们拦**。<br>① 中间件拿到 key 也**得查库**才知道有没有效 ⇒ 让它们"拒绝匿名" = **把鉴权抄第二份**（那一族）；<br>② 且**匿名口子是开着的** —— 在这里拒会把匿名入口一起关掉，那是另一个决定。<br>⇒ **鉴权与错误码在路由依赖那一层**：`AUTH_MISSING`（`deps.py:65`）· `AUTH_EXPIRED`（`deps.py:38/:50`）。<br>⚠️ 实测（`httpx.ASGITransport`，不带凭据打 4 条非豁免端点）⇒ **一律 `401 AUTH_MISSING`**，干净。 |
 | 🔴 **「`check_route_auth.py` 覆盖了所有路由」** | ⛔ **它只认 `APIRoute`** ⇒ `/api/v1/ws/agent`（**真花钱、真没鉴权**）**零输出**。<br>⇒ 本轮补上：WS 也进清单，标签是 `WS`。基线 **1 → 3 条**。<br>⚠️ 但**中间件仍然管不到 WS**（`BaseHTTPMiddleware` 只处理 `scope["type"]=="http"`）——<br>「进清单」≠「被保护」，它只是**从看不见变成看得见**。 |
 | 🔴 **「中间件按代码里 `add_middleware` 的顺序执行」** | ⛔ **正好相反**。Starlette 里**后加的在外层** ⇒ **最后写的先跑**。<br>**实测（`app.user_middleware` 索引 0 = 最外层）**：<br>`TextNormalizationMiddleware` → `QuotaMiddleware` → `RateLimitMiddleware`<br>⛔ 而代码里的**书写**顺序是 RateLimit（`:305`）→ Quota（`:416`）→ TextNormalization（`:473`）。<br>⚠️ 这些行号**随每次编辑漂** —— 权威判据是打印式的：`grep -n '^app.add_middleware' app/main.py` |
-| ⚠️ **「限流和配额在同一处处理，不会不一致」** | ⛔ **历史上就不一致过** —— 到 为止，`QuotaMiddleware` **验签**、`RateLimitMiddleware` **不验**。<br>⇒ 编个 `X-API-Key` 就能拿**独立限流桶**。**已修（`B9-b`）**，但**"同一件事写两遍"这个形态还在**。<br>🔴 **又是一例**：批 3 给两边各加了一处 `except`，**取向相同而落点不同**（见上方 `resolve_quota_identity` 那行）。 |
+| ⚠️ **「限流和配额在同一处处理，不会不一致」** | ⛔ **历史上就不一致过** —— 在此之前，`QuotaMiddleware` **验签**、`RateLimitMiddleware` **不验**。<br>⇒ 编个 `X-API-Key` 就能拿**独立限流桶**。**已修**，但**"同一件事写两遍"这个形态还在**。<br>🔴 **又是一例**：两边各加了一处 `except`，**取向相同而落点不同**（见上方 `resolve_quota_identity` 那行）。 |
 | ✅ **「`"error": "Internal server error"` 只出现一次」** |：全文 **5 处**，**且不是都对**（限流 429 那处 **说反了** · 三处 **503** 也不准 · 全局 500 **是对的**）。<br>**现状**：只剩 **1 行**（`:502`，在全局 500 处理器里）**故意保留** —— 它真的是内部错误。<br>📌 **本行是 落点数从 1 更正为 4 的依据** —— 而**判据现在是可打印的**：<br>`grep -n '"error": "Internal server error"' app/main.py` ⇒ 应只有 1 行 |
-| ⚠️ **「`/metrics` 和 `/health` 受保护」** | ⛔ **被 `MIDDLEWARE_EXEMPT_PATHS` 豁免** ⇒ **绕过限流与配额**（**故意**的：否则 K8s/Docker 探针会被 429 打成不健康）<br>⚠️ **代价**：`/metrics` 可被无限刷。**已登记未做**（`B9-b` 风险说明） |
+| ⚠️ **「`/metrics` 和 `/health` 受保护」** | ⛔ **被 `MIDDLEWARE_EXEMPT_PATHS` 豁免** ⇒ **绕过限流与配额**（**故意**的：否则 K8s/Docker 探针会被 429 打成不健康）<br>⚠️ **代价**：`/metrics` 可被无限刷。**已登记未做**（ 风险说明） |
 | 🔴 **「想豁免某个路径 ⇒ 往 `MIDDLEWARE_EXEMPT_PATHS` 里加一条就行」** | ⛔ **只对【整条路径逐字相等】的成立** —— 那份名单是 **`frozenset` + `in` 精确匹配**。<br>🔴 ** 就是这么来的**：`/` 在名单里、它 302 到的 `/static/web/*.css` **不在** ⇒ 往名单里补一条 `/static/` **也补不上**（`"/static/web/app.css" != "/static/"`）⇒ **页面自己的 css/js 被 429 打进白屏**。<br>✅ **现在分两份**：精确的仍走 `MIDDLEWARE_EXEMPT_PATHS`；**带前缀的走 `MIDDLEWARE_EXEMPT_PREFIXES`**，判定统一进 `is_middleware_exempt(path)`。<br>⚠️ **前缀匹配刻意带边界**（`/staticfoo` **不豁免**）—— 本仓立场：「**判据要能证伪**」。 |
 | 🔴 **「`X-Quota-Limit` 说的是调用次数」** | ⛔ **它说的是【每天多少 token】**（头名**故意没改** —— 客户端已在读，改名的破坏面比改语义大）。<br>`X-Quota-Reset` 仍是**次日 0 点的 Unix 时间戳**（日预算由 SQL 的 `created_at >= CURRENT_DATE` 翻页）。 |
 | 🔴 **「配额那层拦不住就拒服务（fail-closed）」** | ⛔ **它是 fail-open 的** —— `get_daily_token_usage` **查库失败 ⇒ 退回内存缓存值 ⇒ 放行**。<br>**与  /  同取向**（额度是**成本控制**，不是安全边界）。<br>⛔ **别"顺手统一"成 `deps.py` 鉴权那套 fail-closed** —— 两者**故意不同**。 |
@@ -153,15 +153,15 @@
 |---|---|
 | `app/billing/specs/token_tracker.md` | **配额**那一层的数据源（`get_token_budget_info`）—— 本文件只负责在中间件里消费它 |
 | `app/specs/归档/quota_limiter.md` | ⚰️ **已归档** —— 原先的「每日**次数**」计数器，**随 删除** |
-| `后端补齐清单` **B9-b** | 限流分桶加验签（**已做**） |
-| `后端补齐清单`  | 错误文案 + `retry_after`（⚠️ **本文把落点从 1 处更正为 4 处**） |
-| `app/tests/test_rate_limit_identity.py` | `resolve_rate_limit_identity` 的 **8 条**回归测试（⚠️ 批 3 **一条都没改** —— `None` 与 `"anonymous"` 没有互相污染） |
-| 🆕 `app/tests/test_auth_db_unavailable.py` | **批 3· 22 条** —— 其中**第三组**直接调两个中间件的 `dispatch`（⚠️ **只测函数不够**：删掉"照 `None` 办事"那两行，函数级用例照样全绿） |
+| 设计记录 | 限流分桶加验签（**已做**） |
+| 设计记录  | 错误文案 + `retry_after`（⚠️ **本文把落点从 1 处更正为 4 处**） |
+| `app/tests/test_rate_limit_identity.py` | `resolve_rate_limit_identity` 的 **8 条**回归测试（⚠️ 这一批一条都没改 —— `None` 与 `"anonymous"` 没有互相污染） |
+| 🆕 `app/tests/test_auth_db_unavailable.py` | **这一批 22 条** —— 其中**第三组**直接调两个中间件的 `dispatch`（⚠️ **只测函数不够**：删掉"照 `None` 办事"那两行，函数级用例照样全绿） |
 | 🆕  |  的 **503** 口径 + 四层 fail-open/fail-closed 分工 |
 | `app/tests/test_public_paths.py` | `MIDDLEWARE_EXEMPT_PATHS` 与真实路由的一致性 —— ⚠️ **其中那条「两个中间件共用同一处判定」换过靶子**（：内联匹配收口成了 `is_middleware_exempt`） |
 | 🆕 `app/tests/test_static_exempt.py` | **8 条** ——  的判据（静态资源豁免）。🔴 **含两侧变异自证**：拆掉前缀 ⇒ **2 条红**；去掉边界 ⇒ **1 条红**。<br>⚠️ **⛔ 别改用 `TestClient` 判** —— 限流器连不上 Redis 时是 fail-open ⇒ 那种"绿"是**假的**（理由同 `resolve_rate_limit_identity` 抽出时那条）。 |
 | 🆕 `app/tests/test_rate_limit_ip.py` | **15 条** —— 按 IP 限流的判据。**纯函数 10 条 + 真调中间件 3 条**（把两个 limiter 换成假的，只记下收到的桶名）+ 开关默认值/收口各 1 条。<br>🔴 **变异自证两侧都跑过**：改成"总是信代理头" ⇒ **2 条红**；退回共用桶 ⇒ **4 条红**。<br>⚠️ 中间件那三条**不连 Redis**（假 limiter），所以它测的是**桶名**而不是"会不会 429"。 |
-| `app/tests/test_route_auth_scan.py` | **改名与接线那一轮的判据**—— 9 条：扫描口径必须**看得见 WS**、纯函数**不许 `chdir`**、**自证**旧口径扫不到 WS |
+| `app/tests/test_route_auth_scan.py` | **改名与接线那一轮的判据** —— 9 条：扫描口径必须**看得见 WS**、纯函数**不许 `chdir`**、**自证**旧口径扫不到 WS |
 |  | ⭐ **「哪些路由没鉴权」的权威判据** —— ⛔ **别读名单、读它**（现含 WS） |
 | 🔴  | **第二条页面路由 `/approvals` 的依据**（§3.3 —— 硬门 D 的反例原文是「界面上找不到」，所以那一栏**只能靠页面**）· 消费它的接口在 `app/routing/specs/api_v1_agent.md` |
 | 🆕  | **第三条页面路由 `/trace` 的依据** —— ⭐ 同时是**「302 对 ≠ 页面能用」那个事故**（`approvals.html` 4 条 URL 少 `/api/v1`）的**首次记录处** |

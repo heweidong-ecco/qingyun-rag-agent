@@ -29,7 +29,7 @@
 > 🔴 **两条随之作废的约定**（⛔ 别照着旧文找）：
 > - 「`panel.js` 必须在各页 js 之前」—— `panel.js` 没了；新的加载顺序只有一条：
 >   **`session.js` → `cred.js` → `app-reveal.js`**。
-> - 「`RagKb.DOC_TYPES` 必须等于后端 `CHUNK_CONFIGS`」那条**跨语言守卫**——
+> - 「`RagKb.DOC_TYPES` 必须等于后端 `CHUNK_CONFIGS`」那条**跨语言守卫** ——
 >   它守的规矩仍然有效（页面给一个后端不认的档位 ⇒ 传上去当场 **400**，而**没有任何门会红**），
 >   ✅ **落点回来了**（已结清）：**`app/tests/test_doc_types_crosslang.py`** 钉**新 `kb.js` 的 `DOC_TYPES`**
 >   （用 `node -e "require('./kb.js').DOC_TYPES"` 读那份**导出**，⛔ 不是拿正则抠字面量）。

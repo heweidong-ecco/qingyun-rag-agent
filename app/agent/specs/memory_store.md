@@ -21,7 +21,7 @@
 
 ## ⚠️ 看代码会误判的地方 ⭐
 
-0. 🔴🔴 **「Qdrant 存在哪」曾经**跟着 CWD 跑**，本机**已经裂成两份**（`①b`）
+0. 🔴🔴 **「Qdrant 存在哪」曾经**跟着 CWD 跑**，本机**已经裂成两份**（第二批）
 
    改前那句是 **`"path": "./.mem0/qdrant"`（相对路径）**，而它在**模块导入时**就被
    `Memory.from_config(...)` 解析掉了 ⇒ **落点取决于当时从哪启动**。
@@ -54,7 +54,7 @@
    实测全仓有**三处**（这里 + `rag/embedding_client.py` + `eval/evaluate_with_ragas.py`）。
    🔴 **已收口**：改成 `langchain` provider + `RecordingEmbeddings`
    ⇒ 它**不再自己造客户端**，走的是 `rag/embedding_client.get_embedding`（**同一份**实现/缓存/记账）。
-5. 🔴🔴 **「这条路的 token 记在谁头上」以前【根本没人管】**——
+5. 🔴🔴 **「这条路的 token 记在谁头上」以前【根本没人管】** ——
    mem0 用它**自己的** LLM 与 embedder，两样**都不记账**
    ⇒ `/agent/memory/add` 回 200，而库里 **0 行**。
    ⚠️ **一次 add 实测 = 8112 个 LLM token**（`memory_extract`：prompt 7850 + completion 262）

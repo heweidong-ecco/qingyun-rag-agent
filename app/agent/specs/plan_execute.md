@@ -2,17 +2,17 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | 🟡 **可用** —— 规划 + 逐步**真调用工具**；有超时、有总预算、有重规划、有降级<br>✅ ：`⚠️`（重规划漏传 `user_name`）与 `⚠️`（成败判定读中文文案）**均已修** ⇒ **`⚠️` 表 6 行里还剩 共 4 行**（⚠️ 都是**说明**不是缺陷）<br>⛔ **原「1 处真缺陷 + 5 处会误判」的账已销**（见 `🟡 做到哪`）<br>🔵 **（剩余 4 条链）：`_invoke_llm` / `plan_task` 各加一个 `on_token` 形参** —— 给 `/agent/plan_execute/stream` 用。<br>· ⚠️ **默认 `None` ⇒ 行为一字符不变**（`on_token is None` 时仍走 `llm.invoke`，`:155`）。<br>· ⚠️ **⛔ 它只让「规划段」能流** —— `execute_plan` / `generate_dynamic_input` / 质量检查**都还是非流式**（作者 裁「只流规划段」）⇒ **规划段之后是一长段静默**。<br>· 🔴 **流出的是【正在生成的 JSON 片段】**（提示词要求严格 JSON）⇒ ⛔ 前端别把流到的文本直接渲染成计划，只当"规划中"指示器。<br>· ⭐ **一条实现约束**：聚合循环**必须遍历【所有】块**（含 `content` 为空的）—— provider 把 `usage_metadata` 挂在**最后一块**上，跳过它**账就没了**（实测，探针 `探针-流式与记账.py`）。<br>· 📄 端点在 `app/routing/specs/api_v1_agent.md` · 桥在 `_ThreadTokenBridge`<br>✅：三个 `_llm` 接上 `MAX_TOKENS_AGENT`<br>✅ ：三个 `_llm` **改走 `llm_factory.make_llm("chat", "agent")`**（现于 `:92` / `:279` / `:486`）—— `model`/`api_key`/`base_url`/`max_tokens` 不再写在本地。<br>⚠️ **超时/重试没丢**：`timeout` / `max_retries` 走 `make_llm` 的 `**extra` **逐点透传**，**值一字符未变**（30/20/15 + `LLM_MAX_RETRIES`）。<br>⚠️ `executor_llm` 的 `temperature=0.1` 是**本文件特有的**逐点调参，仍写在调用点上<br>⚠️ **行号口径**：本 spec 的行号为 **之后**的实测值（`grep -n` 复核）；批 4 之后**执行段整体下移 ~28 行**，⛔ 别拿旧行号去找 |
+| **状态** | 🟡 **可用** —— 规划 + 逐步**真调用工具**；有超时、有总预算、有重规划、有降级<br>✅ ：`⚠️`（重规划漏传 `user_name`）与 `⚠️`（成败判定读中文文案）**均已修** ⇒ **`⚠️` 表 6 行里还剩 共 4 行**（⚠️ 都是**说明**不是缺陷）<br>⛔ **原「1 处真缺陷 + 5 处会误判」的账已销**（见 `🟡 做到哪`）<br>🔵 **（剩余 4 条链）：`_invoke_llm` / `plan_task` 各加一个 `on_token` 形参** —— 给 `/agent/plan_execute/stream` 用。<br>· ⚠️ **默认 `None` ⇒ 行为一字符不变**（`on_token is None` 时仍走 `llm.invoke`，`:155`）。<br>· ⚠️ **⛔ 它只让「规划段」能流** —— `execute_plan` / `generate_dynamic_input` / 质量检查**都还是非流式**（作者 裁「只流规划段」）⇒ **规划段之后是一长段静默**。<br>· 🔴 **流出的是【正在生成的 JSON 片段】**（提示词要求严格 JSON）⇒ ⛔ 前端别把流到的文本直接渲染成计划，只当"规划中"指示器。<br>· ⭐ **一条实现约束**：聚合循环**必须遍历【所有】块**（含 `content` 为空的）—— provider 把 `usage_metadata` 挂在**最后一块**上，跳过它**账就没了**（实测，探针 `探针-流式与记账.py`）。<br>· 📄 端点在 `app/routing/specs/api_v1_agent.md` · 桥在 `_ThreadTokenBridge`<br>✅：三个 `_llm` 接上 `MAX_TOKENS_AGENT`<br>✅ ：三个 `_llm` **改走 `llm_factory.make_llm("chat", "agent")`**（现于 `:92` / `:279` / `:486`）—— `model`/`api_key`/`base_url`/`max_tokens` 不再写在本地。<br>⚠️ **超时/重试没丢**：`timeout` / `max_retries` 走 `make_llm` 的 `**extra` **逐点透传**，**值一字符未变**（30/20/15 + `LLM_MAX_RETRIES`）。<br>⚠️ `executor_llm` 的 `temperature=0.1` 是**本文件特有的**逐点调参，仍写在调用点上<br>⚠️ **行号口径**：本 spec 的行号为 **之后**的实测值（`grep -n` 复核）；之后的执行段整体下移 ~28 行，⛔ 别拿旧行号去找 |
 | **对外提供** | `plan_task(goal, user_name=…, on_token=None)` · `execute_plan` · `execute_plan_with_replan` · `BudgetExceededError` · 🆕 **`StepResult(ok, text, error)`**· 四个模块级常量（`PLANNER_LLM_TIMEOUT` 等三个超时 + 🆕 **`MAX_REPLANS`**） |
 | **谁在用** | `api_v1_agent.py` 的 `POST /agent/plan_execute`（`:633` · **唯一生产入口**）· 🆕 `POST /agent/plan_execute/stream`（`:685`，经 `_ThreadTokenBridge`）· `app/tests/test_plan_execute_tools.py`（**26 条**，由 22 增）· 🆕 `app/tests/test_agent_stream_chains.py` · 🆕 **`app/tests/test_plan_task_user_name_wiring.py`**（AST 守卫） |
-| **规模** | **696 行**（`wc -l`；⚠️ 由 620 增到 696 —— 批 1 的 // 在**代码与注释**上都加了量）· ⚠️ **文件内注释极厚**（绝大部分"为什么"已写在里面） |
+| **规模** | **696 行**（`wc -l`；⚠️ 由 620 增到 696 —— 这一版在**代码与注释**上都加了量）· ⚠️ **文件内注释极厚**（绝大部分"为什么"已写在里面） |
 
 > ⚠️ **本 spec 不复述文件里已有的注释** —— 那会变成"两处真相"。**这里只写【代码与注释里都没有的】**。
 
 ## ✅ 做了什么
 
 - **两段式**：`plan_task`（规划，`llm` = `planner_llm`）→ `execute_plan_with_replan`（逐步执行 + 重规划）
-- **⭐ 执行层是真调用**（重写，§十四·N15）：从 `TOOL_HANDLERS` 取真 handler，
+- **⭐ 执行层是真调用**（重写）：从 `TOOL_HANDLERS` 取真 handler，
   入参字段名从 `args_schema` **派生**。⚠️ 真调 **四** 个工具：`calculator` / `date_today` / `web_search` / `execute_python`
 - **预算与记账**：`_invoke_llm()`（`:131`）是**统一入口** —— 查预算 → 调 → 记**真实** `usage_metadata`
 - **可算的最坏时长**：单次超时 `30/20/15`（`:69-71`）· `max_retries=LLM_MAX_RETRIES`（`:96`）· 总预算 `120s`（`:87`）
@@ -52,7 +52,7 @@
 | `app/routing/specs/sse.md` | 🆕 **本链流的骨架** —— ⚠️ 但本链的用法有个**独有之处**：`extract=None`（桥吐出来的**就是文本**，⛔ 不是图的消息块） |
 | `app/billing/specs/token_tracker.md` | `check_budget_before_call` / `record_usage` 的本尊；✅ ** 的 3 处已在 接完**（现于 `:92` / `:279` / `:486`），**又收进 `app/core/llm_factory.py`** |
 | `app/specs/main.md` | ⚠️ **中间件抛的异常接不住**（`:186` 那条警告）—— 本文件在**路由层**抛，安全 |
-| `后端补齐清单` | ✅ 三个 `ChatOpenAI` **已接 `MAX_TOKENS_AGENT`**· **收进 `llm_factory`** |
+| 设计记录 | ✅ 三个 `ChatOpenAI` **已接 `MAX_TOKENS_AGENT`**· **收进 `llm_factory`** |
 | `qingyun-rag-agent-TODO待办/探针-流式与记账.py` | 🆕 ⚠️ ** 的依据**：链路改 `.stream()` 后 `usage_metadata` **还在不在**（🔴 会花钱）—— 结论：在，但**挂在最后一块**上 |
 
 > ### ✅ 要不要做 —— **作者全部同意（三条都做）**
@@ -65,11 +65,11 @@
 
 ---
 
-# 🔵 实施计划 · **批 1 · `plan_execute` 收口**（立）
+# 🔵 实施记录 · **`plan_execute` 收口**
 
 > **来源**：上面那张裁定表的 **1 / 2 / 3**（=  🅗 的 ** /  / **）。
 > 三条 由 `/specs` 核账挖出，作者当天裁「**三条都做**」—— 本计划是把那个裁定**做掉**。
-> **作者已批**：「**同意你的建议。开始 批 1**」。
+> **作者已批**：「**同意你的建议。开始吧**」。
 >
 > ## 🔴 顺序：**`2` → `1` → `3`**（⛔ 不是 1→2→3）
 >
@@ -717,8 +717,8 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 
 | 事 | 为什么不做 |
 |---|---|
-| `⚠️` **③④⑤⑥** 四行（`failed_tools` 不跨请求 / 工具入参单字段 / `execute_plan` 是别名 / 注释厚） | **都是「说明」不是「缺陷」**。③ 的下一半是 /（跨请求黑名单），**不在批 1** |
-| `⬜ _tool_arg_field 只支持单一入参` | 同上 —— 是**能力边界**，要扩是**另一个功能**，不在 `S9/S10/S11` 的定义里 |
+| `⚠️` **③④⑤⑥** 四行（`failed_tools` 不跨请求 / 工具入参单字段 / `execute_plan` 是别名 / 注释厚） | **都是「说明」不是「缺陷」**。③ 的下一半是 /（跨请求黑名单），**不在这一批** |
+| `⬜ _tool_arg_field 只支持单一入参` | 同上 —— 是**能力边界**，要扩是**另一个功能**，不在这三个扩展项的定义里 |
 | **加 env 开关控制 `MAX_REPLANS`** | **有意不做** —— 见  顶部那条「为什么不加 env」 |
 
 
@@ -726,9 +726,9 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/agent/plan_execute.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/agent/plan_execute.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
-> ## **执行层现在是【真调用工具】**（重写 · §十四 · N15）
+> ## **执行层现在是【真调用工具】**（重写）
 >
 > **此前（核实）**：`execute_single_step` **只对 `calculator` 真调用**，
 > 其余全部走「请 LLM 模拟执行」—— 端点 `/agent/plan_execute` 看起来在跑真工具，
@@ -741,8 +741,8 @@ git commit -m "refactor(plan_execute) max_replans 提成模块级 MAX_REPLANS（
 >   · **会真的发起网络请求**（`web_search`）
 >   · **会真的执行代码**（`execute_python`，沙箱内、5 秒上限）
 >   · **耗时与失败率都不再由 LLM"编"决定** —— 会有真超时、真报错
->   · **浏览器工具已按 N13 从注册表摘掉**（依赖未安装的 chromium）
+>   · **浏览器工具已从注册表摘掉**（依赖未安装的 chromium）
 >     执行层**当前只有 4 个工具可用**：`calculator` / `date_today` / `web_search` / `execute_python`
 >
-> 登记位置：`docs/待办登记--全仓审计与方向更正.md` §十四（N15）。
+> 登记位置：见本模块注释。
 > 裁决记录：作者 「**从零新做**」，原话「**大改是必要的**」。

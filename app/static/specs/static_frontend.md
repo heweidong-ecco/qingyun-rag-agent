@@ -35,8 +35,8 @@
 | # | 项 | 状态 |
 |---|---|---|
 | 1 | **前端那一批增量**（形态 / 内容 / 首页 / 布局） | ⏳ **主线，等作者给输入** ⇒  第一屏那块「下次从这里接」 |
-| 2 | 🔴 **`accurate` / `full` 两个 mode 点了会 500** | ⬜ **按「做不到就声明」处置**（⛔ 不留能点的死按钮）—— 主镜像不装 reranker（重裁）。<br>⚠️ **现状**：`rag.html` 那两颗按钮**已经是 `disabled`**，但 `title` 上写的是「本服务镜像不装」⇒ **措辞过期**（新主线下没有"本服务镜像"这回事） |
-| 3 | 🔴 **`guide.html` 还在引两个【已删】的文件** | ⚠️ **查出**：`app/static/web/guide.html:267-268` 仍写着 `<script src="/static/js/session.js">` 与 `cred.js`，而那两份**当天已经删了**⇒ 两条 **404**。<br>⚠️ **不影响功能**（那页不取数、`app-reveal.js` 照常加载），但**是坏引用**。<br>📌 判据：`grep -n 'session.js\|cred.js' app/static/web/guide.html` ⇒ **2 条**，而 `ls app/static/js/` 里**没有这两个文件** |
+| 2 | ✅ ~~`accurate` / `full` 两个 mode 点了会 500~~ | **已处置完**：两个按钮是 `disabled`，提示改成「**本服务镜像不装**」—— `rag.html` ×2 与 `rag.js` ×2 同批改，`rag.js` 的版本号已重盖。主镜像不装 reranker（重裁）这个事实不变。<br>判据：`grep -rn "本服务镜像" app/static/web app/static/js \| wc -l` ⇒ **0** |
+| 3 | ✅ ~~`guide.html` 还在引两个【已删】的文件~~ | **已删**（那两行 `<script>` 删掉，原地留了解释注释）。<br>判据：`grep -n '<script[^>]*session.js' app/static/web/guide.html` ⇒ **0** |
 | 5 | **DOM 那层没有自动判据** | 滚动 / 按钮态 / 版式仍靠手工（本仓页面守卫判的是**源码文本**，⛔ 不是像素）。⚠️ 本仓因此在 栽过一次：**11 条页面守卫全绿，而 `<textarea>` 已经溢出到格子外面** |
 
 ## ⚠️ 看代码会误判的地方 ⭐

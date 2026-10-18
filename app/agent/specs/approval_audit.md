@@ -75,7 +75,7 @@
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/agent/approval_audit.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/agent/approval_audit.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 **为什么不塞进 `pending_approvals.py`**：那个模块的 docstring 全篇在论证
    「**为什么必须是内存**」，往里加 PG 写会把它变成"两种存储各说一半"的模块。

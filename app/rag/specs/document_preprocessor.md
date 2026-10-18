@@ -19,7 +19,7 @@
    ⇒ **搬进 `app/rag/` 时，是【数据文件跟着模块走】才没改代码**。
    ⛔ **再挪动本文件、却把 json 留在原地 ⇒ 清洗规则【静默变成空】**（不报错，只是没洗）。
    📌 判据：`python -c "from rag.document_preprocessor import DocumentPreprocessor as D; print(D().process('联系我们 support@x.com'))"` ⇒ 邮件应被去掉。
-2. 🔴 **那条 markdown 图片规则【不是死代码】**—— 它在 **`legal` / `medical` 域正在生效**。
+2. 🔴 **那条 markdown 图片规则【不是死代码】** —— 它在 **`legal` / `medical` 域正在生效**。
    ⚠️ 但在 `default` 域，**URL 规则排在图片规则之前** ⇒ 同一条规则在不同域**行为不同**。
    ⇒ ⛔ **别只看 `default` 域就判它没用**；也别**顺手**把 `default` 的顺序调过来
    —— 那会**改变文本预处理输出** ⇒ 已入库语料的清洗结果与新规则**不一致**。

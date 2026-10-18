@@ -69,7 +69,7 @@
 
 | 看代码会以为 | 实际 |
 |---|---|
-| 🔴 **「`scores` 是正的 ⇒ 命中」** | ⛔ **判据已经不是分数了**—— `scores` **只用来排序**，入选靠 `query_tokens & token_sets[idx]`。<br>⇒ 会看到"分数为负还挺在结果里"而以为坏了 —— **那是有意的**（决策 7）。<br>📌 判据：`grep -n "query_tokens & token_sets" app/rag/bm25_index.py` ⇒ `:135` |
+| 🔴 **「`scores` 是正的 ⇒ 命中」** | ⛔ **判据已经不是分数了** —— `scores` **只用来排序**，入选靠 `query_tokens & token_sets[idx]`。<br>⇒ 会看到"分数为负还挺在结果里"而以为坏了 —— **那是有意的**（决策 7）。<br>📌 判据：`grep -n "query_tokens & token_sets" app/rag/bm25_index.py` ⇒ `:135` |
 | 🔴 **「`_bm25_cache` 是一份全局索引」** | ⛔ **按 `user_id` 分桶**（`:44`）。<br>⚠️ 且 **`invalidate_bm25_cache` 清【所有】桶**（`:96` `_bm25_cache.clear`）—— **不是只清某人**。<br>⇒ 插入/删除时**不知道影响谁**，全清是**安全侧**（宁可多重建，⛔ 不可留旧语料）。**代价是重建变频繁** |
 | 🔴 **「BM25 在 `hybrid_search.py` 里」** | ⛔ **不在** —— 那是 **RRF 融合**层。BM25 本体**只在本文件**；`hybrid_search.py` 经 `db` 转发层调它 |
 | 🔴 **「`jieba` 分出来的词都参与"是否重合"判定」** | ⛔ **不是** —— `jieba.cut` 会吐出 `' '` / `'·'` / `'-'` 这类**每篇都有**的词元，拿它们判定 ⇒ **任意两篇都算重合**，判定就废了。<br>⇒ `_NON_WORD`（`:23`）专门剔掉它们，**只用于入选判定** |
@@ -86,7 +86,7 @@
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/rag/bm25_index.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/rag/bm25_index.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 **依赖方向只允许单向**：本模块 `from db import get_db`；
 `db.py` 一律用**函数内惰性导入**反向引用本模块。

@@ -17,7 +17,7 @@
   `/debug/count`（`:240` 直查 `documents` 行数）· `/debug/quota`（`:257`，⛔ **不再是 `{user_name}`**）·
   `/debug/cache_stats`（`:319` 扫 `emb:*`）· `/debug/rate_limit`（`:360`，同上）
 - **对比测试**（原 **2** 条，现 **1** 条）：`/rag/benchmark-embedding`（`:240`，**真调 embedding 两次**）·
-  ~~`/tool/benchmark`~~ 🔴 **删**—— 它 benchmark 的是 **mock**
+  ~~`/tool/benchmark`~~ 🔴 **删** —— 它 benchmark 的是 **mock**
   （`get_weather` = `time.sleep(2)` + 硬编码串）⇒ **证明不了生产事实**。
 - ~~`/users/{user_id}`~~ 🔴 **删**：**一行数据都不读**（见 ⚠️④）。
 
@@ -54,7 +54,7 @@
 | 🔴 **① 「这是主路由，鉴权有中间件兜着」** | 🔴🔴 **本行下面那两个数是【历史值】**：现在是 **10 条路由里 2 条带 `require_admin`**（把 4 条 `/debug/*` 降到「登录即可」）—— **现况看本文件顶部「状态」那一行**。✅ **当时已收口**：**9 条路由里 6 条带 `Depends(require_admin)`**，其余 3 条（`/` · `/auth/login` · `/auth/refresh`）**有意公开** ⇒ **匿名可调 0 条**。<br>📌 **判据（可打印）**：`grep -c '= Depends(require_admin)' app/routing/api_v1.py` ⇒ **6**。<br>⚠️ **⚠️ 那个 `= ` 不能省** —— 写成 `grep -c 'Depends(require_admin)'` 会数到 **10**：**墓碑注释与文档字符串里也有这个串**（本仓判据纪律第 2 条：**⛔ 别只数"有几处"**）。<br>⚠️ **原文（收口前，保留供查）**：⛔ **中间件只做限流与配额，⛔ 不做鉴权** —— 鉴权靠**路由自己的 `Depends(...)`**。<br>**而本文件 11 条路由里，只有 `create_user`（`:159`）有**（`grep -n "Depends(" app/routing/api_v1.py` **实测：只有那一条**）。<br>⇒ 其余 10 条**任何人（含匿名）可调**。只有 `/auth/login` · `/auth/refresh` 是**有意公开**的。 |
 | 🔴 **② 「匿名只能打到不烧钱的端点」** | ✅ **已不成立** —— 该端点**已带 `Depends(require_admin)`**，匿名打 ⇒ **401**（**实测**，见下）。<br>⚠️ **⚠️ 是 401 ⛔ 不是 403** —— **没带凭据** ⇒ `AUTH_MISSING`（**401**）；**带上非管理员的凭据**才轮到 `FORBIDDEN`（**403**，`app/core/exceptions.py` 的映射表）。<br>**实测（裸 `TestClient`，5 条新收口路由一条不落）**：<br>`POST /api/v1/rag/benchmark-embedding {"question":"x"}` + `GET /api/v1/debug/{count,cache_stats,quota/admin,rate_limit/admin}` ⇒ **全部 401**，体为 `{"error":"请提供 API Key 或 Bearer Token","code":"AUTH_MISSING","status_code":401}`。<br>⚠️ **原文（收口前，保留供查）**：⛔ **错。`/api/v1/rag/benchmark-embedding` 匿名可打，且【真花钱】。**<br>**实测（服务运行中）**：<br>```bash<br>curl -X POST http://127.0.0.1:8000/api/v1/rag/benchmark-embedding \\<br> -H "Content-Type: application/json" -d '{"question":"匿名能烧钱吗"}'<br># → HTTP 200<br># → {"first_call_ms": 385.71, "second_call_ms": 1.12, ...}<br>```<br>**不带 `X-API-Key`、不带 `Authorization`** ⇒ **200**，且 **385ms = 真调了 DashScope**（第二次 1.12ms 是缓存命中）。<br>⚠️ **配额对匿名是跳过的**（`app/main.py:314` 的 `if not user_name:` ⇒ 直接放行）⇒ **匿名按 3 次/秒的速率无限烧 embedding**。<br>🔴 **它推翻了先前对 的判断**（原写「匿名能打到的只有两个端点，而它们是桩」）—— **那个核法漏了一整类**：<br>只查了**标注"无需 API Key"的两个**，**没查"完全没有鉴权依赖"的**。⛔ 后者用 `grep Depends(` **一条命令就能列全**。 |
 | 🔴 **③ 「`/debug/*` 只是调试，无所谓」** | 🔴🔴 **本行【被 取代了一半】**：那 4 条**不再要 `require_admin`**，改成「登录即可」—— 而**取代它的正是下面那句「收口后仍收任意 `user_name`」被拿掉了**（两条的**路径形参已删**，永远查自己）。**现况看顶部「状态」行**。✅ **（历史）：4 条 `/debug/*` 全部补上 `Depends(require_admin)`**。<br>⚠️ **收口后仍收【任意 `user_name`】参数** —— 那对**管理员是对的**（他就是要能查别人）；⛔ **但别把它当"用户自助查询"**。<br>⚠️ **原文（收口前，保留供查）**：⛔ **两条会泄露【任意用户名】的信息**：<br>· `/debug/quota/{user_name}`（`:215`）⇒ 返回该用户的 **role / `daily_limit` / `remaining` / `used_today`**<br>· `/debug/rate_limit/{user_name}`（`:314`）⇒ 返回该用户的**剩余令牌 + 容量 + 速率**<br>⚠️ 配合 `permission.get_user_role` 的**按名字硬编码**（`admin` / `test_user` 特判）⇒ **可用来【枚举用户名】**。<br>另有 `/debug/count`（文档总数）· `/debug/cache_stats`（缓存键样本）。<br>🔴：`/debug/quota` 的数字**单位是 token**（字段名 `daily_limit` / `remaining` 保留）—— ⛔ **别当次数读**。 |
-| ⚠️ **④ 「`/users/{user_id}` 会查用户」** | 🔴 **该端点已【删除】**—— ⛔ **不是修好了，是删了**。<br>⛔ **守卫**：`app/tests/test_removed_endpoints.py::test_users_by_id_stays_removed`（判据 = **404**）。<br>⚠️ **原文（保留供查）**：⛔ **不会** —— 它**直接回显参数**：`return {"user_id": user_id, "detail": include_detail}`（`:196`）。<br>**不查库、不看 `user_name`**。⇒ 它是**参数校验的演示**，不是用户查询。<br>📌 本 spec 早在 2026-09 就把它标成「**要么真查库，要么删**」（见下方"没裁"表第 **4** 条）⇒ 本次走的是**删**。 |
+| ⚠️ **④ 「`/users/{user_id}` 会查用户」** | 🔴 **该端点已【删除】** —— ⛔ **不是修好了，是删了**。<br>⛔ **守卫**：`app/tests/test_removed_endpoints.py::test_users_by_id_stays_removed`（判据 = **404**）。<br>⚠️ **原文（保留供查）**：⛔ **不会** —— 它**直接回显参数**：`return {"user_id": user_id, "detail": include_detail}`（`:196`）。<br>**不查库、不看 `user_name`**。⇒ 它是**参数校验的演示**，不是用户查询。<br>📌 本 spec 早在 2026-09 就把它标成「**要么真查库，要么删**」（见下方"没裁"表第 **4** 条）⇒ 本次走的是**删**。 |
 | ⚠️ **⑤ 「没用的 import 只是脏，没影响」** | ⚠️ **有一条不是** —— **`from agent_graph import agent_graph`（`:49`）** 会在 **import 期就构建那张图**（`agent_graph.py` 末尾 `agent_graph = build_agent_graph`）。<br>⇒ 改 `agent_graph.py` 会**牵动 `api_v1.py` 的导入**，而本文件**根本不用它**。<br>📌 同族：`embedding_client.client` 也曾是模块级客户端（待办）—— ✅ **已了结**：本文件 `:35` 那行 `from embedding_client import client` **已删**（全仓唯一引用、且从未被使用），客户端改**惰性构造**。 |
 
 ## 关联
@@ -64,7 +64,7 @@
 | `app/specs/main.md` | **中间件的 `PUBLIC_PATHS` 只豁免中间件，≠ 该端点不需要鉴权** —— 本文件的 ⚠️① 就是这条的实例 |
 | `app/access/specs/rate_limiter.md` | `/debug/rate_limit` 用的是它；`user_name` 在那里是**桶名** |
 | `app/specs/归档/quota_limiter.md` | ⚰️ **已归档** —— `/debug/quota` **原先**用的是它；**改用 `token_tracker.get_token_budget_info`** |
-| `后端补齐清单`  | ⚠️ **本文件 ⚠️② 直接改变 B9 的状态** —— 见下 |
+| 设计记录  | ⚠️ **本文件 ⚠️② 直接改变限流分桶的状态** —— 见下 |
 | · `app/billing/specs/token_tracker.md` | 🔴 **配额口径改动** —— `/debug/quota` 的数字**从「次数」变成 token**；`get_user_quota` **已删**（原是本文件 + `main.py` 共三个调用点之一） |
 | `docs/说明/测试.md` §六 | 「103 个未使用导入」的一个来源（已裁「先挂起」） |
 
@@ -77,9 +77,9 @@
 > | ① 匿名按 IP 分桶 | 阶段⑦（上 Cloudflare）之后 | ⏸ 仍挂着（**条件未到**） |
 > | ② **配额对匿名生效** | **一旦出现「匿名可打【且烧钱】的端点」** | ⚠️ **已由另一条路消解** —— 该端点**匿名打不了了**（加鉴权 · 见 ⚠️②）⇒ **触发条件不再成立**。 |
 >
-> ⇒ 🔴 **`B9-②` 的触发条件【已消失】**（原来的问题端点被锁上了，
->    **不是**"配额对匿名生效"了 —— ⚠️ **这两条路别混**）。⇒ **`B9-②` 可以正式摘掉**。
-> ⚠️ **但 `B9-①`（匿名按 IP 分桶）仍然挂着**，条件未到。
+> ⇒ 🔴 **匿名按 IP 分桶的触发条件【已消失】**（原来的问题端点被锁上了，
+>    **不是**"配额对匿名生效"了 —— ⚠️ **这两条路别混**）。⇒ **这一项可以正式摘掉**。
+> ⚠️ **但匿名按 IP 分桶仍然挂着**，条件未到。
 
 > ### ✅ 要不要做 —— **已全部闭合**
 >
@@ -87,7 +87,7 @@
 > |---|---|---|
 > | **1** | 🔴 **给 `/debug/*` 加鉴权**（至少 `require_admin`），或**决定线上不挂载它们** | ✅ **已加 `require_admin`**（4 条）。<br>⬜ **但「线上要不要挂载」未裁** ⇒   |
 > | **2** | 🔴 **`/rag/benchmark-embedding` 加鉴权** | ✅ **已加 `require_admin`**。 |
-> | **3** | ⚠️ **21 个未使用 import** | ⏸ **仍挂起**⇒ ⛔ **别顺手清**（本次只动了**因删端点而失效的那 2 行**）。 |
+> | **3** | ⚠️ **21 个未使用 import** | ⏸ **仍挂起** ⇒ ⛔ **别顺手清**（本次只动了**因删端点而失效的那 2 行**）。 |
 > | **4** | ⚠️ **`/users/{user_id}` 要么真查库，要么删** | ✅ **走了「删」**。 |
 >
 > #### ⬜ 仍未裁（本次**没动**）

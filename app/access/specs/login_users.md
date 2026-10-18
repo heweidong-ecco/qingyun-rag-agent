@@ -71,7 +71,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://<host>/api/v1/auth/login
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/access/login_users.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/access/login_users.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 ## 它解决什么
 

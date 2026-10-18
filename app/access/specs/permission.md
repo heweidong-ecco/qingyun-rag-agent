@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| **状态** | ✅ **已接 DB**（B1）—— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
+| **状态** | ✅ **已接 DB** —— **`api_keys.role` 为权威**，带 **60s 进程内缓存** + **写侧主动失效**；查不到/脏值/库挂了**回退**到下面那套硬编码 |
 | **对外提供** | `UserRole`（`str, Enum`：`FREE` / `PREMIUM` / `ADMIN`）· `get_user_role(user_name) -> UserRole` · 🆕 **`invalidate_role_cache(user_name=None)`**（**写侧改完角色必须调它**） |
 | **谁在用** | **11 处**：`deps.py:76`（`require_admin`）· `api_v1.py:244` · `api_v1_rag.py:383` · `api_v1_agent.py` **7 处**（admin 判定）· `token_tracker.py:513`（`get_user_token_budget` —— 🔴 **配额热路径**，一个请求最多调 10 次） |
 | **测试** | 🆕 `app/tests/test_user_role_from_db.py`（**19 条，本模块自己的用例**，⭐ 含反向守卫与"非数据库异常必须冒泡"）· `test_isolation.py` · `test_pending_visibility.py` · `test_approve_ownership.py` · `test_trace_isolation.py` · `test_quota_middleware.py` · `test_token_config.py` · `test_rate_limit_identity.py`（`_no_db` 守卫也拦本模块 —— 见那里 fixture 的说明） |
@@ -23,14 +23,14 @@ def get_user_role(user_name: str) -> UserRole:
     return UserRole.FREE
 ```
 
-**它是「多用户隔离」的判据来源之一**—— `ADMIN` 是**跨用户可见**的那个例外，
+**它是「多用户隔离」的判据来源之一** —— `ADMIN` 是**跨用户可见**的那个例外，
 所以 11 个调用点里**大半是**「本人 or admin」这种归属校验的**后半句**。
 
 ## 🟡 做到哪 / 缺什么
 
 | 缺口 | 说明 |
 |---|---|
-| ✅ ~~角色表没接 DB~~ | **已接**（B1）—— `api_keys.role` 为权威 + 60s 缓存 + 写侧失效。⚠️ **旧文的挂起理由与落点已作废，⛔ 别照旧读**： 🅱️「后端先行」**早已满足**； 写的 /`R1.3` **`R1.3` 当天就随 落地了** |
+| ✅ ~~角色表没接 DB~~ | **已接** —— `api_keys.role` 为权威 + 60s 缓存 + 写侧失效。⚠️ **旧文的挂起理由与落点已作废，⛔ 别照旧读**： 🅱️「后端先行」**早已满足**； 写的 /`R1.3` **`R1.3` 当天就随 落地了** |
 | ✅ ~~没有"改角色"的入口~~ | **已有两处**： · `POST /admin/create_user` 的 `role` 字段。⚠️ **⚠️ 没有"改已有用户的角色"入口** —— 两个入口都是**发新 key 时**写；改现有用户的角色**目前只能再发一把** |
 | ⚠️ **没有"不存在的用户"这一档** | 任何没被特判的字符串**都是 FREE**，包括拼错的用户名 ⇒ 见 §⚠️ 第 1 条 |
 | ⚠️ **脏值只在读侧兜** | 写侧**⛔ 不校验**取值（`role` 是 TEXT）⇒ `role='胡说八道'` 能写进去，读侧靠 `UserRole(raw)` 转不出来 ⇒ **回退**。⛔ **这是有意的**：多一处白名单 = 多一处会与 `UserRole` 分叉的事实源 |
@@ -95,7 +95,7 @@ def get_user_role(user_name: str) -> UserRole:
 > `monkeypatch` 改角色对**已经调过**的代码路径就失效，本仓大量用例靠这个机制。
 > ⇒ ⛔ **别顺手加 `@lru_cache`**。
 
-**（B1）换了缓存，结论如下 —— 🔴 这是【实测】，⛔ 不是推理：**
+**换了缓存，结论如下 —— 🔴 这是【实测】，⛔ 不是推理：**
 
 * **为什么非加不可**：接 DB 之后不缓存 = **每请求最多 10 次同一条查询**
   （`token_tracker:513` 在配额热路径上；`api_v1_agent` 一个请求 7 处 admin 判定）

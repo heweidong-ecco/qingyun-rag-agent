@@ -86,7 +86,7 @@ grep -rn 'CREATE TABLE\|create_table' app/core/db.py | head
 
 ## 📎 从代码 docstring 移出的设计说明
 
-> 来源 = `app/core/db_metadata.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ 整段**原样搬来**，⛔ 未改写。
+> 来源 = `app/core/db_metadata.py` 的模块 docstring（产品仓口径：模块 docstring 只留「摘要 + 怎么用」，设计论证归 spec）。⚠️ **内容不改写**；只清理内部编号 / 批次号这类工作日志坐标。
 
 **依赖方向是单向的**：本模块**不依赖** `db.py`（只用 sqlalchemy），
 所以 `db.py` 可以安全地引用它，不会成环。
